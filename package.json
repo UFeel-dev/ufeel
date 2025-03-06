@@ -3,6 +3,6 @@
   "version": "1.0.0",
   "displayName": "UFeel",
   "description": "uf.",
-  "unity": "6000.0",
+  "unity": "6000.0.40f1",
   "dependencies": {}
 }
