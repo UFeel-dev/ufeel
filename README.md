@@ -32,6 +32,46 @@ The script performs the following steps:
 * `clang` or `gcc`
 * `cmake`
 
+## Third-Party Libraries (Git LFS Required)
+
+This project uses **Git LFS** to store large third-party libraries located in the `3rdparty/` folder (e.g. `.so`, `.a` files).
+
+After cloning the repository, you must install Git LFS and pull the required files.
+
+### Install Git LFS (Ubuntu / Debian)
+
+```bash
+sudo apt update
+sudo apt install git-lfs
+```
+
+Then enable it:
+
+```bash
+git lfs install
+```
+
+### Download third-party libraries
+
+After cloning the repository, run:
+
+```bash
+git lfs pull
+```
+
+This will download all required libraries inside the `3rdparty/` folder.
+
+### Full setup example
+
+```bash
+git clone git@github.com:augustin-grosnon/ufeel.git
+git lfs install
+git lfs pull
+```
+
+You can now build the project normally.
+
+
 ## Project Structure
 
 ```
