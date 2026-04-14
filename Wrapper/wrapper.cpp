@@ -140,6 +140,25 @@ extern "C"
         delete[] directions;
     }
 
+    __attribute__((visibility("default")))
+    const char *ufeel_get_speech(void *processor)
+    {
+        if (!processor)
+            return nullptr;
+
+        std::string text = static_cast<DataProcessor*>(processor)->processSpeechToText();
+
+        return strdup(text.c_str());
+    }
+
+    __attribute__((visibility("default")))
+    void ufeel_free_speech(char *speech)
+    {
+        if (!speech) return;
+
+        free(speech);
+    }
+
     // WRAPPER DEBUG
     __attribute__((visibility("default")))
     void *ufeel_debug_get_frame(void *processor)
@@ -215,6 +234,24 @@ extern "C"
         }
 
         cv::imshow("Eye Tracking Detection", cvFrame);
+    }
+
+    __attribute__((visibility("default")))
+    void ufeel_debug_show_speech(void *frame, char *speech)
+    {
+        if (!frame)
+            return;
+
+        cv::Mat &cvFrame = *static_cast<cv::Mat*>(frame);
+
+        std::ostringstream oss;
+        oss << "Current speech: " << speech;
+
+        cv::putText(cvFrame, oss.str(), cv::Point(20, 30),
+                    cv::FONT_HERSHEY_SIMPLEX, 0.6,
+                    cv::Scalar(255, 255, 255), 2);
+
+        cv::imshow("Debug UFeel", cvFrame);
     }
 
     __attribute__((visibility("default")))

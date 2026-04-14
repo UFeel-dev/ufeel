@@ -14,7 +14,7 @@
         "${workspaceFolder}/3rdparty/libtorch/include",
         "${workspaceFolder}/3rdparty/libtorch/include/torch/csrc/api/include",
         "${workspaceFolder}/3rdparty/tensorflowlite/include",
-        "${workspaceFolder}/3rdparty/mediapipe/include"
+        "${workspaceFolder}/3rdparty/vosk/include"
       ],
 
       "browse": {
@@ -24,7 +24,7 @@
           "${workspaceFolder}/3rdparty/libtorch/include",
           "${workspaceFolder}/3rdparty/libtorch/include/torch/csrc/api/include",
           "${workspaceFolder}/3rdparty/tensorflowlite/include",
-          "${workspaceFolder}/3rdparty/mediapipe/include"
+          "${workspaceFolder}/3rdparty/vosk/include"
         ]
       }
     }

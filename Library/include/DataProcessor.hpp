@@ -10,7 +10,7 @@
 
     #include "Emotions/EmotionDetector.hpp"
     #include "EyeTracking/EyeTrackingDetector.hpp"
-    // #include "SpeechToText/SpeechToTextDetector.hpp"
+    #include "SpeechToText/SpeechToTextDetector.hpp"
     // #include "HeartRateSensor/HeartRateSensorDetector.hpp"
 
     #include <opencv2/opencv.hpp>
@@ -23,7 +23,7 @@ class DataProcessor
 
         std::map<std::string, float> processEmotion();
         std::map<std::string, bool> processEyeTracking();
-        // std::string processSpeechToText();
+        std::string processSpeechToText();
         // int processHeartRateSensor();
 
         cv::Mat getFrame();
@@ -34,7 +34,7 @@ class DataProcessor
 
         std::unique_ptr<EmotionDetector> emotionDetector_;
         std::unique_ptr<EyeTrackingDetector> eyeTrackingDetector_;
-        // std::unique_ptr<SpeechToTextDetector> speechToTextDetector_;
+        std::unique_ptr<SpeechToTextDetector> speechToTextDetector_;
         // std::unique_ptr<HeartRateSensorDetector> heartRateSensorDetector_;
 
         int counter_;

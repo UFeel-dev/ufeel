@@ -22,7 +22,7 @@ DataProcessor::DataProcessor(bool calibration) :
 
     emotionDetector_ = std::make_unique<EmotionDetector>();
     eyeTrackingDetector_ = std::make_unique<EyeTrackingDetector>();
-    // speechToTextDetector_ = std::make_unique<SpeechToTextDetector>();
+    speechToTextDetector_ = std::make_unique<SpeechToTextDetector>();
     // heartRateSensorDetector_ = std::make_unique<HeartRateSensorDetector>();
 }
 
@@ -50,10 +50,10 @@ std::map<std::string, bool> DataProcessor::processEyeTracking()
     return eyeTrackingDetector_->process(frame_);
 }
 
-// std::string DataProcessor::processSpeechToText()
-// {
-//     return speechToTextDetector_->process();
-// }
+std::string DataProcessor::processSpeechToText()
+{
+    return speechToTextDetector_->process();
+}
 
 // int DataProcessor::processHeartRateSensor()
 // {

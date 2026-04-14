@@ -53,6 +53,14 @@ public static class UFeelNative
     [DllImport(LIB)]
     public static extern void ufeel_free_directions(IntPtr ptr, int size);
 
+    // SPEECH TO TEXT
+
+    [DllImport(LIB)]
+    public static extern IntPtr ufeel_get_speech(IntPtr processor);
+
+    [DllImport(LIB)]
+    public static extern void ufeel_free_speech(IntPtr speech);
+
     // DEBUG
 
     [DllImport(LIB)]
@@ -66,6 +74,9 @@ public static class UFeelNative
 
     [DllImport(LIB)]
     public static extern void ufeel_debug_show_directions(IntPtr frame, IntPtr ptr, int size);
+
+    [DllImport(LIB)]
+    public static extern void ufeel_debug_show_speech(IntPtr frame, IntPtr speech);
 
     [DllImport(LIB)]
     public static extern void ufeel_debug_show_frame(IntPtr frame);

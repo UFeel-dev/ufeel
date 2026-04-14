@@ -18,6 +18,8 @@ set(CSHARP_RELEASE ${CSHARP_DIR}/bin/Release/net8.0)
 set(OPENCV_DIR ${THIRDPARTY_DIR}/opencv)
 set(LIBTORCH_DIR ${THIRDPARTY_DIR}/libtorch)
 set(TFLITE_DIR ${THIRDPARTY_DIR}/tensorflowlite)
+set(VOSK_DIR ${THIRDPARTY_DIR}/vosk)
+
 
 # ======================
 # LibTorch
@@ -40,6 +42,7 @@ add_library(ufeel_detection_library STATIC
     ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/ModelLoader.cpp
     ${LIBRARY_DIR}/src/EyeTracking/EyeTrackingDetector.cpp
 
+    ${LIBRARY_DIR}/src/SpeechToText/SpeechToTextDetector.cpp
 )
 
 # ======================
@@ -50,23 +53,52 @@ target_include_directories(ufeel_detection_library PUBLIC
     ${OPENCV_DIR}/include
     ${TORCH_INCLUDE_DIRS}
     ${TFLITE_DIR}/include
+    ${VOSK_DIR}/include
 )
 
 # ======================
 # Link libs
 # ======================
-
-file(GLOB RUY_DEPS
-    ${TFLITE_DIR}/lib/ruy/*.a
-)
-
 target_link_libraries(ufeel_detection_library PUBLIC
     ${OPENCV_DIR}/lib/libopencv_world.so
     ${TORCH_LIBRARIES}
+
     ${TFLITE_DIR}/lib/libtensorflow-lite.a
     ${TFLITE_DIR}/lib/flatbuffers/libflatbuffers.a # Need to be compiled after TensorFlow
     ${TFLITE_DIR}/lib/ruy/libruy_combined.a
-    # ${RUY_DEPS}
+
+
+    ${VOSK_DIR}/lib/libvosk.a
+
+    -Wl,--start-group
+    ${VOSK_DIR}/lib/kaldi/online2/kaldi-online2.a
+    ${VOSK_DIR}/lib/kaldi/decoder/kaldi-decoder.a
+    ${VOSK_DIR}/lib/kaldi/ivector/kaldi-ivector.a
+    ${VOSK_DIR}/lib/kaldi/gmm/kaldi-gmm.a
+    ${VOSK_DIR}/lib/kaldi/tree/kaldi-tree.a
+    ${VOSK_DIR}/lib/kaldi/feat/kaldi-feat.a
+    ${VOSK_DIR}/lib/kaldi/lat/kaldi-lat.a
+    ${VOSK_DIR}/lib/kaldi/lm/kaldi-lm.a
+    ${VOSK_DIR}/lib/kaldi/rnnlm/kaldi-rnnlm.a
+    ${VOSK_DIR}/lib/kaldi/hmm/kaldi-hmm.a
+    ${VOSK_DIR}/lib/kaldi/nnet3/kaldi-nnet3.a
+    ${VOSK_DIR}/lib/kaldi/transform/kaldi-transform.a
+    ${VOSK_DIR}/lib/kaldi/cudamatrix/kaldi-cudamatrix.a
+    ${VOSK_DIR}/lib/kaldi/matrix/kaldi-matrix.a
+    ${VOSK_DIR}/lib/kaldi/fstext/kaldi-fstext.a
+    ${VOSK_DIR}/lib/kaldi/util/kaldi-util.a
+    ${VOSK_DIR}/lib/kaldi/base/kaldi-base.a
+
+    ${VOSK_DIR}/lib/openfst/libfst.a
+    ${VOSK_DIR}/lib/openfst/libfstngram.a
+
+    ${VOSK_DIR}/lib/openblas/libopenblas-r0.3.20.a
+    ${VOSK_DIR}/lib/openblas/libblas.a
+    ${VOSK_DIR}/lib/openblas/liblapack.a
+    ${VOSK_DIR}/lib/openblas/libf2c.a
+    -Wl,--end-group
+
+    portaudio
 )
 
 # ======================

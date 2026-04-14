@@ -14,6 +14,7 @@ build()
     mkdir -p $BUILD_DIR
     cd $BUILD_DIR
     cmake ..
+    cd ..
 }
 
 compile()

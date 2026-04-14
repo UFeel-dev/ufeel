@@ -23,7 +23,8 @@ class Program
                 continue;
 
             // DetectEmotion(processor, frame);
-            DetectEyeTracking(processor, frame);
+            // DetectEyeTracking(processor, frame);
+            DetectSpeechToText(processor, frame);
 
             UFeelNative.ufeel_debug_destroy_frame(frame);
 
@@ -93,6 +94,15 @@ class Program
 
         // UFeelNative.ufeel_debug_show_directions(frame, directions, size);
         UFeelNative.ufeel_free_directions(directions, size);
+        return;
+    }
+
+    static void DetectSpeechToText(IntPtr processor, IntPtr frame)
+    {
+        var speech = UFeelNative.ufeel_get_speech(processor);
+
+        UFeelNative.ufeel_debug_show_speech(frame, speech);
+        UFeelNative.ufeel_free_speech(speech);
         return;
     }
 }
