@@ -6,6 +6,12 @@
 */
 
 #include "SpeechToText/SpeechToTextDetector.hpp"
+#include "vosk_api.h"
+#include <cstring>
+#include <iostream>
+#include <portaudio.h>
+#include <string>
+#include <thread>
 
 SpeechToTextDetector::SpeechToTextDetector()
 {
@@ -103,7 +109,7 @@ void SpeechToTextDetector::run()
 {
     Pa_Initialize();
 
-    PaStream* stream;
+    PaStream *stream;
 
     Pa_OpenDefaultStream(
         &stream,

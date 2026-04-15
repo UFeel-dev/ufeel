@@ -28,9 +28,10 @@ The script performs the following steps:
 ## Requirements
 
 * Linux (Ubuntu recommended)
-* `dotnet` installed
+* `dotnet` installed (8.0)
 * `clang` or `gcc`
 * `cmake`
+* `portaudio` (dev)
 
 ## Third-Party Libraries (Git LFS Required)
 

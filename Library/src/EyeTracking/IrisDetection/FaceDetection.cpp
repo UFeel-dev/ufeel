@@ -1,4 +1,9 @@
 #include "EyeTracking/IrisDetection/FaceDetection.hpp"
+#include "EyeTracking/IrisDetection/ModelLoader.hpp"
+#include "opencv2/core/mat.hpp"
+#include "opencv2/core/types.hpp"
+#include <string>
+#include <vector>
 
 
 my::FaceDetection::FaceDetection(std::string modelDir) :

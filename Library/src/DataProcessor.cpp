@@ -6,6 +6,14 @@
 */
 
 #include "DataProcessor.hpp"
+#include "Emotions/EmotionDetector.hpp"
+#include "EyeTracking/EyeTrackingDetector.hpp"
+#include "SpeechToText/SpeechToTextDetector.hpp"
+#include "opencv2/core/mat.hpp"
+#include <iostream>
+#include <map>
+#include <memory>
+#include <string>
 
 DataProcessor::DataProcessor(bool calibration) :
     cap_(0),
@@ -35,8 +43,9 @@ cv::Mat DataProcessor::getFrame()
 std::map<std::string, float> DataProcessor::processEmotion()
 {
     cap_ >> frame_;
-    if (frame_.empty())
+    if (frame_.empty()) {
         return {}; // TODO: add default value for all of this
+    }
 
     return emotionDetector_->process(frame_);
 }
