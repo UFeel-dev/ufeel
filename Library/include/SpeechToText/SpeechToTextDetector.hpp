@@ -9,12 +9,13 @@
 #define SPEECHTOTEXTDETECTOR_HPP_
 
 #include "vosk_api.h"
-#include <thread>
 #include <atomic>
-#include <iostream>
-#include <string>
-#include <portaudio.h>
 #include <cstring>
+#include <iostream>
+#include <portaudio.h>
+#include <string>
+#include <thread>
+#include <vector>
 
 class SpeechToTextDetector
 {
@@ -22,8 +23,14 @@ class SpeechToTextDetector
         SpeechToTextDetector();
         ~SpeechToTextDetector();
 
+        SpeechToTextDetector(const SpeechToTextDetector&) = delete;
+        SpeechToTextDetector& operator=(const SpeechToTextDetector&) = delete;
+
+        SpeechToTextDetector(SpeechToTextDetector&&) = delete;
+        SpeechToTextDetector& operator=(SpeechToTextDetector&&) = delete;
+
         void toggle(bool state);
-        std::string process() const;
+        [[nodiscard]] std::string process() const;
 
     private:
         VoskModel* model = nullptr;
@@ -37,13 +44,7 @@ class SpeechToTextDetector
 
         static std::string extract_text(const char* json);
 
-        static int paCallback(
-            const void *input,
-            void *,
-            unsigned long frameCount,
-            const PaStreamCallbackTimeInfo*,
-            PaStreamCallbackFlags,
-            void *userData);
+        static int paCallback(const void *input, void *, uint64_t frameCount, const PaStreamCallbackTimeInfo*, PaStreamCallbackFlags, void *userData);
 
         void start();
         void stop();
