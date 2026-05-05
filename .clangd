@@ -55,7 +55,7 @@ Diagnostics:
 
 CompileFlags:
   Add: [
-    -std=c++23,
+    -std=c++17,
     -Wall,
     -Wextra,
     -Wpedantic,
@@ -74,5 +74,13 @@ CompileFlags:
     -IInclude/Lexer,
     -IInclude/Parser,
     -IInclude/Utils,
-    -IInclude/AST
+    -IInclude/AST,
+
+    # Library Include
+    -I./Library/include,
+    -I./3rdparty/opencv/include,
+    -I./3rdparty/libtorch/include,
+    -I./3rdparty/libtorch/include/torch/csrc/api/include,
+    -I./3rdparty/tensorflowlite/include,
+    -I./3rdparty/vosk/include
   ]

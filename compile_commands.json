@@ -1,0 +1,52 @@
+[
+{
+  "directory": "/home/neon/EIP/ufeel",
+  "command": "/usr/bin/c++ -DUSE_C10D_GLOO -DUSE_DISTRIBUTED -DUSE_RPC -DUSE_TENSORPIPE -I/home/neon/EIP/ufeel/Library/include -I/home/neon/EIP/ufeel/3rdparty/opencv/include -I/home/neon/EIP/ufeel/3rdparty/tensorflowlite/include -I/home/neon/EIP/ufeel/3rdparty/vosk/include -isystem /home/neon/EIP/ufeel/3rdparty/libtorch/include -isystem /home/neon/EIP/ufeel/3rdparty/libtorch/include/torch/csrc/api/include -fPIC -std=gnu++17 -o CMakeFiles/ufeel_detection_library.dir/Library/src/DataProcessor.cpp.o -c /home/neon/EIP/ufeel/Library/src/DataProcessor.cpp",
+  "file": "/home/neon/EIP/ufeel/Library/src/DataProcessor.cpp"
+},
+{
+  "directory": "/home/neon/EIP/ufeel",
+  "command": "/usr/bin/c++ -DUSE_C10D_GLOO -DUSE_DISTRIBUTED -DUSE_RPC -DUSE_TENSORPIPE -I/home/neon/EIP/ufeel/Library/include -I/home/neon/EIP/ufeel/3rdparty/opencv/include -I/home/neon/EIP/ufeel/3rdparty/tensorflowlite/include -I/home/neon/EIP/ufeel/3rdparty/vosk/include -isystem /home/neon/EIP/ufeel/3rdparty/libtorch/include -isystem /home/neon/EIP/ufeel/3rdparty/libtorch/include/torch/csrc/api/include -fPIC -std=gnu++17 -o CMakeFiles/ufeel_detection_library.dir/Library/src/Emotions/EmotionDetector.cpp.o -c /home/neon/EIP/ufeel/Library/src/Emotions/EmotionDetector.cpp",
+  "file": "/home/neon/EIP/ufeel/Library/src/Emotions/EmotionDetector.cpp"
+},
+{
+  "directory": "/home/neon/EIP/ufeel",
+  "command": "/usr/bin/c++ -DUSE_C10D_GLOO -DUSE_DISTRIBUTED -DUSE_RPC -DUSE_TENSORPIPE -I/home/neon/EIP/ufeel/Library/include -I/home/neon/EIP/ufeel/3rdparty/opencv/include -I/home/neon/EIP/ufeel/3rdparty/tensorflowlite/include -I/home/neon/EIP/ufeel/3rdparty/vosk/include -isystem /home/neon/EIP/ufeel/3rdparty/libtorch/include -isystem /home/neon/EIP/ufeel/3rdparty/libtorch/include/torch/csrc/api/include -fPIC -std=gnu++17 -o CMakeFiles/ufeel_detection_library.dir/Library/src/EyeTracking/IrisDetection/DetectionPostProcess.cpp.o -c /home/neon/EIP/ufeel/Library/src/EyeTracking/IrisDetection/DetectionPostProcess.cpp",
+  "file": "/home/neon/EIP/ufeel/Library/src/EyeTracking/IrisDetection/DetectionPostProcess.cpp"
+},
+{
+  "directory": "/home/neon/EIP/ufeel",
+  "command": "/usr/bin/c++ -DUSE_C10D_GLOO -DUSE_DISTRIBUTED -DUSE_RPC -DUSE_TENSORPIPE -I/home/neon/EIP/ufeel/Library/include -I/home/neon/EIP/ufeel/3rdparty/opencv/include -I/home/neon/EIP/ufeel/3rdparty/tensorflowlite/include -I/home/neon/EIP/ufeel/3rdparty/vosk/include -isystem /home/neon/EIP/ufeel/3rdparty/libtorch/include -isystem /home/neon/EIP/ufeel/3rdparty/libtorch/include/torch/csrc/api/include -fPIC -std=gnu++17 -o CMakeFiles/ufeel_detection_library.dir/Library/src/EyeTracking/IrisDetection/FaceDetection.cpp.o -c /home/neon/EIP/ufeel/Library/src/EyeTracking/IrisDetection/FaceDetection.cpp",
+  "file": "/home/neon/EIP/ufeel/Library/src/EyeTracking/IrisDetection/FaceDetection.cpp"
+},
+{
+  "directory": "/home/neon/EIP/ufeel",
+  "command": "/usr/bin/c++ -DUSE_C10D_GLOO -DUSE_DISTRIBUTED -DUSE_RPC -DUSE_TENSORPIPE -I/home/neon/EIP/ufeel/Library/include -I/home/neon/EIP/ufeel/3rdparty/opencv/include -I/home/neon/EIP/ufeel/3rdparty/tensorflowlite/include -I/home/neon/EIP/ufeel/3rdparty/vosk/include -isystem /home/neon/EIP/ufeel/3rdparty/libtorch/include -isystem /home/neon/EIP/ufeel/3rdparty/libtorch/include/torch/csrc/api/include -fPIC -std=gnu++17 -o CMakeFiles/ufeel_detection_library.dir/Library/src/EyeTracking/IrisDetection/FaceLandmark.cpp.o -c /home/neon/EIP/ufeel/Library/src/EyeTracking/IrisDetection/FaceLandmark.cpp",
+  "file": "/home/neon/EIP/ufeel/Library/src/EyeTracking/IrisDetection/FaceLandmark.cpp"
+},
+{
+  "directory": "/home/neon/EIP/ufeel",
+  "command": "/usr/bin/c++ -DUSE_C10D_GLOO -DUSE_DISTRIBUTED -DUSE_RPC -DUSE_TENSORPIPE -I/home/neon/EIP/ufeel/Library/include -I/home/neon/EIP/ufeel/3rdparty/opencv/include -I/home/neon/EIP/ufeel/3rdparty/tensorflowlite/include -I/home/neon/EIP/ufeel/3rdparty/vosk/include -isystem /home/neon/EIP/ufeel/3rdparty/libtorch/include -isystem /home/neon/EIP/ufeel/3rdparty/libtorch/include/torch/csrc/api/include -fPIC -std=gnu++17 -o CMakeFiles/ufeel_detection_library.dir/Library/src/EyeTracking/IrisDetection/IrisLandmark.cpp.o -c /home/neon/EIP/ufeel/Library/src/EyeTracking/IrisDetection/IrisLandmark.cpp",
+  "file": "/home/neon/EIP/ufeel/Library/src/EyeTracking/IrisDetection/IrisLandmark.cpp"
+},
+{
+  "directory": "/home/neon/EIP/ufeel",
+  "command": "/usr/bin/c++ -DUSE_C10D_GLOO -DUSE_DISTRIBUTED -DUSE_RPC -DUSE_TENSORPIPE -I/home/neon/EIP/ufeel/Library/include -I/home/neon/EIP/ufeel/3rdparty/opencv/include -I/home/neon/EIP/ufeel/3rdparty/tensorflowlite/include -I/home/neon/EIP/ufeel/3rdparty/vosk/include -isystem /home/neon/EIP/ufeel/3rdparty/libtorch/include -isystem /home/neon/EIP/ufeel/3rdparty/libtorch/include/torch/csrc/api/include -fPIC -std=gnu++17 -o CMakeFiles/ufeel_detection_library.dir/Library/src/EyeTracking/IrisDetection/ModelLoader.cpp.o -c /home/neon/EIP/ufeel/Library/src/EyeTracking/IrisDetection/ModelLoader.cpp",
+  "file": "/home/neon/EIP/ufeel/Library/src/EyeTracking/IrisDetection/ModelLoader.cpp"
+},
+{
+  "directory": "/home/neon/EIP/ufeel",
+  "command": "/usr/bin/c++ -DUSE_C10D_GLOO -DUSE_DISTRIBUTED -DUSE_RPC -DUSE_TENSORPIPE -I/home/neon/EIP/ufeel/Library/include -I/home/neon/EIP/ufeel/3rdparty/opencv/include -I/home/neon/EIP/ufeel/3rdparty/tensorflowlite/include -I/home/neon/EIP/ufeel/3rdparty/vosk/include -isystem /home/neon/EIP/ufeel/3rdparty/libtorch/include -isystem /home/neon/EIP/ufeel/3rdparty/libtorch/include/torch/csrc/api/include -fPIC -std=gnu++17 -o CMakeFiles/ufeel_detection_library.dir/Library/src/EyeTracking/EyeTrackingDetector.cpp.o -c /home/neon/EIP/ufeel/Library/src/EyeTracking/EyeTrackingDetector.cpp",
+  "file": "/home/neon/EIP/ufeel/Library/src/EyeTracking/EyeTrackingDetector.cpp"
+},
+{
+  "directory": "/home/neon/EIP/ufeel",
+  "command": "/usr/bin/c++ -DUSE_C10D_GLOO -DUSE_DISTRIBUTED -DUSE_RPC -DUSE_TENSORPIPE -I/home/neon/EIP/ufeel/Library/include -I/home/neon/EIP/ufeel/3rdparty/opencv/include -I/home/neon/EIP/ufeel/3rdparty/tensorflowlite/include -I/home/neon/EIP/ufeel/3rdparty/vosk/include -isystem /home/neon/EIP/ufeel/3rdparty/libtorch/include -isystem /home/neon/EIP/ufeel/3rdparty/libtorch/include/torch/csrc/api/include -fPIC -std=gnu++17 -o CMakeFiles/ufeel_detection_library.dir/Library/src/SpeechToText/SpeechToTextDetector.cpp.o -c /home/neon/EIP/ufeel/Library/src/SpeechToText/SpeechToTextDetector.cpp",
+  "file": "/home/neon/EIP/ufeel/Library/src/SpeechToText/SpeechToTextDetector.cpp"
+},
+{
+  "directory": "/home/neon/EIP/ufeel",
+  "command": "/usr/bin/c++ -DUSE_C10D_GLOO -DUSE_DISTRIBUTED -DUSE_RPC -DUSE_TENSORPIPE -Dufeel_wrapper_EXPORTS -I/home/neon/EIP/ufeel/Library/include -I/home/neon/EIP/ufeel/3rdparty/opencv/include -I/home/neon/EIP/ufeel/3rdparty/tensorflowlite/include -I/home/neon/EIP/ufeel/3rdparty/vosk/include -isystem /home/neon/EIP/ufeel/3rdparty/libtorch/include -isystem /home/neon/EIP/ufeel/3rdparty/libtorch/include/torch/csrc/api/include -fPIC -std=gnu++17 -o CMakeFiles/ufeel_wrapper.dir/Wrapper/wrapper.cpp.o -c /home/neon/EIP/ufeel/Wrapper/wrapper.cpp",
+  "file": "/home/neon/EIP/ufeel/Wrapper/wrapper.cpp"
+}
+]
