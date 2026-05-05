@@ -48,12 +48,18 @@ public static class UFeelNative
     // EYE TRACKING
 
     [DllImport(LIB)]
+    public static extern IntPtr ufeel_calibrate_directions(IntPtr processor);
+
+    [DllImport(LIB)]
     public static extern IntPtr ufeel_get_directions(IntPtr processor, out int size);
 
     [DllImport(LIB)]
     public static extern void ufeel_free_directions(IntPtr ptr, int size);
 
     // SPEECH TO TEXT
+
+    [DllImport(LIB)]
+    public static extern IntPtr ufeel_toggle_speech(IntPtr processor, bool state);
 
     [DllImport(LIB)]
     public static extern IntPtr ufeel_get_speech(IntPtr processor);

@@ -15,6 +15,7 @@ class Program
         IntPtr processor = UFeelNative.ufeel_create();
         Console.WriteLine("Coucou");
 
+        UFeelNative.ufeel_toggle_speech(processor, true);
         while (true)
         {
             IntPtr frame = UFeelNative.ufeel_debug_get_frame(processor);
@@ -32,6 +33,7 @@ class Program
             if (key == 27 || key == 'q')
                 break;
         }
+        UFeelNative.ufeel_toggle_speech(processor, false);
         UFeelNative.ufeel_destroy(processor);
     }
 
