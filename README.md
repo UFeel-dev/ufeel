@@ -19,19 +19,19 @@ The script performs the following steps:
 
 2. **Compile**
 
-   * Compiles the native sources into a library
-   * Moves the required artifacts into the C# project folder
+   - Compiles the native sources into a library
+   - Moves the required artifacts into the C# project folder
 
 3. **Run**
    Starts the C# test application.
 
 ## Requirements
 
-* Linux (Ubuntu recommended)
-* `dotnet` installed (8.0)
-* `clang` or `gcc`
-* `cmake`
-* `portaudio` (dev)
+- Linux (Ubuntu recommended)
+- `dotnet` installed (8.0)
+- `clang` or `gcc`
+- `cmake`
+- `portaudio` (dev)
 
 ## Third-Party Libraries (Git LFS Required)
 
