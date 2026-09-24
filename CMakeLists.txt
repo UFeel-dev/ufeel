@@ -35,6 +35,8 @@ add_library(ufeel_detection_library STATIC
     ${LIBRARY_DIR}/src/DataProcessor.cpp
 
     ${LIBRARY_DIR}/src/Emotions/EmotionDetector.cpp
+    ${LIBRARY_DIR}/src/Emotions/EmotionDetector.cpp
+    ${LIBRARY_DIR}/src/Emotions/EmotionDetector.cpp
 
     ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/DetectionPostProcess.cpp
     ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/FaceDetection.cpp
