@@ -67,19 +67,19 @@ We do **not** accept:
 
 ### License
 
-This project is licensed under the **MIT**.
+This project is licensed under the **Apache 2.0**.
 
 By submitting a contribution, you agree that:
 
 - You have the right to submit the contribution
-- Your contribution is licensed under the MIT.
+- Your contribution is licensed under the Apache 2.0.
 - You grant the project and its users a perpetual, worldwide, royalty-free license to use, modify, and distribute your contribution
 
 No additional contributor license agreement (CLA) is required.
 
 ## Patents
 
-By contributing, you grant a patent license as described in Section 3 of the MIT.
+By contributing, you grant a patent license as described in Section 3 of the Apache 2.0.
 Do not submit contributions that are encumbered by patent claims you cannot license.
 
 ## Attribution
