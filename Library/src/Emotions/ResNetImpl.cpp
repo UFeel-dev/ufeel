@@ -109,5 +109,7 @@ torch::Tensor ResNetImpl::forward(torch::Tensor x)
 
 ResNet resnet34()
 {
-    return ResNet({3, 4, 6, 3}, 1000);
+    std::vector<int64_t> layers = {3, 4, 6, 3};
+
+    return ResNet(layers, 1000);
 }

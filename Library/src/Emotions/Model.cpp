@@ -3,7 +3,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "Emotions/ResetNetImpl.hpp"
+#include "Emotions/ResNetImpl.hpp"
 
 struct BinaryHeadImpl : torch::nn::Module
 {
