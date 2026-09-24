@@ -23,9 +23,9 @@ class Program
             if (frame == IntPtr.Zero)
                 continue;
 
-            // DetectEmotion(processor, frame);
+            DetectEmotion(processor, frame);
             // DetectEyeTracking(processor, frame);
-            DetectSpeechToText(processor, frame);
+            // DetectSpeechToText(processor, frame);
 
             UFeelNative.ufeel_debug_destroy_frame(frame);
 

@@ -34,6 +34,9 @@ find_package(Torch REQUIRED)
 add_library(ufeel_detection_library STATIC
     ${LIBRARY_DIR}/src/DataProcessor.cpp
 
+    ${LIBRARY_DIR}/src/Emotions/CheckPointLoader.cpp
+    ${LIBRARY_DIR}/src/Emotions/ResNetImpl.cpp
+    ${LIBRARY_DIR}/src/Emotions/Model.cpp
     ${LIBRARY_DIR}/src/Emotions/EmotionDetector.cpp
 
     ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/DetectionPostProcess.cpp
