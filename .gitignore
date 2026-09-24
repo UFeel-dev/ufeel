@@ -65,6 +65,10 @@ vcpkg_installed/
 Testing/
 .cache/
 
+# C# executable
+
+*.sln
+
 ### C# ###
 
 # Build results
