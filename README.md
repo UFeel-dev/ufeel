@@ -27,11 +27,12 @@ The script performs the following steps:
 
 ## Requirements
 
-- Linux (Ubuntu recommended)
+- Linux
+- GLIBC (2.39)
 - `dotnet` installed (8.0)
-- `clang` or `gcc`
-- `cmake`
-- `portaudio` (dev)
+- `clang` (14.0.6) or `gcc` (12.2.0)
+- `cmake` (3.20)
+- `portaudio` >= 19.6.0
 
 ## Third-Party Libraries (Git LFS Required)
 
@@ -43,7 +44,7 @@ After cloning the repository, you must install Git LFS and pull the required fil
 
 ```bash
 sudo apt update
-sudo apt install git-lfs
+sudo apt install git-lfs=3.4.1
 ```
 
 Then enable it:
