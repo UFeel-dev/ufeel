@@ -33,6 +33,7 @@ The script performs the following steps:
 - `clang` (14.0.6) or `gcc` (12.2.0)
 - `cmake` (3.20)
 - `portaudio` >= 19.6.0
+- `git-lfs` >= 3.4.1
 
 ## Third-Party Libraries (Git LFS Required)
 
@@ -44,7 +45,7 @@ After cloning the repository, you must install Git LFS and pull the required fil
 
 ```bash
 sudo apt update
-sudo apt install git-lfs=3.4.1
+sudo apt install git-lfs
 ```
 
 Then enable it:
