@@ -1,0 +1,54 @@
+name: Feature request
+description: Suggest an improvement or new feature.
+title: "[Feature]: "
+labels: ["enhancement"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please describe the problem you are trying to solve and how you would like UFeelThen to address it.
+
+  - type: checkboxes
+    id: duplicate-check
+    attributes:
+      label: Existing issues
+      options:
+        - label: I have searched the existing issues and could not find a duplicate.
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What problem, limitation, or use case would this feature address?
+      placeholder: Describe the problem or limitation.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed feature
+      description: Describe the feature or change you would like to see.
+      placeholder: Describe what you would like to be added or changed.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Are there existing features, workarounds, or alternative approaches that could solve the problem?
+      placeholder: Describe any alternatives or workarounds.
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Add mockups, examples, links, or any other information that may help.
+      placeholder: Add anything else that may be relevant.
+    validations:
+      required: false

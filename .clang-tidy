@@ -43,8 +43,8 @@ Checks: >
   -cert-msc32-c,
   -llvm-namespace-comment,
   -google-readability-namespace-comments
-  -modernize-use-trailing-return-type
 
 WarningsAsErrors: >
   modernize-use-nodiscard,
+  modernize-use-trailing-return-type,
   modernize-use-ranges

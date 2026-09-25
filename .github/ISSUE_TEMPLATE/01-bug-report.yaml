@@ -1,0 +1,80 @@
+name: Bug report
+description: Report something that is not working as expected.
+title: "[Bug]: "
+labels: ["bug"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug.
+
+        Before submitting, please make sure there isn't already an open issue describing the same problem.
+
+  - type: checkboxes
+    id: duplicate-check
+    attributes:
+      label: Existing issues
+      options:
+        - label: I have searched the existing issues and could not find a duplicate.
+          required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Clearly describe the problem you encountered.
+      placeholder: Describe what went wrong.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+      description: Describe the behavior you expected instead.
+      placeholder: Describe the expected behavior.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Provide the smallest set of steps that reliably reproduces the problem.
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include any relevant version, operating system, browser, device, or configuration information.
+      placeholder: |
+        Version:
+        OS:
+        Browser/device:
+        Other relevant information:
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Include relevant logs, error messages, screenshots, or recordings.
+      placeholder: Paste logs or drag files here.
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Add anything else that might help investigate the issue.
+    validations:
+      required: false
