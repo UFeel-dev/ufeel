@@ -3,6 +3,7 @@
 set -e
 
 BUILD_DIR="build"
+CMAKE_ARGS=("${@:2}")
 CSHARP_PROJECT="csharp"
 
 build()
@@ -13,7 +14,7 @@ build()
     echo "Configuring CMake..."
     mkdir -p $BUILD_DIR
     cd $BUILD_DIR
-    cmake ..
+    cmake .. "${CMAKE_ARGS[@]}"
     cd ..
 }
 
