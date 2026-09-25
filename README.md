@@ -39,8 +39,8 @@ The script performs the following steps:
 
 - Linux
 - GLIBC >= 2.39
-- `dotnet` installed >= 8.0
-- `clang` >= 14.0.6 or `gcc` >= 12.2.0
+- `dotnet` installed == 8.0
+- `clang` >= 14.0.6
 - `cmake` >= 3.20
 - `portaudio` >= 19.6.0
 - `git-lfs` >= 3.4.1
