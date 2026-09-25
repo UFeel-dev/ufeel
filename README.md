@@ -94,7 +94,8 @@ You can now build the project normally.
 ├── Library/       # native sources
 ├── Wrapper/       # C++ Wrapper
 ├── 3rdparty/      # external dependencies
-└── build/         # generated (created by script)
+├── build/         # generated (created by script)
+└── docker/        # Docker environment
 ```
 
 ## Manual build (optional)
