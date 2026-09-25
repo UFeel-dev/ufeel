@@ -1,5 +1,15 @@
 # UFEEL Library
 
+[![Discord](https://dcbadge.limes.pink/api/server/https://discord.gg/TxYTDXMJkM)](https://discord.gg/TxYTDXMJkM)
+
+[![Discord](https://img.shields.io/discord/1461581735631523900.svg)](https://discord.gg/TxYTDXMJkM)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
+![Unity](https://img.shields.io/badge/Unity-%23000000.svg?logo=unity&logoColor=white)
+![Linux](https://img.shields.io/badge/Linux-FCC624?logo=linux&logoColor=black)
+
+![C++](https://img.shields.io/badge/c++-%2300599C.svg?style=for-the-badge&logo=c%2B%2B&logoColor=white)
+![C#](https://img.shields.io/badge/c%23-%23239120.svg?style=for-the-badge&logo=csharp&logoColor=white)![Espressif](https://img.shields.io/badge/espressif-E7352C.svg?style=for-the-badge&logo=espressif&logoColor=white)
+
 This project provides the **UFEEL native library** with a C# test application.
 
 ## Quick Start
@@ -28,10 +38,10 @@ The script performs the following steps:
 ## Requirements
 
 - Linux
-- GLIBC (2.39)
-- `dotnet` installed (8.0)
-- `clang` (14.0.6) or `gcc` (12.2.0)
-- `cmake` (3.20)
+- GLIBC >= 2.39
+- `dotnet` installed >= 8.0
+- `clang` >= 14.0.6 or `gcc` >= 12.2.0
+- `cmake` >= 3.20
 - `portaudio` >= 19.6.0
 - `git-lfs` >= 3.4.1
 
