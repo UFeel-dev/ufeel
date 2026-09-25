@@ -7,7 +7,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Please describe the problem you are trying to solve and how you would like UFeelThen to address it.
+        Please describe the problem you are trying to solve and how you would like UFeel to address it.
 
   - type: checkboxes
     id: duplicate-check
