@@ -6,18 +6,11 @@
 */
 
 #include "SpeechToText/SpeechToTextDetector.hpp"
-#include "vosk_api.h"
-#include <cstring>
-#include <iostream>
-#include <portaudio.h>
-#include <string>
-#include <thread>
 
 SpeechToTextDetector::SpeechToTextDetector()
 {
     model = vosk_model_new("models/vosk-model-small-fr-0.22");
-    recognizer = vosk_recognizer_new(model, 16000.0f);
-    toggle(true);
+    recognizer = vosk_recognizer_new(model, 16000.0F);
 }
 
 SpeechToTextDetector::~SpeechToTextDetector()
@@ -30,8 +23,11 @@ SpeechToTextDetector::~SpeechToTextDetector()
 void SpeechToTextDetector::toggle(bool state)
 {
     process_enable = state;
-    if (state) start();
-    else stop();
+    if (state) {
+        start();
+    } else {
+        stop();
+    }
 }
 
 std::string SpeechToTextDetector::process() const
@@ -39,51 +35,51 @@ std::string SpeechToTextDetector::process() const
     return current_text;
 }
 
-std::string SpeechToTextDetector::extract_text(const char* json)
+std::string SpeechToTextDetector::extract_text(const char *json)
 {
-    // looks for: "text":"...."
-    const char* key = "\"text\"";
-    const char* p = strstr(json, key);
-    if (!p) return "";
+    static const std::vector<char> parse = {
+        ':',
+        '"'
+    };
+    static const char *key = "\"text\"";
+    const char *p = strstr(json, key);
+    if (p == nullptr) {
+        return "";
+    }
 
-    p = strchr(p, ':');
-    if (!p) return "";
-
-    p = strchr(p, '"');
-    if (!p) return "";
+    for (auto parseChar: parse) {
+        p = strchr(p, parseChar);
+        if (p == nullptr) {
+            return "";
+        }
+    }
     p++;
 
     const char* end = strchr(p, '"');
-    if (!end) return "";
+    if (end == nullptr) {
+        return "";
+    }
 
-    return std::string(p, end - p);
+    return {p, static_cast<std::size_t>(end - p)};
 }
 
-int SpeechToTextDetector::paCallback(
-    const void *input,
-    void *,
-    unsigned long frameCount,
-    const PaStreamCallbackTimeInfo*,
-    PaStreamCallbackFlags,
-    void *userData)
+int SpeechToTextDetector::paCallback(const void *input, void */*_*/, uint64_t frameCount, const PaStreamCallbackTimeInfo */*_*/, PaStreamCallbackFlags /*_*/, void *userData)
 {
     auto* self = static_cast<SpeechToTextDetector*>(userData);
 
-    if (!self->process_enable)
+    if (!self->process_enable) {
         return paContinue;
+    }
 
-    const int16_t* data = (const int16_t*)input;
-    int len = frameCount * sizeof(int16_t);
+    const auto* data = static_cast<const int16_t*>(input);
+    int len = static_cast<int>(frameCount * sizeof(int16_t));
 
-    if (vosk_recognizer_accept_waveform(self->recognizer,
-                                        (const char*)data, len))
-    {
+    if (vosk_recognizer_accept_waveform(self->recognizer, reinterpret_cast<const char*>(data), len) != 0) {
         const char* res = vosk_recognizer_result(self->recognizer);
 
         std::string text = extract_text(res);
 
         if (!text.empty()) {
-            std::cout << "Text: " << text << std::endl;
             self->current_text = text;
         }
     }
@@ -93,7 +89,9 @@ int SpeechToTextDetector::paCallback(
 
 void SpeechToTextDetector::start()
 {
-    if (running) return;
+    if (running) {
+        return;
+    }
     running = true;
     worker = std::thread(&SpeechToTextDetector::run, this);
 }
@@ -101,31 +99,23 @@ void SpeechToTextDetector::start()
 void SpeechToTextDetector::stop()
 {
     running = false;
-    if (worker.joinable())
+    if (worker.joinable()) {
         worker.join();
+    }
 }
 
 void SpeechToTextDetector::run()
 {
     Pa_Initialize();
 
-    PaStream *stream;
+    PaStream *stream = nullptr;
 
-    Pa_OpenDefaultStream(
-        &stream,
-        1,
-        0,
-        paInt16,
-        16000,
-        8000,
-        paCallback,
-        this
-    );
-
+    Pa_OpenDefaultStream(&stream, 1, 0, paInt16, 16000, 8000, paCallback, this);
     Pa_StartStream(stream);
 
-    while (running)
+    while (running) {
         Pa_Sleep(10);
+    }
 
     Pa_StopStream(stream);
     Pa_CloseStream(stream);

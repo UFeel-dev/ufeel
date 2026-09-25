@@ -1,0 +1,22 @@
+name: Other
+description: Open an issue that does not fit the other categories.
+title: ""
+labels: []
+
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Clearly describe what you would like to report or discuss.
+      placeholder: Describe your issue.
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add any relevant information, links, screenshots, or other context.
+    validations:
+      required: false

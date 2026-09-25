@@ -7,6 +7,38 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # ======================
+# clang-tidy
+# ======================
+option(CLANG_TIDY_COLOR "Force colored clang-tidy diagnostics" ON)
+option(ENABLE_CLANG_TIDY "Run clang-tidy as part of the compilation" ON)
+option(CLANG_TIDY_AS_ERRORS "Honour the WarningsAsErrors list in .clang-tidy" ON)
+
+if(ENABLE_CLANG_TIDY)
+    find_program(CLANG_TIDY_EXE NAMES clang-tidy)
+
+    if(CLANG_TIDY_EXE)
+        # The regex has to stay quoted: unquoted parens/pipes are CMake syntax.
+        set(CLANG_TIDY_COMMAND
+            "${CLANG_TIDY_EXE}"
+            "--header-filter=^${CMAKE_SOURCE_DIR}/(Library|Wrapper)/"
+            "--extra-arg=-Wno-unknown-warning-option"
+        )
+
+        if(CLANG_TIDY_COLOR)
+            list(APPEND CLANG_TIDY_COMMAND "--use-color")
+        endif()
+
+        if(NOT CLANG_TIDY_AS_ERRORS)
+            list(APPEND CLANG_TIDY_COMMAND "--warnings-as-errors=-*")
+        endif()
+
+        message(STATUS "clang-tidy enabled: ${CLANG_TIDY_EXE}")
+    else()
+        message(WARNING "clang-tidy requested but not found, skipping")
+    endif()
+endif()
+
+# ======================
 # Paths
 # ======================
 set(THIRDPARTY_DIR ${CMAKE_SOURCE_DIR}/3rdparty)
@@ -34,6 +66,9 @@ find_package(Torch REQUIRED)
 add_library(ufeel_detection_library STATIC
     ${LIBRARY_DIR}/src/DataProcessor.cpp
 
+    ${LIBRARY_DIR}/src/Emotions/CheckPointLoader.cpp
+    ${LIBRARY_DIR}/src/Emotions/ResNetImpl.cpp
+    ${LIBRARY_DIR}/src/Emotions/Model.cpp
     ${LIBRARY_DIR}/src/Emotions/EmotionDetector.cpp
 
     ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/DetectionPostProcess.cpp
@@ -45,6 +80,12 @@ add_library(ufeel_detection_library STATIC
 
     ${LIBRARY_DIR}/src/SpeechToText/SpeechToTextDetector.cpp
 )
+
+if(CLANG_TIDY_COMMAND)
+    set_target_properties(ufeel_detection_library PROPERTIES
+        CXX_CLANG_TIDY "${CLANG_TIDY_COMMAND}"
+    )
+endif()
 
 # ======================
 # Includes
@@ -119,6 +160,12 @@ add_library(ufeel_wrapper SHARED
 target_link_libraries(ufeel_wrapper
     ufeel_detection_library
 )
+
+if(CLANG_TIDY_COMMAND)
+    set_target_properties(ufeel_wrapper PROPERTIES
+        CXX_CLANG_TIDY "${CLANG_TIDY_COMMAND}"
+    )
+endif()
 
 target_include_directories(ufeel_wrapper PUBLIC
     ${LIBRARY_DIR}/include
