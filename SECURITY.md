@@ -8,7 +8,7 @@ If you discover a security vulnerability or privacy flaw in the UFeel core libra
 
 ### Reporting steps
 
-1. Submit a report directly via GitHub Security Advisories or send an email to [ufeel.dev@gmail.com](mailto:ufeel.dev@gmail.com).
+1. Submit a report directly via [GitHub Security Advisories](https://github.com/UFeel-dev/ufeel/security/advisories) or send an email to [ufeel.dev@gmail.com](mailto:ufeel.dev@gmail.com).
 2. Provide a detailed report including:
     - Type of vulnerability identified
     - Affected component (Core library, plugins)
@@ -16,4 +16,4 @@ If you discover a security vulnerability or privacy flaw in the UFeel core libra
     - Steps to reproduce the issue.
     - Impact of the issue on the host system or application runtime.
 
-You will receive a response within 24 to 48 hours.
+You will receive a response within 5 business days.
