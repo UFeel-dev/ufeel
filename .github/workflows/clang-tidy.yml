@@ -22,7 +22,18 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang-tidy cmake ninja-build
+          sudo apt-get install -y \
+            clang \
+            clang-tidy \
+            cmake \
+            ninja-build \
+            portaudio19-dev \
+            git-lfs
+
+      - name: Check PortAudio
+        run: |
+          dpkg -l | grep portaudio
+          find /usr/include -name "portaudio.h" -print
 
       - name: Configure CMake
         run: |
