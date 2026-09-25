@@ -12,11 +12,13 @@ You can run this project in a docker container so all dependencies are already i
 2. Run in the same directory as the Dockerfile:
 
 ```bash
+cd docker
 docker build -t ufeeldocker .
+cd ..
 ```
 
 3. Run the docker container
 
 ```bash
-./run.sh
+./docker/run.sh
 ```
