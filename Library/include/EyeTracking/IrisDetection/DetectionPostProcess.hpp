@@ -1,18 +1,18 @@
-#ifndef DETECTIONPOSTPROCESS_H
-#define DETECTIONPOSTPROCESS_H
+#ifndef EYETRACKING_IRISDETECTION_DETECTIONPOSTPROCESS_HPP
+#define EYETRACKING_IRISDETECTION_DETECTIONPOSTPROCESS_HPP
 
+#include "opencv2/core.hpp"
 #include <algorithm>
 #include <functional>
-#include <vector>
 #include <string>
-#include "opencv2/core.hpp"
+#include <vector>
 
-#define CLASS_ID        0
-#define MIN_THRESHOLD   0.75f
-#define DETECTION_SIZE  128
-#define NUM_BOXES       896
-#define NUM_COORD       16
-#define NUM_SIZES       2
+constexpr int CLASS_ID = 0;
+constexpr float MIN_THRESHOLD = 0.75f;
+constexpr int DETECTION_SIZE = 128;
+constexpr int NUM_BOXES = 896;
+constexpr int NUM_COORD = 16;
+constexpr int NUM_SIZES = 2;
 
 namespace my {
 
@@ -28,14 +28,20 @@ namespace my {
 
 
     struct Detection {
+        float score = 0.0f;
+        int classId = -1;
         cv::Rect2f roi;
-        float score;
-        int classId;
 
-        Detection() : score(), classId(-1), roi() {}
+        Detection() = default;
         Detection(float score, int classId, cv::Rect2f roi) :
             score(score), classId(classId), roi(roi) {}
+
+        Detection(const Detection&) = default;
+        auto operator=(const Detection&) -> Detection& = default;
+        Detection(Detection&&) noexcept = default;
+        auto operator=(Detection&&) noexcept -> Detection& = default;
         ~Detection() = default;
+
     };
 
     /*
@@ -43,17 +49,24 @@ namespace my {
     */
     class DetectionPostProcess {
         public:
-            DetectionPostProcess();
+            DetectionPostProcess() = default;
             ~DetectionPostProcess() = default;
-            Detection getHighestScoreDetection
-            (const std::vector<float>& rawBoxes, const std::vector<float>& scores) const;
+
+            DetectionPostProcess(const DetectionPostProcess&) = default;
+            auto operator=(const DetectionPostProcess&) -> DetectionPostProcess& = default;
+            DetectionPostProcess(DetectionPostProcess&&) noexcept = default;
+            auto operator=(DetectionPostProcess&&) noexcept -> DetectionPostProcess& = default;
+
+            [[nodiscard]] 
+            auto getHighestScoreDetection(
+                const std::vector<float>& rawBoxes, const std::vector<float>& scores) const -> Detection;
 
         private:
-            cv::Rect2f decodeBox(const std::vector<float>& rawBoxes, int index) const;
-
-        private:
+            [[nodiscard]]
+            auto decodeBox(
+                const std::vector<float>& rawBoxes, int index) const -> cv::Rect2f;
             std::vector<cv::Rect2f> m_anchors;
     };
 }
 
-#endif // DETECTIONPOSTPROCESS_H
+#endif // EYETRACKING_IRISDETECTION_DETECTIONPOSTPROCESS_HPP

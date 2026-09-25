@@ -13,7 +13,7 @@ EmotionDetector::EmotionDetector()
     try {
         net_ = torch::jit::load(modelPath);
     } catch (const c10::Error& e) {
-        std::cerr << "error loading the model: {" << modelPath << "}" << std::endl;
+        std::cerr << "error loading the model: {" << modelPath << "}" << '\n';
     }
 
     faceDetector_ = cv::FaceDetectorYN::create(
@@ -28,22 +28,22 @@ EmotionDetector::EmotionDetector()
     );
 
     if (faceDetector_.empty()) {
-        std::cerr << "FaceDetector is EMPTY" << std::endl;
+        std::cerr << "FaceDetector is EMPTY" << '\n';
     }
-    std::cout << "Success Emotion Detector Constructor" << std::endl;
+    std::cout << "Success Emotion Detector Constructor" << '\n';
 
-    std::cout << "FaceDetector created" << std::endl;
+    std::cout << "FaceDetector created" << '\n';
     cv::Mat dummy(320, 320, CV_8UC3, cv::Scalar(0,0,0));
     cv::Mat faces;
 
     try
     {
         faceDetector_->detect(dummy, faces);
-        std::cout << "Detect OK" << std::endl;
+        std::cout << "Detect OK" << '\n';
     }
     catch (const cv::Exception& e)
     {
-        std::cerr << "Detect failed: " << e.what() << std::endl;
+        std::cerr << "Detect failed: " << e.what() << '\n';
     }
 }
 
@@ -55,7 +55,7 @@ EmotionDetector::~EmotionDetector()
 void EmotionDetector::toggleEmotionDetection(bool state)
 {
     processEnable_ = state;
-    std::cout << "[EmotionDetector] Emotion detection " << (state ? "enabled" : "disabled") << std::endl;
+    std::cout << "[EmotionDetector] Emotion detection " << (state ? "enabled" : "disabled") << '\n';
 }
 
 cv::Mat EmotionDetector::preProcess(const cv::Mat &face)
@@ -84,7 +84,7 @@ cv::Mat EmotionDetector::preProcess(const cv::Mat &face)
 std::vector<float> EmotionDetector::processFace(const cv::Mat &face)
 {
     if (face.empty()) {
-        std::cerr << "[EmotionDetector] processFace() got EMPTY face" << std::endl;
+        std::cerr << "[EmotionDetector] processFace() got EMPTY face" << '\n';
         return {};
     }
 
@@ -131,7 +131,7 @@ std::vector<float> EmotionDetector::processFace(const cv::Mat &face)
 std::map<std::string,float> EmotionDetector::process(const cv::Mat &image)
 {
     if (image.empty()) {
-        std::cerr << "[EmotionDetector] process() got EMPTY image" << std::endl;
+        std::cerr << "[EmotionDetector] process() got EMPTY image" << '\n';
         return {};
     }
 

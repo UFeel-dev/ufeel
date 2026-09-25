@@ -5,8 +5,8 @@
 ** EmotionDetector
 */
 
-#ifndef EMOTIONDETECTOR_HPP_
-    #define EMOTIONDETECTOR_HPP_
+#ifndef EMOTIONS_EMOTIONDETECTOR_HPP
+    #define EMOTIONS_EMOTIONDETECTOR_HPP
 
 #include <filesystem>
 #include <opencv2/opencv.hpp>
@@ -21,18 +21,18 @@ class EmotionDetector
         ~EmotionDetector();
 
         EmotionDetector(const EmotionDetector&) = delete;
-        EmotionDetector& operator=(const EmotionDetector&) = delete;
+        auto operator=(const EmotionDetector&) -> EmotionDetector& = delete;
 
         EmotionDetector(EmotionDetector&&) = delete;
-        EmotionDetector& operator=(EmotionDetector&&) = delete;
+        auto operator=(EmotionDetector&&) -> EmotionDetector& = delete;
 
         void toggleEmotionDetection(bool state);
-        std::map<std::string,float> process(const cv::Mat &image);
+        auto process(const cv::Mat &image) -> std::map<std::string,float>;
         void close();
 
     private:
-        static cv::Mat preProcess(const cv::Mat &face);
-        std::vector<float> processFace(const cv::Mat &face);
+        static auto preProcess(const cv::Mat &face) -> cv::Mat;
+        auto processFace(const cv::Mat &face) -> std::vector<float>;
 
         bool processEnable_ = false;
 
@@ -44,4 +44,4 @@ class EmotionDetector
         };
 };
 
-#endif /* !EMOTIONDETECTOR_HPP_ */
+#endif // EMOTIONS_EMOTIONDETECTOR_HPP 

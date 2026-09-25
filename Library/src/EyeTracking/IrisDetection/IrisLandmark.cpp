@@ -11,7 +11,7 @@ Helper functions
 bool __isEyeIndexValid(int idx) {
     if (idx < 0 || idx >= EYE_LANDMARKS) {
         std::cerr << "Index " << idx << " is out of range (" \
-        << EYE_LANDMARKS << ")." << std::endl;
+        << EYE_LANDMARKS << ")." << '\n';
         return false;
     }
     return true;
@@ -21,7 +21,7 @@ bool __isEyeIndexValid(int idx) {
 bool __isIrisIndexValid(int idx) {
     if (idx < 0 || idx >= IRIS_LANDMARKS) {
         std::cerr << "Index " << idx << " is out of range (" \
-        << IRIS_LANDMARKS << ")." << std::endl;
+        << IRIS_LANDMARKS << ")." << '\n';
         return false;
     }
     return true;

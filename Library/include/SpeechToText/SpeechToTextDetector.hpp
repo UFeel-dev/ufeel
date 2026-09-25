@@ -5,8 +5,8 @@
 ** SpeechToTextDetector
 */
 
-#ifndef SPEECHTOTEXTDETECTOR_HPP_
-#define SPEECHTOTEXTDETECTOR_HPP_
+#ifndef SPEECHTOTEXT_SPEECHTOTEXTDETECTOR_HPP
+#define SPEECHTOTEXT_SPEECHTOTEXTDETECTOR_HPP
 
 #include "vosk_api.h"
 #include <atomic>
@@ -24,13 +24,13 @@ class SpeechToTextDetector
         ~SpeechToTextDetector();
 
         SpeechToTextDetector(const SpeechToTextDetector&) = delete;
-        SpeechToTextDetector& operator=(const SpeechToTextDetector&) = delete;
+        auto operator=(const SpeechToTextDetector&) -> SpeechToTextDetector& = delete;
 
         SpeechToTextDetector(SpeechToTextDetector&&) = delete;
-        SpeechToTextDetector& operator=(SpeechToTextDetector&&) = delete;
+        auto operator=(SpeechToTextDetector&&) -> SpeechToTextDetector& = delete;
 
         void toggle(bool state);
-        [[nodiscard]] std::string process() const;
+        [[nodiscard]] auto process() const -> std::string;
 
     private:
         VoskModel* model = nullptr;
@@ -42,13 +42,13 @@ class SpeechToTextDetector
 
         std::string current_text;
 
-        static std::string extract_text(const char* json);
+        static auto extract_text(const char* json) -> std::string;
 
-        static int paCallback(const void *input, void *, uint64_t frameCount, const PaStreamCallbackTimeInfo*, PaStreamCallbackFlags, void *userData);
+        static auto paCallback(const void *input, void *, uint64_t frameCount, const PaStreamCallbackTimeInfo*, PaStreamCallbackFlags, void *userData) -> int;
 
         void start();
         void stop();
         void run();
 };
 
-#endif /* !SPEECHTOTEXTDETECTOR_HPP_ */
+#endif // SPEECHTOTEXT_SPEECHTOTEXTDETECTOR_HPP

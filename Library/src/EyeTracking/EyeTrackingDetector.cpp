@@ -20,17 +20,15 @@ EyeTrackingDetector::EyeTrackingDetector() : irisLandmarker_("./models")
 
 }
 
-EyeTrackingDetector::~EyeTrackingDetector()
-{
-}
+EyeTrackingDetector::~EyeTrackingDetector() = default;
 
 void EyeTrackingDetector::toggleEyeTrackingDetection(bool state)
 {
     processEnable_ = state;
-    std::cout << "[EyeTrackingDetector] eye tracking detection " << (state ? "enabled" : "disabled") << std::endl;
+    std::cout << "[EyeTrackingDetector] eye tracking detection " << (state ? "enabled" : "disabled") << '\n';
 }
 
-std::map<std::string, bool> EyeTrackingDetector::process(const cv::Mat& frame)
+auto EyeTrackingDetector::process(const cv::Mat& frame) -> std::map<std::string, bool>
 {
     std::map<std::string, bool> result = {
         {"left",false},{"right",false},

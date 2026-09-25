@@ -119,7 +119,7 @@ std::vector<float> my::ModelLoader::loadOutput(int index) const {
 void my::ModelLoader::loadModel(const char* modelPath) {
     m_model = tflite::FlatBufferModel::BuildFromFile(modelPath);
     if (m_model == nullptr) {
-        std::cerr << "Fail to build FlatBufferModel from file: " << modelPath << std::endl;
+        std::cerr << "Fail to build FlatBufferModel from file: " << modelPath << '\n';
         std::exit(1);
     }
 }
@@ -129,7 +129,7 @@ void my::ModelLoader::buildInterpreter(int numThreads) {
     tflite::ops::builtin::BuiltinOpResolver resolver;
 
     if (tflite::InterpreterBuilder(*m_model, resolver)(&m_interpreter) != kTfLiteOk) {
-        std::cerr << "Failed to build interpreter." << std::endl;
+        std::cerr << "Failed to build interpreter." << '\n';
         std::exit(1);
     }
     m_interpreter->SetNumThreads(numThreads);
@@ -138,7 +138,7 @@ void my::ModelLoader::buildInterpreter(int numThreads) {
 
 void my::ModelLoader::allocateTensors() {
     if (m_interpreter->AllocateTensors() != kTfLiteOk) {
-        std::cerr << "Failed to allocate tensors." << std::endl;
+        std::cerr << "Failed to allocate tensors." << '\n';
         std::exit(1);
     }
 }
@@ -185,7 +185,7 @@ bool my::ModelLoader::isIndexValid(int idx, const char c) const {
 
     if (idx < 0 || idx >= size) {
         std::cerr << "Index " << idx << " is out of range (" \
-        << size << ")." << std::endl;
+        << size << ")." << '\n';
         return false;
     }
     return true;
@@ -207,7 +207,7 @@ void my::ModelLoader::inputChecker() {
                 std::cerr << i << " ";
             }
         }
-        std::cerr << "haven't been loaded." << std::endl;
+        std::cerr << "haven't been loaded." << '\n';
         std::exit(1);
     }
     std::fill(m_inputLoads.begin(), m_inputLoads.end(), false);
@@ -243,7 +243,7 @@ cv::Mat my::ModelLoader::convertToRGB(const cv::Mat& in) const {
         cv::cvtColor(in, out, cv::COLOR_BGRA2RGB);
     }
     else {
-        std::cerr << "Image of type " << type << " not supported" << std::endl;
+        std::cerr << "Image of type " << type << " not supported" << '\n';
         std::exit(1);
     }
     return out;

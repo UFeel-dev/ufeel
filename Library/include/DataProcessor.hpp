@@ -5,8 +5,8 @@
 ** DataProcessor
 */
 
-#ifndef DATAPROCESSOR_HPP_
-    #define DATAPROCESSOR_HPP_
+#ifndef DATAPROCESSOR_HPP
+    #define DATAPROCESSOR_HPP
 
 #include "Emotions/EmotionDetector.hpp"
 #include "EyeTracking/EyeTrackingDetector.hpp"
@@ -22,22 +22,22 @@ class DataProcessor
         ~DataProcessor();
 
         DataProcessor(const DataProcessor&) = delete;
-        DataProcessor& operator=(const DataProcessor&) = delete;
+        auto operator=(const DataProcessor&) -> DataProcessor& = delete;
 
         DataProcessor(DataProcessor&&) = delete;
-        DataProcessor& operator=(DataProcessor&&) = delete;
+        auto operator=(DataProcessor&&) -> DataProcessor& = delete;
 
-        std::map<std::string, float> processEmotion();
+        auto processEmotion() -> std::map<std::string, float>;
 
         void calibrateEyeTracking();
-        std::map<std::string, bool> processEyeTracking();
+        auto processEyeTracking() -> std::map<std::string, bool>;
 
-        std::string processSpeechToText();
+        auto processSpeechToText() -> std::string;
         void toggleSpeechToText(bool state);
 
         // int processHeartRateSensor();
 
-        cv::Mat getFrame();
+        auto getFrame() -> cv::Mat;
 
     protected:
         cv::VideoCapture cap_;
@@ -51,4 +51,4 @@ class DataProcessor
     private:
 };
 
-#endif /* !DATAPROCESSOR_HPP_ */
+#endif // DATAPROCESSOR_HPP 

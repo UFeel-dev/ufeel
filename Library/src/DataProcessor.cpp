@@ -29,13 +29,13 @@ DataProcessor::DataProcessor() :
     // heartRateSensorDetector_ = std::make_unique<HeartRateSensorDetector>();
 }
 
-cv::Mat DataProcessor::getFrame()
+auto DataProcessor::getFrame() -> cv::Mat
 {
     cap_ >> frame_;
     return frame_;
 }
 
-std::map<std::string, float> DataProcessor::processEmotion()
+auto DataProcessor::processEmotion() -> std::map<std::string, float>
 {
     cap_ >> frame_;
     if (frame_.empty()) {
@@ -50,7 +50,7 @@ void DataProcessor::calibrateEyeTracking()
 
 }
 
-std::map<std::string, bool> DataProcessor::processEyeTracking()
+auto DataProcessor::processEyeTracking() -> std::map<std::string, bool>
 {
     cap_ >> frame_;
     if (frame_.empty()) {
@@ -65,7 +65,7 @@ void DataProcessor::toggleSpeechToText(bool state)
     speechToTextDetector_->toggle(state);
 }
 
-std::string DataProcessor::processSpeechToText()
+auto DataProcessor::processSpeechToText() -> std::string
 {
     return speechToTextDetector_->process();
 }

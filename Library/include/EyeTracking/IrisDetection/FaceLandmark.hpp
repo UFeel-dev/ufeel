@@ -1,5 +1,5 @@
-#ifndef FACELANDMARK_H
-#define FACELANDMARK_H
+#ifndef EYETRACKING_IRISDETECTION_FACELANDMARK_HPP
+#define EYETRACKING_IRISDETECTION_FACELANDMARK_HPP
 
 #include "FaceDetection.hpp"
 
@@ -16,25 +16,37 @@ namespace my {
             Users MUST provide the FOLDER contain BOTH the face_detection_short.tflite 
             and face_landmark.tflite, 
             */
-            FaceLandmark(std::string modelPath);
-            virtual ~FaceLandmark() = default; 
+            explicit FaceLandmark(std::string modelPath);
+            ~FaceLandmark() override = default; 
+
+            FaceLandmark(const FaceLandmark&) = delete;
+            auto operator=(const FaceLandmark&) -> FaceLandmark& = delete;
+            FaceLandmark(FaceLandmark&&) noexcept = default;
+            auto operator=(FaceLandmark&&) noexcept -> FaceLandmark& = default;
+
+            // Bring non-virtual convenience methods from ModelLoader into scope
+            using my::ModelLoader::loadImageToInput;
+            using my::ModelLoader::loadBytesToInput;
+            using my::ModelLoader::loadOutput;
 
             /*
             Override function from ModelLoader
             */
-            virtual void runInference();
+            void runInference() override;
 
             /*
             Get a landmark from output (index must be in range 0-467)
             The position is relative to the input image at InputTensor(0)
             */
-            virtual cv::Point getFaceLandmarkAt(int index) const;
+            [[nodiscard]]
+            virtual auto getFaceLandmarkAt(int index) const -> cv::Point;
 
             /*
             Get all landmarks from output.
             The positions is relative to the input image at InputTensor(0)
             */
-            virtual std::vector<cv::Point> getAllFaceLandmarks() const;
+            [[nodiscard]]
+            virtual auto getAllFaceLandmarks() const -> std::vector<cv::Point>;
 
             /*
             Get all landmarks from output, which is a vector of length 468 * 3 * 4 (although the first 468 * 3 are enough).
@@ -42,7 +54,7 @@ namespace my {
             Each landmark is represented by x, y, z(depth), which are raw outputs from Mediapipe Face Landmark model.
             If you want to get relative position to input image, use getAllFaceLandmarks() or getFaceLandmarkAt()
             */
-            virtual std::vector<float> loadOutput(int index = 0) const;
+            [[nodiscard]] auto loadOutput(int index) const -> std::vector<float> override;
 
 
         private:
@@ -51,4 +63,4 @@ namespace my {
     };
 }
 
-#endif // FACELANDMARK_H
+#endif // EYETRACKING_IRISDETECTION_FACELANDMARK_HPP

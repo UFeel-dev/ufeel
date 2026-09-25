@@ -9,7 +9,7 @@ Helper function
 bool __isIndexValid(int idx) {
     if (idx < 0 || idx >= FACE_LANDMARKS) {
         std::cerr << "Index " << idx << " is out of range (" \
-        << FACE_LANDMARKS << ")." << std::endl;
+        << FACE_LANDMARKS << ")." << '\n';
         return false;
     }
     return true;
