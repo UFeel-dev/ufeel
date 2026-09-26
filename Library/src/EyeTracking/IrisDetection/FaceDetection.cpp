@@ -36,29 +36,29 @@ void my::FaceDetection::runInference() {
 }
 
 
-cv::Mat my::FaceDetection::getOriginalImage() const {
+auto my::FaceDetection::getOriginalImage() const -> cv::Mat {
     return m_originImage;
 }
 
 
-std::vector<float> my::FaceDetection::getFaceRegressor() const {
+auto my::FaceDetection::getFaceRegressor() const -> std::vector<float> {
     return ModelLoader::loadOutput(0);
 }
 
 
-std::vector<float> my::FaceDetection::getFaceClassificator() const {
+auto my::FaceDetection::getFaceClassificator() const -> std::vector<float> {
     return ModelLoader::loadOutput(1);
 }
 
 
-cv::Rect my::FaceDetection::getFaceRoi() const {
+auto my::FaceDetection::getFaceRoi() const -> cv::Rect {
     return m_roi;
 }
 
 
-cv::Mat my::FaceDetection::cropFrame(const cv::Rect& roi) const {
-    cv::Mat frame = getOriginalImage();
-    cv::Size originalSize(roi.size());
+auto my::FaceDetection::cropFrame(const cv::Rect& roi) const -> cv::Mat{
+    const cv::Mat frame = getOriginalImage();
+    const cv::Size originalSize(roi.size());
 
     cv::Point offsetStart(0, 0);
     cv::Point offsetEnd(roi.width, roi.height);
@@ -91,7 +91,7 @@ cv::Mat my::FaceDetection::cropFrame(const cv::Rect& roi) const {
 
 //-------------------Private methods start here-------------------
 
-cv::Rect my::FaceDetection::calculateRoiFromDetection(const Detection& detection) const {
+auto my::FaceDetection::calculateRoiFromDetection(const Detection& detection) const -> cv::Rect{
     int origWidth = m_originImage.size().width;
     int origHeight = m_originImage.size().height;
 

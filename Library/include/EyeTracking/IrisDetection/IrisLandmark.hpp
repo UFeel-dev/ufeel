@@ -1,5 +1,5 @@
-#ifndef IRISLANDMARK_H
-#define IRISLANDMARK_H
+#ifndef EYETRACKING_IRISDETECTION_IRISLANDMARK_HPP
+#define EYETRACKING_IRISDETECTION_IRISLANDMARK_HPP
 
 #include "FaceLandmark.hpp"
 #include <bitset>
@@ -26,13 +26,17 @@ namespace my {
             Users MUST provide the FOLDER contain ALL the face_detection_short.tflite, 
             face_landmark.tflite and iris_landmark.tflite 
             */
-            IrisLandmark(std::string modelPath);
-            virtual ~IrisLandmark() = default; 
+            explicit IrisLandmark(std::string modelPath);
+            // ~IrisLandmark() override = default; 
+
+            using my::FaceLandmark::loadImageToInput;
+            using my::FaceLandmark::loadBytesToInput;
+            using my::FaceLandmark::loadOutput;
 
             /*
             Override function from FaceLandmark
             */
-            virtual void runInference();
+            void runInference() override;
 
             /*
             Get an eye/iris landmark from output.
@@ -40,40 +44,49 @@ namespace my {
             else index must be in range 0-70
             The position is relative to the input image at InputTensor(0)
             */
-            virtual cv::Point getEyeLandmarkAt(int index, bool isLeftEye, bool isIris) const;
+            [[nodiscard]] virtual auto getEyeLandmarkAt(int index, bool isLeftEye, bool isIris) const -> cv::Point;
 
             /*
             Get all eye/iris landmarks from output.
             The positions is relative to the input image at InputTensor(0)
             */
-            virtual std::vector<cv::Point> getAllEyeLandmarks(bool isLeftEye, bool isIris) const;
+            [[nodiscard]] virtual auto getAllEyeLandmarks(bool isLeftEye, bool isIris) const -> std::vector<cv::Point>;
 
             /*
             Get all landmarks from output (index = 0: Eye landmarks, index != 0: Iris landmarks)
             Each landmark is represented by x, y, z(depth), which are raw outputs from Mediapipe Iris Landmark model.
             If you want to get relative position to input image, use getAllIrisLandmarks() or getAllIrisLandmark()
             */
-            virtual std::vector<float> loadOutput(int index = 0, bool isLeftEye = true) const;
+            [[nodiscard]] virtual auto loadOutput(int index, bool isLeftEye) const -> std::vector<float>;
+
+            // Override 1-parameter virtual loadOutput from FaceLandmark
+            [[nodiscard]] auto loadOutput(int index) const -> std::vector<float> override {
+                return loadOutput(index, true);
+            }
+
+            // Convenience 0-parameter overload
+            [[nodiscard]] auto loadOutput() const -> std::vector<float> {
+                return loadOutput(0, true);
+            }
 
             /*
             Get eye Roi relative to input image at InputTensor(0)
             */
-            cv::Rect getEyeRoi(bool isLeftEye) const;
+            [[nodiscard]] auto getEyeRoi(bool isLeftEye) const -> cv::Rect;
 
 
         private:
             /*
             Calculate Eye Roi from the first and last EyeLower2 landmark
             */
-            cv::Rect calculateEyeRoi(cv::Point leftMoft, cv::Point rightMost) const;
+            [[nodiscard]] auto calculateEyeRoi(cv::Point leftMoft, cv::Point rightMost) const -> cv::Rect;
 
             /*
             Run inference on each eye (for multithread)
             */
             void runEyeInference(bool isLeftEye);
 
-
-        private:
+            // next block of private:
             ModelLoader m_leftIrisLandmarker;
             ModelLoader m_rightIrisLandmarker;
 
@@ -81,4 +94,4 @@ namespace my {
             cv::Rect m_rightEyeRoi;
     };
 }
-#endif // IRISLANDMARK_H
+#endif // EYETRACKING_IRISDETECTION_IRISLANDMARK_HPP

@@ -4,7 +4,7 @@
 /*
 Helper function
 */
-std::vector<cv::Rect2f> generateAnchors(my::AnchorOptions options) {
+auto generateAnchors(my::AnchorOptions options) -> std::vector<cv::Rect2f> {
     std::vector<cv::Rect2f> anchors;
     for (int i = 0; i < NUM_SIZES; ++i) {
         auto size = options.sizes[i];
@@ -28,8 +28,8 @@ my::DetectionPostProcess::DetectionPostProcess() :
     m_anchors(generateAnchors(AnchorOptions())) {}
 
 
-cv::Rect2f my::DetectionPostProcess::decodeBox
-(const std::vector<float>& rawBoxes, int index) const {
+auto my::DetectionPostProcess::decodeBox
+(const std::vector<float>& rawBoxes, int index) const -> cv::Rect2f {
     auto anchor = m_anchors[index];
     auto center = (anchor.tl() + anchor.br()) * 0.5;
 
@@ -48,8 +48,8 @@ cv::Rect2f my::DetectionPostProcess::decodeBox
 }
 
 
-my::Detection my::DetectionPostProcess::getHighestScoreDetection
-(const std::vector<float>& rawBoxes, const std::vector<float>& scores) const {
+auto my::DetectionPostProcess::getHighestScoreDetection
+(const std::vector<float>& rawBoxes, const std::vector<float>& scores) const -> my::Detection {
     my::Detection detection;
     for (int i = 0; i < NUM_BOXES; i++) {
         if (scores[i] > std::max(MIN_THRESHOLD, detection.score)) {

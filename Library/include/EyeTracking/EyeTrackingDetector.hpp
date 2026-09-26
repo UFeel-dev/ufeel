@@ -5,9 +5,10 @@
 ** EyeTrackingDetector
 */
 
-#ifndef EYETRACKINGDETECTOR_HPP_
-    #define EYETRACKINGDETECTOR_HPP_
-
+#ifndef EYETRACKING_EYETRACKINGDETECTOR_HPP
+    #define EYETRACKING_EYETRACKINGDETECTOR_HPP
+  
+#include <array>
 #include <opencv2/opencv.hpp>
 
 #include "EyeTracking/IrisDetection/IrisLandmark.hpp"
@@ -28,7 +29,12 @@ class EyeTrackingDetector
         EyeTrackingDetector();
         ~EyeTrackingDetector();
 
-        std::map<std::string, bool> process(const cv::Mat& frame);
+        EyeTrackingDetector(const EyeTrackingDetector&) = delete;
+        auto operator=(const EyeTrackingDetector&) -> EyeTrackingDetector& = delete;
+        EyeTrackingDetector(EyeTrackingDetector&&) = delete;
+        auto operator=(EyeTrackingDetector&&) -> EyeTrackingDetector& = delete;
+
+        auto process(const cv::Mat& frame) -> std::map<std::string, bool>;
         void toggleEyeTrackingDetection(bool state);
         void close();
 
@@ -37,11 +43,11 @@ class EyeTrackingDetector
         bool processEnable_ = true;
 
 
-        const std::vector<int> leftEyeIdx = {33,133,160,159,158,157,173};
-        const std::vector<int> rightEyeIdx = {362,263,387,386,385,384,398};
+        constexpr static std::array<int, 7> leftEyeIdx = {33,133,160,159,158,157,173};
+        constexpr static std::array<int, 7> rightEyeIdx = {362,263,387,386,385,384,398};
 
         my::IrisLandmark irisLandmarker_;
 
 };
 
-#endif /* !EYETRACKINGDETECTOR_HPP_ */
+#endif // EYETRACKING_EYETRACKINGDETECTOR_HPP

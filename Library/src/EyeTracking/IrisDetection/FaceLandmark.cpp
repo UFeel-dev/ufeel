@@ -6,7 +6,7 @@
 /*
 Helper function
 */
-bool __isIndexValid(int idx) {
+auto __isIndexValid(int idx) -> bool {
     if (idx < 0 || idx >= FACE_LANDMARKS) {
         std::cerr << "Index " << idx << " is out of range (" \
         << FACE_LANDMARKS << ")." << std::endl;
@@ -33,7 +33,7 @@ void my::FaceLandmark::runInference() {
 }
 
 
-cv::Point my::FaceLandmark::getFaceLandmarkAt(int index) const {
+auto my::FaceLandmark::getFaceLandmarkAt(int index) const -> cv::Point {
     if (__isIndexValid(index)) {
         auto roi = FaceDetection::getFaceRoi();
 
@@ -49,7 +49,7 @@ cv::Point my::FaceLandmark::getFaceLandmarkAt(int index) const {
 }
 
 
-std::vector<cv::Point> my::FaceLandmark::getAllFaceLandmarks() const {
+auto my::FaceLandmark::getAllFaceLandmarks() const -> std::vector<cv::Point> {
     if (FaceDetection::getFaceRoi().empty())
         return std::vector<cv::Point>();
 
@@ -61,6 +61,6 @@ std::vector<cv::Point> my::FaceLandmark::getAllFaceLandmarks() const {
 }
 
 
-std::vector<float> my::FaceLandmark::loadOutput(int index) const {
+auto my::FaceLandmark::loadOutput(int index) const -> std::vector<float> {
     return m_landmarkModel.loadOutput();
 }
