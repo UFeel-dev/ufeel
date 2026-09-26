@@ -1,9 +1,9 @@
-#ifndef MODELLOADER_H
-#define MODELLOADER_H
+#ifndef EYETRACKING_IRISDETECTION_MODELLOADER_HPP
+#define EYETRACKING_IRISDETECTION_MODELLOADER_HPP
 
-#include <vector>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "opencv2/core.hpp"
 #include "opencv2/imgproc.hpp"
@@ -42,9 +42,9 @@ namespace my {
             Parameters:
                 modelPath: path to .tflite
             */
-            ModelLoader(std::string modelPath);
+            explicit ModelLoader(std::string modelPath);
             ModelLoader(const ModelLoader& other) = delete;
-            ModelLoader& operator=(const ModelLoader& other) = delete;
+            auto operator=(const ModelLoader& other) -> ModelLoader& = delete;
             virtual ~ModelLoader() = default;
 
             /*
@@ -53,7 +53,7 @@ namespace my {
             Parameters:
                 index: index of input tensor
             */
-            std::vector<int> getInputShape(int index = 0) const;
+            [[nodiscard]] auto getInputShape(int index = 0) const -> std::vector<int>;
 
             /*
             Get the pointer to the data of input tensor at index.
@@ -61,7 +61,7 @@ namespace my {
             Parameters:
                 index: index of input tensor
             */
-            float* getInputData(int index = 0) const;
+            [[nodiscard]] auto getInputData(int index = 0) const -> float*;
 
             /*
             Get size in bytes of input tensor at index.
@@ -69,12 +69,12 @@ namespace my {
             Parameters:
                 index: index of input tensor
             */
-            size_t getInputSize(int index = 0) const;
+            [[nodiscard]] auto getInputSize(int index = 0) const -> size_t;
 
             /*
             Get number of inputs needed to run inference. 
             */
-            int getNumberOfInputs() const;
+            [[nodiscard]] auto getNumberOfInputs() const -> int;
 
             /*
             Get shape of output tensor at index.
@@ -82,7 +82,7 @@ namespace my {
             Parameters:
                 index: index of output tensor
             */     
-            std::vector<int> getOutputShape(int index = 0) const;
+            [[nodiscard]] auto getOutputShape(int index = 0) const -> std::vector<int>;
 
             /*
             Get the pointer to the data of output tensor at index.
@@ -90,7 +90,7 @@ namespace my {
             Parameters:
                 index: index of output tensor
             */
-            float* getOutputData(int index = 0) const;
+            [[nodiscard]] auto getOutputData(int index = 0) const -> float*;
 
             /*
             Get size in bytes of output tensor at index.
@@ -98,12 +98,12 @@ namespace my {
             Parameters:
                 index: index of output tensor
             */
-            size_t getOutputSize(int index = 0) const;
+            [[nodiscard]] auto getOutputSize(int index = 0) const -> size_t;
 
             /*
             Get number of outputs from inference.
             */
-            int getNumberOfOutputs() const;
+            [[nodiscard]] auto getNumberOfOutputs() const -> int;
 
             /*
             Load image (BGR format) to model at index 
@@ -126,7 +126,7 @@ namespace my {
             A vector contains output data at index.
             Its shape is flattened from getOutputShape(index)
             */
-            virtual std::vector<float> loadOutput(int index = 0) const;
+            [[nodiscard]] virtual auto loadOutput(int index = 0) const -> std::vector<float>;
 
 
         private:
@@ -142,12 +142,12 @@ namespace my {
             /*
             Check if index is valid for input and output tensor
             */
-            bool isIndexValid(int index, const char c = 'i') const;
+            [[nodiscard]] auto isIndexValid(int index, const char c = 'i') const -> bool;
 
             /*
             Check if all inputs have been loaded
             */
-            bool isAllInputsLoaded() const;
+            [[nodiscard]] auto isAllInputsLoaded() const -> bool;
 
             /*
             Process input loads before run inference
@@ -157,15 +157,15 @@ namespace my {
             /*
             Convert image to float and resize to getInputShape(idx)
             */
-            cv::Mat preprocessImage(const cv::Mat& in, int idx) const;
+            [[nodiscard]] auto preprocessImage(const cv::Mat& in, int idx) const -> cv::Mat;
 
             /*
             Convert image of type CV_8UC3 or CV_8UC4 to RGB format
             */
-            cv::Mat convertToRGB(const cv::Mat& in) const;
+            [[nodiscard]] auto convertToRGB(const cv::Mat& in) const -> cv::Mat;
 
 
-        private:
+        // next block of private:
             /*
             Information of input tensors
             */
@@ -193,4 +193,4 @@ namespace my {
     };
 };
 
-#endif // MODELLOADER_H
+#endif // EYETRACKING_IRISDETECTION_MODELLOADER_HPP

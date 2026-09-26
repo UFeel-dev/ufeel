@@ -5,8 +5,8 @@
 ** EyeTrackingDetector
 */
 
-#ifndef EYETRACKINGDETECTOR_HPP_
-    #define EYETRACKINGDETECTOR_HPP_
+#ifndef EYETRACKING_EYETRACKINGDETECTOR_HPP
+    #define EYETRACKING_EYETRACKINGDETECTOR_HPP
 
 #include <opencv2/opencv.hpp>
 
@@ -28,7 +28,7 @@ class EyeTrackingDetector
         EyeTrackingDetector();
         ~EyeTrackingDetector();
 
-        std::map<std::string, bool> process(const cv::Mat& frame);
+        auto process(const cv::Mat& frame) -> std::map<std::string, bool>;
         void toggleEyeTrackingDetection(bool state);
         void close();
 
@@ -44,4 +44,4 @@ class EyeTrackingDetector
 
 };
 
-#endif /* !EYETRACKINGDETECTOR_HPP_ */
+#endif // EYETRACKING_EYETRACKINGDETECTOR_HPP
