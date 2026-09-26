@@ -22,7 +22,7 @@ compile()
 {
     echo "Compiling..."
     cd $BUILD_DIR
-    make -j2    #just for the devlopment phase, will change when creating a pr
+    make -j8    #just for the devlopment phase, will change when creating a pr
     cd ..
 }
 
