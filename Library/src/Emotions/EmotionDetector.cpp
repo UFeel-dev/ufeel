@@ -4,12 +4,16 @@
 ** File description:
 ** EmotionDetector
 */
+// NOLINTBEGIN(misc-include-cleaner)
 
 #include "Emotions/EmotionDetector.hpp"
+#include <string>
+#include <iostream>
+#include <vector>
 
 EmotionDetector::EmotionDetector()
 {
-    std::string modelPath = "models/GiMeFive.pt";
+    const std::string modelPath = "models/GiMeFive.pt";
     try {
         net_ = torch::jit::load(modelPath);
     } catch (const c10::Error& e) {
@@ -33,7 +37,7 @@ EmotionDetector::EmotionDetector()
     std::cout << "Success Emotion Detector Constructor" << '\n';
 
     std::cout << "FaceDetector created" << '\n';
-    cv::Mat dummy(320, 320, CV_8UC3, cv::Scalar(0,0,0));
+    const cv::Mat dummy(320, 320, CV_8UC3, cv::Scalar(0,0,0));
     cv::Mat faces;
 
     try
@@ -58,7 +62,7 @@ void EmotionDetector::toggleEmotionDetection(bool state)
     std::cout << "[EmotionDetector] Emotion detection " << (state ? "enabled" : "disabled") << '\n';
 }
 
-cv::Mat EmotionDetector::preProcess(const cv::Mat &face)
+auto EmotionDetector::preProcess(const cv::Mat &face) -> cv::Mat
 {
     const float mean[3] { 0.485F, 0.456F, 0.406F };
     const float std[3] { 0.229F, 0.224F, 0.225F };
@@ -81,7 +85,7 @@ cv::Mat EmotionDetector::preProcess(const cv::Mat &face)
     return gray3;
 }
 
-std::vector<float> EmotionDetector::processFace(const cv::Mat &face)
+auto EmotionDetector::processFace(const cv::Mat &face) -> std::vector<float>
 {
     if (face.empty()) {
         std::cerr << "[EmotionDetector] processFace() got EMPTY face" << '\n';
@@ -90,13 +94,13 @@ std::vector<float> EmotionDetector::processFace(const cv::Mat &face)
 
     std::vector<torch::jit::IValue> inputs;
     float sum = 0.0F;
-    float neutralFactor = 0.001F;
+    const float neutralFactor = 0.001F;
     float total = 0.0F;
 
-    cv::Mat input = preProcess(face);
+    const cv::Mat input = preProcess(face);
     cv::Mat blob = cv::dnn::blobFromImage(input);
 
-    torch::Tensor tensor = torch::from_blob(
+    const torch::Tensor tensor = torch::from_blob(
         blob.ptr<float>(),
         {1, 3, 64, 64},
         torch::kFloat32
@@ -105,10 +109,10 @@ std::vector<float> EmotionDetector::processFace(const cv::Mat &face)
 
     inputs.emplace_back(tensor);
 
-    at::Tensor output = net_.forward(inputs).toTensor();
+    const at::Tensor output = net_.forward(inputs).toTensor();
     std::vector<float> scores(output.data_ptr<float>(), output.data_ptr<float>() + output.numel());
 
-    float maxLogit = *std::max_element(scores.begin(), scores.end());
+    const float maxLogit = *std::max_element(scores.begin(), scores.end());
     for (auto &s : scores) {
         s = std::exp(s - maxLogit);
         sum += s;
@@ -128,7 +132,7 @@ std::vector<float> EmotionDetector::processFace(const cv::Mat &face)
     return scores;
 }
 
-std::map<std::string,float> EmotionDetector::process(const cv::Mat &image)
+auto EmotionDetector::process(const cv::Mat &image) -> std::map<std::string,float>
 {
     if (image.empty()) {
         std::cerr << "[EmotionDetector] process() got EMPTY image" << '\n';
@@ -136,7 +140,7 @@ std::map<std::string,float> EmotionDetector::process(const cv::Mat &image)
     }
 
     cv::Mat resized;
-    cv::Mat inputImage = image.clone();
+    const cv::Mat inputImage = image.clone();
     const cv::Size yunetSize(320,320);
     cv::Mat faces;
 
@@ -147,11 +151,11 @@ std::map<std::string,float> EmotionDetector::process(const cv::Mat &image)
     if (faces.empty()) {
         return {};
     }
-    float scaleX = static_cast<float>(image.cols) / static_cast<float>(yunetSize.width);
-    float scaleY = static_cast<float>(image.rows) / static_cast<float>(yunetSize.height);
+    const float scaleX = static_cast<float>(image.cols) / static_cast<float>(yunetSize.width);
+    const float scaleY = static_cast<float>(image.rows) / static_cast<float>(yunetSize.height);
 
     for (int i = 0; i < faces.rows; i++) {
-        float conf = faces.at<float>(i, 14);
+        const float conf = faces.at<float>(i, 14);
         if (conf < 0.9F) {
             continue;
         }
@@ -175,3 +179,5 @@ std::map<std::string,float> EmotionDetector::process(const cv::Mat &image)
 void EmotionDetector::close()
 {
 }
+
+// NOLINTEND(misc-include-cleaner)

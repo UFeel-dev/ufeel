@@ -4,7 +4,7 @@
 /*
 Helper function
 */
-std::vector<cv::Rect2f> generateAnchors(my::AnchorOptions options) {
+auto generateAnchors(my::AnchorOptions options) -> std::vector<cv::Rect2f> {
     std::vector<cv::Rect2f> anchors;
     for (int i = 0; i < NUM_SIZES; ++i) {
         auto size = options.sizes[i];

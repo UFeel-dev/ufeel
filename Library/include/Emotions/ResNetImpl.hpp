@@ -5,8 +5,8 @@
 ** ResNetImpl
 */
 
-#ifndef RESNETIMPL_HPP_
-    #define RESNETIMPL_HPP_
+#ifndef EMOTIONS_RESNETIMPL_HPP
+    #define EMOTIONS_RESNETIMPL_HPP
 
     #include <torch/torch.h>
 
@@ -31,7 +31,7 @@ struct BasicBlockImpl : torch::nn::Module
         int64_t stride = 1,
         torch::nn::Sequential downsample = nullptr);
 
-    torch::Tensor forward(torch::Tensor x);
+    auto forward(torch::Tensor x) -> torch::Tensor;
 };
 
 TORCH_MODULE(BasicBlock);
@@ -50,14 +50,14 @@ struct ResNetImpl : torch::nn::Module
 
     int64_t inplanes = 64;
 
-    ResNetImpl(const std::vector<int64_t>& layers, int64_t num_classes = 1000);
+    explicit ResNetImpl(const std::vector<int64_t>& layers, int64_t num_classes = 1000);
 
-    torch::nn::Sequential make_layer(int64_t planes, int64_t blocks,int64_t stride);
-    torch::Tensor forward(torch::Tensor x);
+    auto make_layer(int64_t planes, int64_t blocks,int64_t stride) -> torch::nn::Sequential;
+    auto forward(torch::Tensor x) -> torch::Tensor;
 };
 
 TORCH_MODULE(ResNet);
 
-ResNet resnet34();
+auto resnet34() -> ResNet;
 
-#endif /* !RESNETIMPL_HPP_ */
+#endif // EMOTIONS_RESNETIMPL_HPP

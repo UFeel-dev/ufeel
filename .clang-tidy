@@ -33,6 +33,7 @@ Checks: >
   -google-readability-todo,
   -abseil-string-find-str-contains,
   -altera-unroll-loops,
+  -altera-id-dependent-backward-branch
   -misc-no-recursion,
   -altera-struct-pack-align,
   -cppcoreguidelines-prefer-member-initializer,

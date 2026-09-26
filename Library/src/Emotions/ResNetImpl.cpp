@@ -5,14 +5,17 @@
 ** ResnetImpl
 */
 
+// NOLINTBEGIN(misc-include-cleaner)
+
 #include "Emotions/ResNetImpl.hpp"
-#include <torch/torch.h>
 #include <stdexcept>
 #include <string>
+#include <torch/torch.h>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
-BasicBlockImpl::BasicBlockImpl(int64_t inplanes, int64_t planes, int64_t stride, torch::nn::Sequential downsample_) : downsample(downsample_)
+BasicBlockImpl::BasicBlockImpl(int64_t inplanes, int64_t planes, int64_t stride, torch::nn::Sequential downsample_) : downsample(std::move(downsample_))
 {
     conv1 = register_module("conv1", torch::nn::Conv2d(torch::nn::Conv2dOptions(inplanes, planes, 3).stride(stride).padding(1).bias(false)));
     bn1 = register_module("bn1", torch::nn::BatchNorm2d(planes));
@@ -24,8 +27,8 @@ BasicBlockImpl::BasicBlockImpl(int64_t inplanes, int64_t planes, int64_t stride,
         register_module("downsample", downsample);
     }
 }
-
-torch::Tensor BasicBlockImpl::forward(torch::Tensor x)
+// NOLINT(performance-unnecessary-value-param)
+auto BasicBlockImpl::forward(torch::Tensor x) -> torch::Tensor
 {
     auto identity = x;
 
@@ -60,7 +63,7 @@ ResNetImpl::ResNetImpl(const std::vector<int64_t>& layers, int64_t num_classes)
     fc = register_module("fc", torch::nn::Linear(512, num_classes));
 }
 
-torch::nn::Sequential ResNetImpl::make_layer(int64_t planes, int64_t blocks, int64_t stride)
+auto ResNetImpl::make_layer(int64_t planes, int64_t blocks, int64_t stride) -> torch::nn::Sequential
 {
     torch::nn::Sequential layers;
 
@@ -87,7 +90,7 @@ torch::nn::Sequential ResNetImpl::make_layer(int64_t planes, int64_t blocks, int
     return layers;
 }
 
-torch::Tensor ResNetImpl::forward(torch::Tensor x)
+auto ResNetImpl::forward(torch::Tensor x) -> torch::Tensor
 {
     x = conv1->forward(x);
     x = bn1->forward(x);
@@ -107,9 +110,11 @@ torch::Tensor ResNetImpl::forward(torch::Tensor x)
     return x;
 }
 
-ResNet resnet34()
+auto resnet34() -> ResNet
 {
     std::vector<int64_t> layers = {3, 4, 6, 3};
 
     return ResNet(layers, 1000);
 }
+
+// NOLINTEND(misc-include-cleaner)

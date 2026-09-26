@@ -1,8 +1,9 @@
+// NOLINTBEGIN(misc-include-cleaner)
 #include <torch/torch.h>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
-#include <vector>
+// #include <vector>
 #include "Emotions/ResNetImpl.hpp"
 
 struct BinaryHeadImpl : torch::nn::Module
@@ -14,7 +15,8 @@ struct BinaryHeadImpl : torch::nn::Module
         linear = register_module("linear", torch::nn::Linear(in_features, 1));
     }
 
-    torch::Tensor forward(torch::Tensor x)
+    // NOLINT(performance-unnecessary-value-param)
+    auto forward(torch::Tensor x) -> torch::Tensor
     {
         return linear->forward(x);
     }
@@ -63,7 +65,7 @@ struct EmotionModelImpl : torch::nn::Module
         surprised = register_module("surprised", BinaryHead(in_features));
     }
 
-    torch::Tensor extract_features(torch::Tensor x)
+    auto extract_features(torch::Tensor x) -> torch::Tensor
     {
         x = backbone->conv1->forward(x);
         x = backbone->bn1->forward(x);
@@ -82,9 +84,9 @@ struct EmotionModelImpl : torch::nn::Module
         return x;
     }
 
-    std::unordered_map<std::string, torch::Tensor> forward(torch::Tensor x)
+    auto forward(torch::Tensor x) -> std::unordered_map<std::string, torch::Tensor>
     {
-        auto features = extract_features(x);
+        auto features = extract_features(std::move(x));
 
         return
         {
@@ -115,3 +117,5 @@ struct EmotionModelImpl : torch::nn::Module
         };
     }
 };
+
+// NOLINTEND(misc-include-cleaner)
