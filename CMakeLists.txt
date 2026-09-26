@@ -90,12 +90,15 @@ endif()
 # ======================
 # Includes
 # ======================
-target_include_directories(ufeel_detection_library PUBLIC
-    ${LIBRARY_DIR}/include
-    ${OPENCV_DIR}/include
-    ${TORCH_INCLUDE_DIRS}
-    ${TFLITE_DIR}/include
-    ${VOSK_DIR}/include
+target_include_directories(ufeel_detection_library 
+    PUBLIC
+        ${LIBRARY_DIR}/include
+        
+    SYSTEM PUBLIC
+        ${OPENCV_DIR}/include
+        ${TORCH_INCLUDE_DIRS}
+        ${TFLITE_DIR}/include
+        ${VOSK_DIR}/include
 )
 
 # ======================
@@ -167,10 +170,13 @@ if(CLANG_TIDY_COMMAND)
     )
 endif()
 
-target_include_directories(ufeel_wrapper PUBLIC
-    ${LIBRARY_DIR}/include
-    ${OPENCV_DIR}/include
-    ${TORCH_INCLUDE_DIRS}
+target_include_directories(ufeel_wrapper 
+    PUBLIC
+        ${LIBRARY_DIR}/include
+    
+    SYSTEM PUBLIC
+        ${OPENCV_DIR}/include
+        ${TORCH_INCLUDE_DIRS}
 )
 
 # ======================
