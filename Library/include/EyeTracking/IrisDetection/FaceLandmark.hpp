@@ -17,7 +17,12 @@ namespace my {
             and face_landmark.tflite, 
             */
             explicit FaceLandmark(std::string modelPath);
-            ~FaceLandmark() override = default; 
+            // ~FaceLandmark() override = default; 
+
+            // Bring base class overloads into scope
+            using my::FaceDetection::loadImageToInput;
+            using my::FaceDetection::loadBytesToInput;
+            using my::FaceDetection::loadOutput;
 
             /*
             Override function from ModelLoader
@@ -42,7 +47,7 @@ namespace my {
             Each landmark is represented by x, y, z(depth), which are raw outputs from Mediapipe Face Landmark model.
             If you want to get relative position to input image, use getAllFaceLandmarks() or getFaceLandmarkAt()
             */
-            [[nodiscard]] auto loadOutput(int index = 0) const -> std::vector<float> override;
+            [[nodiscard]] auto loadOutput(int index) const -> std::vector<float> override;
 
 
         private:

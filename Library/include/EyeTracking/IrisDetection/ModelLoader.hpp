@@ -45,6 +45,8 @@ namespace my {
             explicit ModelLoader(std::string modelPath);
             ModelLoader(const ModelLoader& other) = delete;
             auto operator=(const ModelLoader& other) -> ModelLoader& = delete;
+            ModelLoader(ModelLoader&&) = delete;
+            auto operator=(ModelLoader&&) -> ModelLoader& = delete;
             virtual ~ModelLoader() = default;
 
             /*
@@ -109,12 +111,12 @@ namespace my {
             Load image (BGR format) to model at index 
             (Note: Only support image of type CV_8UC3 and CV_8UC4)
             */
-            virtual void loadImageToInput(const cv::Mat& inputImage, int index = 0);
+            virtual void loadImageToInput(const cv::Mat& inputImage, int index);
 
             /*
             Load byte data to model at index
             */
-            virtual void loadBytesToInput(const void* data, int index = 0);
+            virtual void loadBytesToInput(const void* data, int index);
 
             /*
             Run inference on the inputs.
@@ -126,8 +128,20 @@ namespace my {
             A vector contains output data at index.
             Its shape is flattened from getOutputShape(index)
             */
-            [[nodiscard]] virtual auto loadOutput(int index = 0) const -> std::vector<float>;
+            [[nodiscard]] virtual auto loadOutput(int index) const -> std::vector<float>;
 
+            // Non-virtual convenience overloads (provides default index = 0)
+            void loadImageToInput(const cv::Mat& inputImage) {
+                loadImageToInput(inputImage, 0);
+            }
+
+            void loadBytesToInput(const void* data) {
+                loadBytesToInput(data, 0);
+            }
+
+            [[nodiscard]] auto loadOutput() const -> std::vector<float> {
+                return loadOutput(0);
+            }
 
         private:
             /*
@@ -142,7 +156,7 @@ namespace my {
             /*
             Check if index is valid for input and output tensor
             */
-            [[nodiscard]] auto isIndexValid(int index, const char c = 'i') const -> bool;
+            [[nodiscard]] auto isIndexValid(int index, char c = 'i') const -> bool;
 
             /*
             Check if all inputs have been loaded

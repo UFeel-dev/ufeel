@@ -27,7 +27,11 @@ namespace my {
             face_landmark.tflite and iris_landmark.tflite 
             */
             explicit IrisLandmark(std::string modelPath);
-            ~IrisLandmark() override = default; 
+            // ~IrisLandmark() override = default; 
+
+            using my::FaceLandmark::loadImageToInput;
+            using my::FaceLandmark::loadBytesToInput;
+            using my::FaceLandmark::loadOutput;
 
             /*
             Override function from FaceLandmark
@@ -53,7 +57,17 @@ namespace my {
             Each landmark is represented by x, y, z(depth), which are raw outputs from Mediapipe Iris Landmark model.
             If you want to get relative position to input image, use getAllIrisLandmarks() or getAllIrisLandmark()
             */
-            [[nodiscard]] virtual auto loadOutput(int index = 0, bool isLeftEye = true) const -> std::vector<float>;
+            [[nodiscard]] virtual auto loadOutput(int index, bool isLeftEye) const -> std::vector<float>;
+
+            // Override 1-parameter virtual loadOutput from FaceLandmark
+            [[nodiscard]] auto loadOutput(int index) const -> std::vector<float> override {
+                return loadOutput(index, true);
+            }
+
+            // Convenience 0-parameter overload
+            [[nodiscard]] auto loadOutput() const -> std::vector<float> {
+                return loadOutput(0, true);
+            }
 
             /*
             Get eye Roi relative to input image at InputTensor(0)

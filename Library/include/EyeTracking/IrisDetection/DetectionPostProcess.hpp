@@ -35,7 +35,7 @@ namespace my {
         Detection() : score(), classId(-1) {}
         Detection(float score, int classId, cv::Rect2f roi) :
             score(score), classId(classId), roi(roi) {}
-        ~Detection() = default;
+        // ~Detection() = default;
     };
 
     /*
@@ -44,7 +44,7 @@ namespace my {
     class DetectionPostProcess {
         public:
             DetectionPostProcess();
-            ~DetectionPostProcess() = default;
+            // ~DetectionPostProcess() = default;
             [[nodiscard]] auto getHighestScoreDetection
             (const std::vector<float>& rawBoxes, const std::vector<float>& scores) const -> Detection;
 

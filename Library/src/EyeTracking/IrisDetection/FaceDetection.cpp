@@ -84,7 +84,7 @@ auto my::FaceDetection::cropFrame(const cv::Rect& roi) const -> cv::Mat{
         pt2.y = frame.rows - 1;
     }
 
-    cv:Mat face(originalSize, CV_8UC3, cv::Scalar(0));
+    cv::Mat face(originalSize, CV_8UC3, cv::Scalar(0));
     frame(cv::Rect(pt1, pt2)).copyTo(face(cv::Rect(offsetStart, offsetEnd)));
     return face;
 }

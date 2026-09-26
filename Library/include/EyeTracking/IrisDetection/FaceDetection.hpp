@@ -16,7 +16,12 @@ namespace my {
             Users MUST provide the FOLDER contain face_detection_short.tflite, NOT THE FILE itself.
             */
             explicit FaceDetection(std::string modelPath);
-            ~FaceDetection() override = default;
+            // ~FaceDetection() override = default;
+
+            // Bring ModelLoader overloads into scope
+            using my::ModelLoader::loadImageToInput;
+            using my::ModelLoader::loadBytesToInput;
+            using my::ModelLoader::loadOutput;
 
             /*
             Get access to original input image
@@ -43,7 +48,7 @@ namespace my {
             Override function from ModelLoader.
             (Note: index does not matter, the model always load to InputTensor(0))
             */
-            void loadImageToInput(const cv::Mat& inputImage, int index = 0) override;       
+            void loadImageToInput(const cv::Mat& inputImage, int index) override;       
 
             /*
             Override function from ModelLoader.
@@ -62,7 +67,7 @@ namespace my {
             Override function from ModelLoader.
             This class can only load image to input.
             */
-            using ModelLoader::loadBytesToInput;
+            // using ModelLoader::loadBytesToInput;
 
             /*       
             Convert Detection box back to original size
