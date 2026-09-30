@@ -44,6 +44,7 @@ The script performs the following steps:
 - `cmake` >= 3.20
 - `portaudio` >= 19.6.0
 - `git-lfs` >= 3.4.1
+- `iwyu` >= 0.26
 
 ## Third-Party Libraries (Git LFS Required)
 

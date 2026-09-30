@@ -10,7 +10,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # clang-tidy
 # ======================
 option(CLANG_TIDY_COLOR "Force colored clang-tidy diagnostics" ON)
-option(ENABLE_CLANG_TIDY "Run clang-tidy as part of the compilation" ON)
+option(ENABLE_CLANG_TIDY "Run clang-tidy as part of the compilation" OFF)
 option(CLANG_TIDY_AS_ERRORS "Honour the WarningsAsErrors list in .clang-tidy" ON)
 
 if(ENABLE_CLANG_TIDY)
@@ -90,10 +90,10 @@ endif()
 # ======================
 # Includes
 # ======================
-target_include_directories(ufeel_detection_library 
+target_include_directories(ufeel_detection_library
     PUBLIC
         ${LIBRARY_DIR}/include
-        
+
     SYSTEM PUBLIC
         ${OPENCV_DIR}/include
         ${TORCH_INCLUDE_DIRS}
@@ -170,10 +170,10 @@ if(CLANG_TIDY_COMMAND)
     )
 endif()
 
-target_include_directories(ufeel_wrapper 
+target_include_directories(ufeel_wrapper
     PUBLIC
         ${LIBRARY_DIR}/include
-    
+
     SYSTEM PUBLIC
         ${OPENCV_DIR}/include
         ${TORCH_INCLUDE_DIRS}

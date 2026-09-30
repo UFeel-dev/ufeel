@@ -1,62 +1,74 @@
 #include "EyeTracking/IrisDetection/FaceDetection.hpp"
+
+#include "EyeTracking/IrisDetection/DetectionPostProcess.hpp"
 #include "EyeTracking/IrisDetection/ModelLoader.hpp"
+#include "opencv2/core/hal/interface.h"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/core/types.hpp"
+
 #include <string>
 #include <vector>
 
+my::FaceDetection::FaceDetection(
+    const std::string& modelDir
+)
+    : my::ModelLoader(modelDir + std::string("/face_detection_short.tflite"))
+{
+}
 
-my::FaceDetection::FaceDetection(std::string modelDir) :
-    my::ModelLoader(modelDir + std::string("/face_detection_short.tflite"))
-{}
-
-
-void my::FaceDetection::loadImageToInput(const cv::Mat& in, int index) {
+void my::FaceDetection::loadImageToInput(
+    const cv::Mat& in, int /*index*/
+)
+{
     m_originImage = in;
     ModelLoader::loadImageToInput(in);
 }
 
-
-void my::FaceDetection::runInference() {
+void my::FaceDetection::runInference()
+{
     ModelLoader::runInference();
 
     auto regressor = getFaceRegressor();
     auto classificator = getFaceClassificator();
     auto detection = m_postProcessor.getHighestScoreDetection(regressor, classificator);
 
-    if (detection.classId != -1) {
+    if (detection.classId != -1)
+    {
         /*
         The detection is still in local shape [0..1]
         */
         m_roi = calculateRoiFromDetection(detection);
     }
-    else {
+    else
+    {
         m_roi = cv::Rect();
     }
 }
 
-
-auto my::FaceDetection::getOriginalImage() const -> cv::Mat {
+auto my::FaceDetection::getOriginalImage() const -> cv::Mat
+{
     return m_originImage;
 }
 
-
-auto my::FaceDetection::getFaceRegressor() const -> std::vector<float> {
+auto my::FaceDetection::getFaceRegressor() const -> std::vector<float>
+{
     return ModelLoader::loadOutput(0);
 }
 
-
-auto my::FaceDetection::getFaceClassificator() const -> std::vector<float> {
+auto my::FaceDetection::getFaceClassificator() const -> std::vector<float>
+{
     return ModelLoader::loadOutput(1);
 }
 
-
-auto my::FaceDetection::getFaceRoi() const -> cv::Rect {
+auto my::FaceDetection::getFaceRoi() const -> cv::Rect
+{
     return m_roi;
 }
 
-
-auto my::FaceDetection::cropFrame(const cv::Rect& roi) const -> cv::Mat{
+auto my::FaceDetection::cropFrame(
+    const cv::Rect& roi
+) const -> cv::Mat
+{
     const cv::Mat frame = getOriginalImage();
     const cv::Size originalSize(roi.size());
 
@@ -69,17 +81,23 @@ auto my::FaceDetection::cropFrame(const cv::Rect& roi) const -> cv::Mat{
     auto pt1 = roi.tl();
     auto pt2 = roi.br();
 
-    if (pt1.x < 0) {
-        offsetStart.x -= pt1.x; pt1.x = 0;
+    if (pt1.x < 0)
+    {
+        offsetStart.x -= pt1.x;
+        pt1.x = 0;
     }
-    if (pt1.y < 0) {
-        offsetStart.y -= pt1.y; pt1.y = 0;
+    if (pt1.y < 0)
+    {
+        offsetStart.y -= pt1.y;
+        pt1.y = 0;
     }
-    if (pt2.x >= frame.cols) {
+    if (pt2.x >= frame.cols)
+    {
         offsetEnd.x -= pt2.x - frame.cols + 1;
         pt2.x = frame.cols - 1;
     }
-    if (pt2.y >= frame.rows) {
+    if (pt2.y >= frame.rows)
+    {
         offsetEnd.y -= pt2.y - frame.rows + 1;
         pt2.y = frame.rows - 1;
     }
@@ -91,9 +109,12 @@ auto my::FaceDetection::cropFrame(const cv::Rect& roi) const -> cv::Mat{
 
 //-------------------Private methods start here-------------------
 
-auto my::FaceDetection::calculateRoiFromDetection(const Detection& detection) const -> cv::Rect{
-    int origWidth = m_originImage.size().width;
-    int origHeight = m_originImage.size().height;
+auto my::FaceDetection::calculateRoiFromDetection(
+    const Detection& detection
+) const -> cv::Rect
+{
+    int const origWidth = m_originImage.size().width;
+    int const origHeight = m_originImage.size().height;
 
     auto center = (detection.roi.tl() + detection.roi.br()) * 0.5f;
     center.x *= origWidth;
@@ -102,5 +123,9 @@ auto my::FaceDetection::calculateRoiFromDetection(const Detection& detection) co
     auto w = detection.roi.width * origWidth * 1.5f;
     auto h = detection.roi.height * origHeight * 2.f;
 
-    return cv::Rect((int)center.x - w/2, (int)center.y - h/2, (int)w, (int)h);
+    return {
+        static_cast<int>(static_cast<int>(center.x) - (w / 2)),
+        static_cast<int>(static_cast<int>(center.y) - (h / 2)),
+        static_cast<int>(w),
+        static_cast<int>(h)};
 }
