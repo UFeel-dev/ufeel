@@ -18,6 +18,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          lfs: true
 
       # - name: Install dependencies
       #   run: |
@@ -65,10 +67,13 @@ jobs:
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
             -DCLANG_TIDY_AS_ERRORS=OFF
 
-      - name: Check OpenCV library
+      - name: Check Git LFS and OpenCV
         run: |
+          git lfs version
+          git lfs ls-files | grep libopencv_world.so || true
           file 3rdparty/opencv/lib/libopencv_world.so
           ls -lh 3rdparty/opencv/lib/libopencv_world.so
+          head -c 100 3rdparty/opencv/lib/libopencv_world.so | xxd
 
       - name: Build
         run: |
