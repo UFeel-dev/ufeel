@@ -46,5 +46,4 @@ Checks: >
 
 WarningsAsErrors: >
   modernize-use-nodiscard,
-  modernize-use-trailing-return-type,
   modernize-use-ranges
