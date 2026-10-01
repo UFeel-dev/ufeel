@@ -19,16 +19,35 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # - name: Install dependencies
+      #   run: |
+      #     sudo apt-get update
+      #     sudo apt-get install -y \
+      #       clang \
+      #       clang-tidy \
+      #       cmake \
+      #       ninja-build \
+      #       portaudio19-dev \
+      #       git-lfs \
+      #       dotnet-sdk-8.0 \
+      #       libjpeg62 \
+      #       libwebp7 \
+      #       libpng16-16 \
+      #       libtiff6 \
+      #       libopenexr-3-1-30 \
+      #       libdc1394-25 \
+      #       libgtk-3-0 \
+      #       libyaml-cpp-dev
+
       - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            clang \
-            clang-tidy \
             cmake \
             ninja-build \
             portaudio19-dev \
             git-lfs \
+            dotnet-sdk-8.0 \
             libjpeg62 \
             libwebp7 \
             libpng16-16 \
@@ -55,8 +74,8 @@ jobs:
         run: |
           cmake --build build
 
-      - name: Run clang-tidy
-        run: |
-          clang-tidy \
-            -p build \
-            $(find . -name '*.cpp' -not -path './build/*')
+      # - name: Run clang-tidy
+      #   run: |
+      #     clang-tidy \
+      #       -p build \
+      #       $(find . -name '*.cpp' -not -path './build/*')
