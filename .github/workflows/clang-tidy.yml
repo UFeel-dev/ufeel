@@ -29,11 +29,15 @@ jobs:
             ninja-build \
             portaudio19-dev \
             git-lfs
-
-      - name: Check PortAudio
-        run: |
-          dpkg -l | grep portaudio
-          find /usr/include -name "portaudio.h" -print
+            dotnet-sdk-8.0 \
+            libjpeg62 \
+            libwebp7 \
+            libpng16-16 \
+            libtiff6 \
+            libopenexr-3-1-30 \
+            libdc1394-25 \
+            libgtk-3-0 \
+            libyaml-cpp-dev
 
       - name: Configure CMake
         run: |
@@ -42,6 +46,11 @@ jobs:
             -DCMAKE_BUILD_TYPE=Debug \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
             -DCLANG_TIDY_AS_ERRORS=OFF
+
+      - name: Check OpenCV library
+        run: |
+          file 3rdparty/opencv/lib/libopencv_world.so
+          ls -lh 3rdparty/opencv/lib/libopencv_world.so
 
       - name: Build
         run: |
