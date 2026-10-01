@@ -28,8 +28,7 @@ jobs:
             cmake \
             ninja-build \
             portaudio19-dev \
-            git-lfs
-            dotnet-sdk-8.0 \
+            git-lfs \
             libjpeg62 \
             libwebp7 \
             libpng16-16 \
