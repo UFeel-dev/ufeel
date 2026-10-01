@@ -21,30 +21,12 @@ jobs:
         with:
           lfs: true
 
-      # - name: Install dependencies
-      #   run: |
-      #     sudo apt-get update
-      #     sudo apt-get install -y \
-      #       clang \
-      #       clang-tidy \
-      #       cmake \
-      #       ninja-build \
-      #       portaudio19-dev \
-      #       git-lfs \
-      #       dotnet-sdk-8.0 \
-      #       libjpeg62 \
-      #       libwebp7 \
-      #       libpng16-16 \
-      #       libtiff6 \
-      #       libopenexr-3-1-30 \
-      #       libdc1394-25 \
-      #       libgtk-3-0 \
-      #       libyaml-cpp-dev
-
       - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
+            clang \
+            clang-tidy \
             cmake \
             ninja-build \
             portaudio19-dev \
@@ -67,20 +49,12 @@ jobs:
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
             -DCLANG_TIDY_AS_ERRORS=OFF
 
-      - name: Check Git LFS and OpenCV
-        run: |
-          git lfs version
-          git lfs ls-files | grep libopencv_world.so || true
-          file 3rdparty/opencv/lib/libopencv_world.so
-          ls -lh 3rdparty/opencv/lib/libopencv_world.so
-          head -c 100 3rdparty/opencv/lib/libopencv_world.so | xxd
-
       - name: Build
         run: |
           cmake --build build
 
-      # - name: Run clang-tidy
-      #   run: |
-      #     clang-tidy \
-      #       -p build \
-      #       $(find . -name '*.cpp' -not -path './build/*')
+      - name: Run clang-tidy
+        run: |
+          clang-tidy \
+            -p build \
+            $(find . -name '*.cpp' -not -path './build/*')
