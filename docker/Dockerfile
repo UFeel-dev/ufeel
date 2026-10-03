@@ -6,6 +6,7 @@ RUN apt-get update && apt-get upgrade -y
 RUN apt-get install -y software-properties-common
 RUN add-apt-repository ppa:dotnet/backports
 RUN apt-get install -y \
-    git dotnet-sdk-8.0 clang cmake portaudio19-dev git-lfs libjpeg62 libwebp7 libpng16-16 libtiff6 libopenexr-3-1-30 libdc1394-25 libgtk-3-0 libyaml-cpp-dev
+    git dotnet-sdk-8.0 clang cmake portaudio19-dev git-lfs libjpeg62 libwebp7 libpng16-16 libtiff6 libopenexr-3-1-30 libdc1394-25 libgtk-3-0 libyaml-cpp-dev clang-tidy clang-format-22 iwyu
+RUN ln -s /usr/bin/clang-format-22 /usr/local/bin/clang-format
 
 WORKDIR /mnt

@@ -10,8 +10,8 @@
 #include <ios>
 #include <map>
 #include <sstream>
-#include <string>
 #include <string.h>
+#include <string>
 #include <utility>
 
 extern "C" {
