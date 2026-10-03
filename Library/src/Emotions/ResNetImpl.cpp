@@ -1,22 +1,34 @@
-/*
-** EPITECH PROJECT, 2026
-** ufeel
-** File description:
-** ResnetImpl
-*/
-
 #include "Emotions/ResNetImpl.hpp"
-#include <torch/torch.h>
-#include <stdexcept>
+
+#include <ATen/ops/adaptive_avg_pool2d.h>
+#include <ATen/ops/flatten.h>
+#include <ATen/ops/max_pool2d.h>
+#include <ATen/ops/relu.h>
+#include <cstdint>
 #include <string>
-#include <unordered_map>
+#include <torch/nn/modules/container/sequential.h>
+#include <torch/optim/optimizer.h>
+#include <utility>
 #include <vector>
 
-BasicBlockImpl::BasicBlockImpl(int64_t inplanes, int64_t planes, int64_t stride, torch::nn::Sequential downsample_) : downsample(downsample_)
+BasicBlockImpl::BasicBlockImpl(
+    int64_t inplanes, int64_t planes, int64_t stride, torch::nn::Sequential downsample_
+)
+    : downsample(std::move(std::move(downsample_)))
 {
-    conv1 = register_module("conv1", torch::nn::Conv2d(torch::nn::Conv2dOptions(inplanes, planes, 3).stride(stride).padding(1).bias(false)));
+    conv1 = register_module(
+        "conv1",
+        torch::nn::Conv2d(
+            torch::nn::Conv2dOptions(inplanes, planes, 3).stride(stride).padding(1).bias(false)
+        )
+    );
     bn1 = register_module("bn1", torch::nn::BatchNorm2d(planes));
-    conv2 = register_module("conv2", torch::nn::Conv2d(torch::nn::Conv2dOptions(planes, planes, 3).stride(1).padding(1).bias(false)));
+    conv2 = register_module(
+        "conv2",
+        torch::nn::Conv2d(
+            torch::nn::Conv2dOptions(planes, planes, 3).stride(1).padding(1).bias(false)
+        )
+    );
     bn2 = register_module("bn2", torch::nn::BatchNorm2d(planes));
 
     if (downsample)
@@ -25,7 +37,9 @@ BasicBlockImpl::BasicBlockImpl(int64_t inplanes, int64_t planes, int64_t stride,
     }
 }
 
-torch::Tensor BasicBlockImpl::forward(torch::Tensor x)
+auto BasicBlockImpl::forward(
+    const torch::Tensor& x
+) -> torch::Tensor
 {
     auto identity = x;
 
@@ -47,9 +61,14 @@ torch::Tensor BasicBlockImpl::forward(torch::Tensor x)
     return out;
 }
 
-ResNetImpl::ResNetImpl(const std::vector<int64_t>& layers, int64_t num_classes)
+ResNetImpl::ResNetImpl(
+    const std::vector<int64_t>& layers, int64_t num_classes
+)
 {
-    conv1 = register_module("conv1", torch::nn::Conv2d(torch::nn::Conv2dOptions(3, 64, 7).stride(2).padding(3).bias(false)));
+    conv1 = register_module(
+        "conv1",
+        torch::nn::Conv2d(torch::nn::Conv2dOptions(3, 64, 7).stride(2).padding(3).bias(false))
+    );
     bn1 = register_module("bn1", torch::nn::BatchNorm2d(64));
 
     layer1 = register_module("layer1", make_layer(64, layers[0], 1));
@@ -60,7 +79,9 @@ ResNetImpl::ResNetImpl(const std::vector<int64_t>& layers, int64_t num_classes)
     fc = register_module("fc", torch::nn::Linear(512, num_classes));
 }
 
-torch::nn::Sequential ResNetImpl::make_layer(int64_t planes, int64_t blocks, int64_t stride)
+auto ResNetImpl::make_layer(
+    int64_t planes, int64_t blocks, int64_t stride
+) -> torch::nn::Sequential
 {
     torch::nn::Sequential layers;
 
@@ -68,7 +89,11 @@ torch::nn::Sequential ResNetImpl::make_layer(int64_t planes, int64_t blocks, int
     {
         torch::nn::Sequential downsample;
 
-        downsample->push_back(torch::nn::Conv2d(torch::nn::Conv2dOptions(inplanes, planes, 1).stride(stride).bias(false)));
+        downsample->push_back(
+            torch::nn::Conv2d(
+                torch::nn::Conv2dOptions(inplanes, planes, 1).stride(stride).bias(false)
+            )
+        );
         downsample->push_back(torch::nn::BatchNorm2d(planes));
         layers->push_back(BasicBlock(inplanes, planes, stride, downsample));
 
@@ -87,7 +112,9 @@ torch::nn::Sequential ResNetImpl::make_layer(int64_t planes, int64_t blocks, int
     return layers;
 }
 
-torch::Tensor ResNetImpl::forward(torch::Tensor x)
+auto ResNetImpl::forward(
+    torch::Tensor x
+) -> torch::Tensor
 {
     x = conv1->forward(x);
     x = bn1->forward(x);
@@ -107,7 +134,7 @@ torch::Tensor ResNetImpl::forward(torch::Tensor x)
     return x;
 }
 
-ResNet resnet34()
+auto resnet34() -> ResNet
 {
     std::vector<int64_t> layers = {3, 4, 6, 3};
 

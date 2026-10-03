@@ -1,41 +1,37 @@
-/*
-** EPITECH PROJECT, 2026
-** test_lib
-** File description:
-** EyeTrackingDetector
-*/
-
 #include "EyeTracking/EyeTrackingDetector.hpp"
+
 #include "opencv2/core.hpp"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/core/types.hpp"
 #include "opencv2/highgui.hpp"
 #include "opencv2/imgproc.hpp"
+
 #include <iostream>
 #include <map>
 #include <string>
 
-EyeTrackingDetector::EyeTrackingDetector() : irisLandmarker_("./models")
-{
-
-}
-
-EyeTrackingDetector::~EyeTrackingDetector()
+EyeTrackingDetector::EyeTrackingDetector()
+    : irisLandmarker_("./models")
 {
 }
 
-void EyeTrackingDetector::toggleEyeTrackingDetection(bool state)
+EyeTrackingDetector::~EyeTrackingDetector() = default;
+
+void EyeTrackingDetector::toggleEyeTrackingDetection(
+    bool state
+)
 {
     processEnable_ = state;
-    std::cout << "[EyeTrackingDetector] eye tracking detection " << (state ? "enabled" : "disabled") << std::endl;
+    std::cout << "[EyeTrackingDetector] eye tracking detection " << (state ? "enabled" : "disabled")
+              << '\n';
 }
 
-std::map<std::string, bool> EyeTrackingDetector::process(const cv::Mat& frame)
+auto EyeTrackingDetector::process(
+    const cv::Mat& frame
+) -> std::map<std::string, bool>
 {
     std::map<std::string, bool> result = {
-        {"left",false},{"right",false},
-        {"up",false},{"down",false},{"center",false}
-    };
+        {"left", false}, {"right", false}, {"up", false}, {"down", false}, {"center", false}};
 
     cv::Mat rframe = frame.clone();
 
@@ -44,25 +40,27 @@ std::map<std::string, bool> EyeTrackingDetector::process(const cv::Mat& frame)
     irisLandmarker_.loadImageToInput(rframe);
     irisLandmarker_.runInference();
 
-
-    auto leftEye  = irisLandmarker_.getAllEyeLandmarks(true, false);
+    auto leftEye = irisLandmarker_.getAllEyeLandmarks(true, false);
     auto leftIris = irisLandmarker_.getAllEyeLandmarks(true, true);
 
-    auto rightEye  = irisLandmarker_.getAllEyeLandmarks(false, false);
+    auto rightEye = irisLandmarker_.getAllEyeLandmarks(false, false);
     auto rightIris = irisLandmarker_.getAllEyeLandmarks(false, true);
 
-
-    for (auto landmark: leftEye) {
+    for (auto landmark : leftEye)
+    {
         cv::circle(rframe, landmark, 2, cv::Scalar(255, 0, 255), -1);
     }
-    for (auto landmark: leftIris) {
+    for (auto landmark : leftIris)
+    {
         cv::circle(rframe, landmark, 2, cv::Scalar(0, 0, 255), -1);
     }
 
-    for (auto landmark: rightEye) {
+    for (auto landmark : rightEye)
+    {
         cv::circle(rframe, landmark, 2, cv::Scalar(255, 0, 255), -1);
     }
-    for (auto landmark: rightIris) {
+    for (auto landmark : rightIris)
+    {
         cv::circle(rframe, landmark, 2, cv::Scalar(0, 0, 255), -1);
     }
 
@@ -123,6 +121,4 @@ std::map<std::string, bool> EyeTrackingDetector::process(const cv::Mat& frame)
     return result;
 }
 
-void EyeTrackingDetector::close()
-{
-}
+void EyeTrackingDetector::close() {}

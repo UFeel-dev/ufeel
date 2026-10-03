@@ -1,10 +1,3 @@
-/*
-** EPITECH PROJECT, 2026
-** lib_ufeel
-** File description:
-** UFeelNative
-*/
-
 using System;
 using System.Runtime.InteropServices;
 

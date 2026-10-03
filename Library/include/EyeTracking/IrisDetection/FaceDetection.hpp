@@ -3,80 +3,88 @@
 
 #include "DetectionPostProcess.hpp"
 #include "ModelLoader.hpp"
+#include "opencv2/core/mat.hpp"
+#include "opencv2/core/types.hpp"
 
-namespace my {
+#include <string>
+#include <vector>
 
-    /*
-    A model wrapper to use Mediapipe Face Detector.
-    This class is non-copyable.
-    */
-    class FaceDetection : public my::ModelLoader {
-        public:
-            /*
-            Users MUST provide the FOLDER contain face_detection_short.tflite, NOT THE FILE itself.
-            */
-            explicit FaceDetection(std::string modelPath);
+namespace my
+{
 
-            using my::ModelLoader::loadImageToInput;
-            using my::ModelLoader::loadBytesToInput;
-            using my::ModelLoader::loadOutput;
+/*
+A model wrapper to use Mediapipe Face Detector.
+This class is non-copyable.
+*/
+class FaceDetection : public my::ModelLoader
+{
+    public:
 
-            /*
-            Get access to original input image
-            */
-            [[nodiscard]] auto getOriginalImage() const -> cv::Mat;
+        /*
+        Users MUST provide the FOLDER contain face_detection_short.tflite, NOT THE FILE itself.
+        */
+        explicit FaceDetection(const std::string& modelDir);
 
-            /*
-            Get the regressor result (first output tensor).
-            */
-            [[nodiscard]] auto getFaceRegressor() const -> std::vector<float>;
+        using my::ModelLoader::loadBytesToInput;
+        using my::ModelLoader::loadImageToInput;
+        using my::ModelLoader::loadOutput;
 
-            /*
-            Get the classificator result (second output tensor).
-            */         
-            [[nodiscard]] auto getFaceClassificator() const -> std::vector<float>;
+        /*
+        Get access to original input image
+        */
+        [[nodiscard]] auto getOriginalImage() const -> cv::Mat;
 
-            /*
-            Get the position of the HIGHEST CONFIDENT face
-            (Note: the position is relative to the image passed to InputTensor(0))
-            */
-            [[nodiscard]] virtual auto getFaceRoi() const -> cv::Rect;
+        /*
+        Get the regressor result (first output tensor).
+        */
+        [[nodiscard]] auto getFaceRegressor() const -> std::vector<float>;
 
-            /*
-            Override function from ModelLoader.
-            (Note: index does not matter, the model always load to InputTensor(0))
-            */
-            void loadImageToInput(const cv::Mat& inputImage, int index) override;       
+        /*
+        Get the classificator result (second output tensor).
+        */
+        [[nodiscard]] auto getFaceClassificator() const -> std::vector<float>;
 
-            /*
-            Override function from ModelLoader.
-            Can only run when all input tensors have been loaded.
-            */
-            void runInference() override;
+        /*
+        Get the position of the HIGHEST CONFIDENT face
+        (Note: the position is relative to the image passed to InputTensor(0))
+        */
+        [[nodiscard]] virtual auto getFaceRoi() const -> cv::Rect;
 
-            /*
-            Crop input frame at roi (padding if need)
-            */
-            [[nodiscard]] auto cropFrame(const cv::Rect& roi) const -> cv::Mat;
+        /*
+        Override function from ModelLoader.
+        (Note: index does not matter, the model always load to InputTensor(0))
+        */
+        void loadImageToInput(const cv::Mat& inputImage, int index) override;
 
+        /*
+        Override function from ModelLoader.
+        Can only run when all input tensors have been loaded.
+        */
+        void runInference() override;
 
-        private:
+        /*
+        Crop input frame at roi (padding if need)
+        */
+        [[nodiscard]] auto cropFrame(const cv::Rect& roi) const -> cv::Mat;
 
-            /*       
-            Convert Detection box back to original size
-            */
-            [[nodiscard]] auto calculateRoiFromDetection(const Detection& detection) const -> cv::Rect;
+    private:
 
-            /*
-            Help getting Region of Interest from model outputs
-            */
-            DetectionPostProcess m_postProcessor;
+        /*
+        Convert Detection box back to original size
+        */
+        [[nodiscard]] auto calculateRoiFromDetection(const Detection& detection) const -> cv::Rect;
 
-            /*
-            Save some informations
-            */
-            cv::Mat m_originImage;
-            cv::Rect m_roi;
-    };
-}
+        /*
+        Help getting Region of Interest from model outputs
+        */
+        DetectionPostProcess m_postProcessor;
+
+        /*
+        Save some informations
+        */
+        cv::Mat m_originImage;
+        cv::Rect m_roi;
+};
+
+} // namespace my
 #endif // EYETRACKING_IRISDETECTION_FACEDETECTION_HPP
