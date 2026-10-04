@@ -8,6 +8,6 @@ docker run -it \
     --net=host \
     -e DISPLAY=$DISPLAY \
     -v /tmp/.X11-unix:/tmp/.X11-unix:ro \
-    -v .:/mnt \
+    -v "$(pwd)":/mnt \
     --device=/dev/video0:/dev/video0 \
     ufeeldocker:latest
