@@ -69,6 +69,7 @@ jobs:
           version: '21'
           style: file
           tidy-checks: ''
+          files-changed-only: false
 
       - name: Fail on lint errors
         if: steps.linter.outputs.checks-failed > 0
