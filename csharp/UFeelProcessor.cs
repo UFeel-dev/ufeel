@@ -4,7 +4,9 @@ public sealed class UFeelProcessor : IDisposable
 {
     private IntPtr processor;
 
-    public UFeelProcessor(string libraryPath)
+    public UFeelProcessor(
+        string libraryPath,
+        string speechModelPath)
     {
         NativeLibrary.SetDllImportResolver(
             typeof(UFeelNative).Assembly,
@@ -16,7 +18,8 @@ public sealed class UFeelProcessor : IDisposable
                 return NativeLibrary.Load(libraryPath);
             });
 
-        processor = UFeelNative.ufeel_create();
+        processor = UFeelNative.ufeel_create(
+            speechModelPath);
 
         if (processor == IntPtr.Zero)
             throw new InvalidOperationException(

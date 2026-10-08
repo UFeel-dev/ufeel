@@ -22,13 +22,33 @@ public partial class MainWindow : Window
         string? libraryPath =
             Environment.GetEnvironmentVariable("UFEEL_PACKAGE_PATH");
 
-        if (string.IsNullOrEmpty(libraryPath))
+        if (string.IsNullOrWhiteSpace(libraryPath))
         {
             throw new InvalidOperationException(
                 "UFEEL_PACKAGE_PATH is not set.");
         }
 
-        processor = new UFeelProcessor(libraryPath);
+        libraryPath = Path.GetFullPath(libraryPath);
+
+        string packageDirectory =
+            Path.GetDirectoryName(libraryPath)
+            ?? throw new InvalidOperationException(
+                "Cannot determine the package directory.");
+
+        string speechModelPath = Path.Combine(
+            packageDirectory,
+            "models",
+            "vosk-model-small-fr-0.22");
+
+        if (!Directory.Exists(speechModelPath))
+        {
+            throw new DirectoryNotFoundException(
+                $"Vosk model directory not found: {speechModelPath}");
+        }
+
+        processor = new UFeelProcessor(
+            libraryPath,
+            speechModelPath);
 
         Closed += OnClosed;
 

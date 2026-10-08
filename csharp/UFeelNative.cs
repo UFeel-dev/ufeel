@@ -28,7 +28,8 @@ public static class UFeelNative
     }
 
     [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
-    public static extern IntPtr ufeel_create();
+    public static extern IntPtr ufeel_create(
+        string speechModelPath);
 
     [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
     public static extern void ufeel_destroy(

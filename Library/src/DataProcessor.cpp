@@ -9,7 +9,9 @@
 #include <memory>
 #include <string>
 
-DataProcessor::DataProcessor()
+DataProcessor::DataProcessor(
+    const std::string& speechModelPath
+)
     : cap_(0)
 {
     if (!cap_.isOpened())
@@ -24,7 +26,9 @@ DataProcessor::DataProcessor()
         std::make_unique<EyeTrackingDetector>();
 
     speechToTextDetector_ =
-        std::make_unique<SpeechToTextDetector>();
+        std::make_unique<SpeechToTextDetector>(
+            speechModelPath
+        );
 }
 
 auto DataProcessor::update() -> bool
@@ -94,8 +98,8 @@ DataProcessor::~DataProcessor()
         cap_.release();
     }
 
-    emotionDetector_->close();
-    eyeTrackingDetector_->close();
+    // emotionDetector_->close();
+    // eyeTrackingDetector_->close();
     // speechToTextDetector_->close();
     // heartRateSensorDetector_->close();
 }

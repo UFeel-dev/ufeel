@@ -39,6 +39,12 @@ set(THIRDPARTY_DIR ${CMAKE_SOURCE_DIR}/3rdparty)
 set(LIBRARY_DIR ${CMAKE_SOURCE_DIR}/Library)
 set(WRAPPER_DIR ${CMAKE_SOURCE_DIR}/Wrapper)
 
+set(MODELS_DIR "${CMAKE_SOURCE_DIR}/models")
+
+if(NOT IS_DIRECTORY "${MODELS_DIR}")
+    message(FATAL_ERROR "Models directory not found: ${MODELS_DIR}")
+endif()
+
 set(OPENCV_DIR ${THIRDPARTY_DIR}/opencv)
 set(LIBTORCH_DIR ${THIRDPARTY_DIR}/libtorch)
 set(TFLITE_DIR ${THIRDPARTY_DIR}/tensorflowlite)
@@ -50,16 +56,21 @@ find_package(Torch REQUIRED)
 
 add_library(ufeel_detection_library STATIC
     ${LIBRARY_DIR}/src/DataProcessor.cpp
+
     ${LIBRARY_DIR}/src/Emotions/CheckPointLoader.cpp
     ${LIBRARY_DIR}/src/Emotions/ResNetImpl.cpp
     ${LIBRARY_DIR}/src/Emotions/Model.cpp
     ${LIBRARY_DIR}/src/Emotions/EmotionDetector.cpp
+
     ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/DetectionPostProcess.cpp
     ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/FaceDetection.cpp
     ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/FaceLandmark.cpp
     ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/IrisLandmark.cpp
     ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/ModelLoader.cpp
     ${LIBRARY_DIR}/src/EyeTracking/EyeTrackingDetector.cpp
+
+    ${LIBRARY_DIR}/src/SpeechToText/AudioCapture.cpp
+    ${LIBRARY_DIR}/src/SpeechToText/SpeechRecognizer.cpp
     ${LIBRARY_DIR}/src/SpeechToText/SpeechToTextDetector.cpp
 )
 
@@ -216,3 +227,9 @@ install(
         )
     ]]
 )
+
+install(
+    DIRECTORY "${MODELS_DIR}/"
+    DESTINATION models
+)
+# TODO: resolve the path for every single model accordingly (currently only vosk)

@@ -30,7 +30,7 @@ typedef struct UFeelBoolPair
     uint8_t value;
 } UFeelBoolPair;
 
-void* ufeel_create(void);
+void* ufeel_create(const char* speech_model_path);
 void ufeel_destroy(void* processor);
 
 int32_t ufeel_update(void* processor);

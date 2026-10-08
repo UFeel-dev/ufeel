@@ -16,7 +16,10 @@ class DataProcessor
 {
     public:
 
-        DataProcessor();
+        DataProcessor(
+            const std::string& speechModelPath
+        );
+
         ~DataProcessor();
 
         DataProcessor(const DataProcessor&) = delete;

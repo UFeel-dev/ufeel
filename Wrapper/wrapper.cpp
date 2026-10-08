@@ -12,9 +12,24 @@
 extern "C"
 {
 
-__attribute__((visibility("default"))) auto ufeel_create() -> void*
+__attribute__((visibility("default"))) auto ufeel_create(
+    const char* speechModelPath
+) -> void*
 {
-    return new DataProcessor();
+    if (speechModelPath == nullptr ||
+        speechModelPath[0] == '\0')
+    {
+        return nullptr;
+    }
+
+    try
+    {
+        return new DataProcessor(speechModelPath);
+    }
+    catch (...)
+    {
+        return nullptr;
+    }
 }
 
 __attribute__((visibility("default"))) void ufeel_destroy(
