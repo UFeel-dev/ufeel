@@ -7,9 +7,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# ======================
-# clang-tidy
-# ======================
 option(CLANG_TIDY_COLOR "Force colored clang-tidy diagnostics" ON)
 option(ENABLE_CLANG_TIDY "Run clang-tidy as part of the compilation" OFF)
 option(CLANG_TIDY_AS_ERRORS "Honour the WarningsAsErrors list in .clang-tidy" ON)
@@ -18,7 +15,6 @@ if(ENABLE_CLANG_TIDY)
     find_program(CLANG_TIDY_EXE NAMES clang-tidy)
 
     if(CLANG_TIDY_EXE)
-        # The regex has to stay quoted: unquoted parens/pipes are CMake syntax.
         set(CLANG_TIDY_COMMAND
             "${CLANG_TIDY_EXE}"
             "--header-filter=^${CMAKE_SOURCE_DIR}/(Library|Wrapper)/"
@@ -39,15 +35,9 @@ if(ENABLE_CLANG_TIDY)
     endif()
 endif()
 
-# ======================
-# Paths
-# ======================
 set(THIRDPARTY_DIR ${CMAKE_SOURCE_DIR}/3rdparty)
 set(LIBRARY_DIR ${CMAKE_SOURCE_DIR}/Library)
 set(WRAPPER_DIR ${CMAKE_SOURCE_DIR}/Wrapper)
-set(CSHARP_DIR ${CMAKE_SOURCE_DIR}/csharp)
-set(CSHARP_DEBUG ${CSHARP_DIR}/bin/Debug/net8.0)
-set(CSHARP_RELEASE ${CSHARP_DIR}/bin/Release/net8.0)
 
 set(OPENCV_DIR ${THIRDPARTY_DIR}/opencv)
 set(LIBTORCH_DIR ${THIRDPARTY_DIR}/libtorch)
@@ -55,31 +45,21 @@ set(TFLITE_DIR ${THIRDPARTY_DIR}/tensorflowlite)
 set(VOSK_DIR ${THIRDPARTY_DIR}/vosk)
 set(PORTAUDIO_DIR ${THIRDPARTY_DIR}/portaudio)
 
-
-# ======================
-# LibTorch
-# ======================
 set(Torch_DIR ${LIBTORCH_DIR}/share/cmake/Torch)
 find_package(Torch REQUIRED)
 
-# ======================
-# Library
-# ======================
 add_library(ufeel_detection_library STATIC
     ${LIBRARY_DIR}/src/DataProcessor.cpp
-
     ${LIBRARY_DIR}/src/Emotions/CheckPointLoader.cpp
     ${LIBRARY_DIR}/src/Emotions/ResNetImpl.cpp
     ${LIBRARY_DIR}/src/Emotions/Model.cpp
     ${LIBRARY_DIR}/src/Emotions/EmotionDetector.cpp
-
     ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/DetectionPostProcess.cpp
     ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/FaceDetection.cpp
     ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/FaceLandmark.cpp
     ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/IrisLandmark.cpp
     ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/ModelLoader.cpp
     ${LIBRARY_DIR}/src/EyeTracking/EyeTrackingDetector.cpp
-
     ${LIBRARY_DIR}/src/SpeechToText/SpeechToTextDetector.cpp
 )
 
@@ -89,13 +69,9 @@ if(CLANG_TIDY_COMMAND)
     )
 endif()
 
-# ======================
-# Includes
-# ======================
 target_include_directories(ufeel_detection_library
     PUBLIC
         ${LIBRARY_DIR}/include
-
     SYSTEM PUBLIC
         ${OPENCV_DIR}/include/opencv4
         ${TORCH_INCLUDE_DIRS}
@@ -104,9 +80,6 @@ target_include_directories(ufeel_detection_library
         ${PORTAUDIO_DIR}/include
 )
 
-# ======================
-# Link libs
-# ======================
 target_link_libraries(ufeel_detection_library PUBLIC
     ${OPENCV_DIR}/lib/libopencv_core.so
     ${OPENCV_DIR}/lib/libopencv_imgproc.so
@@ -118,9 +91,8 @@ target_link_libraries(ufeel_detection_library PUBLIC
     ${TORCH_LIBRARIES}
 
     ${TFLITE_DIR}/lib/libtensorflow-lite.a
-    ${TFLITE_DIR}/lib/flatbuffers/libflatbuffers.a # Need to be compiled after TensorFlow
+    ${TFLITE_DIR}/lib/flatbuffers/libflatbuffers.a
     ${TFLITE_DIR}/lib/ruy/libruy_combined.a
-
 
     ${VOSK_DIR}/lib/libvosk.a
 
@@ -142,10 +114,8 @@ target_link_libraries(ufeel_detection_library PUBLIC
     ${VOSK_DIR}/lib/kaldi/fstext/kaldi-fstext.a
     ${VOSK_DIR}/lib/kaldi/util/kaldi-util.a
     ${VOSK_DIR}/lib/kaldi/base/kaldi-base.a
-
     ${VOSK_DIR}/lib/openfst/libfst.a
     ${VOSK_DIR}/lib/openfst/libfstngram.a
-
     ${VOSK_DIR}/lib/openblas/libopenblas-r0.3.20.a
     ${VOSK_DIR}/lib/openblas/libblas.a
     ${VOSK_DIR}/lib/openblas/liblapack.a
@@ -155,16 +125,10 @@ target_link_libraries(ufeel_detection_library PUBLIC
     ${PORTAUDIO_DIR}/lib/libportaudio.so
 )
 
-# ======================
-# Torch flags
-# ======================
 target_compile_options(ufeel_detection_library PRIVATE
     ${TORCH_CXX_FLAGS}
 )
 
-# ======================
-# Wrapper (C API)
-# ======================
 add_library(ufeel_wrapper SHARED
     ${WRAPPER_DIR}/wrapper.cpp
 )
@@ -189,31 +153,12 @@ endif()
 target_include_directories(ufeel_wrapper
     PUBLIC
         ${LIBRARY_DIR}/include
-
+        ${WRAPPER_DIR}
     SYSTEM PUBLIC
         ${OPENCV_DIR}/include/opencv4
         ${TORCH_INCLUDE_DIRS}
 )
 
-# ======================
-# C# Test
-# ======================
-add_custom_command(TARGET ufeel_wrapper POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CSHARP_DEBUG}
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CSHARP_RELEASE}
-
-    COMMAND ${CMAKE_COMMAND} -E copy
-        $<TARGET_FILE:ufeel_wrapper>
-        ${CSHARP_DEBUG}
-
-    COMMAND ${CMAKE_COMMAND} -E copy
-        $<TARGET_FILE:ufeel_wrapper>
-        ${CSHARP_RELEASE}
-)
-
-# ======================
-# Installation
-# ======================
 install(
     TARGETS ufeel_wrapper
     LIBRARY DESTINATION .
