@@ -1,11 +1,13 @@
-/*
-** EPITECH PROJECT, 2026
-** ufeel
-** File description:
-** SpeechToTextDetector
-*/
-
 #include "SpeechToText/SpeechToTextDetector.hpp"
+
+#include "vosk_api.h"
+
+#include <cstdint>
+#include <cstring>
+#include <portaudio.h>
+#include <string>
+#include <thread>
+#include <vector>
 
 SpeechToTextDetector::SpeechToTextDetector()
 {
@@ -20,66 +22,86 @@ SpeechToTextDetector::~SpeechToTextDetector()
     vosk_model_free(model);
 }
 
-void SpeechToTextDetector::toggle(bool state)
+void SpeechToTextDetector::toggle(
+    bool state
+)
 {
     process_enable = state;
-    if (state) {
+    if (state)
+    {
         start();
-    } else {
+    }
+    else
+    {
         stop();
     }
 }
 
-std::string SpeechToTextDetector::process() const
+auto SpeechToTextDetector::process() const -> std::string
 {
     return current_text;
 }
 
-std::string SpeechToTextDetector::extract_text(const char *json)
+auto SpeechToTextDetector::extract_text(
+    const char* json
+) -> std::string
 {
-    static const std::vector<char> parse = {
-        ':',
-        '"'
-    };
-    static const char *key = "\"text\"";
-    const char *p = strstr(json, key);
-    if (p == nullptr) {
+    static const std::vector<char> parse = {':', '"'};
+    static const char* key = "\"text\"";
+    const char* p = strstr(json, key);
+    if (p == nullptr)
+    {
         return "";
     }
 
-    for (auto parseChar: parse) {
+    for (auto parseChar : parse)
+    {
         p = strchr(p, parseChar);
-        if (p == nullptr) {
+        if (p == nullptr)
+        {
             return "";
         }
     }
     p++;
 
     const char* end = strchr(p, '"');
-    if (end == nullptr) {
+    if (end == nullptr)
+    {
         return "";
     }
 
     return {p, static_cast<std::size_t>(end - p)};
 }
 
-int SpeechToTextDetector::paCallback(const void *input, void */*_*/, uint64_t frameCount, const PaStreamCallbackTimeInfo */*_*/, PaStreamCallbackFlags /*_*/, void *userData)
+auto SpeechToTextDetector::paCallback(
+    const void* input,
+    void* /*_*/,
+    uint64_t frameCount,
+    const PaStreamCallbackTimeInfo* /*_*/,
+    PaStreamCallbackFlags /*_*/,
+    void* userData
+) -> int
 {
     auto* self = static_cast<SpeechToTextDetector*>(userData);
 
-    if (!self->process_enable) {
+    if (!self->process_enable)
+    {
         return paContinue;
     }
 
     const auto* data = static_cast<const int16_t*>(input);
-    int len = static_cast<int>(frameCount * sizeof(int16_t));
+    int const len = static_cast<int>(frameCount * sizeof(int16_t));
 
-    if (vosk_recognizer_accept_waveform(self->recognizer, reinterpret_cast<const char*>(data), len) != 0) {
+    if (vosk_recognizer_accept_waveform(
+            self->recognizer, reinterpret_cast<const char*>(data), len
+        ) != 0)
+    {
         const char* res = vosk_recognizer_result(self->recognizer);
 
-        std::string text = extract_text(res);
+        std::string const text = extract_text(res);
 
-        if (!text.empty()) {
+        if (!text.empty())
+        {
             self->current_text = text;
         }
     }
@@ -89,7 +111,8 @@ int SpeechToTextDetector::paCallback(const void *input, void */*_*/, uint64_t fr
 
 void SpeechToTextDetector::start()
 {
-    if (running) {
+    if (running)
+    {
         return;
     }
     running = true;
@@ -99,7 +122,8 @@ void SpeechToTextDetector::start()
 void SpeechToTextDetector::stop()
 {
     running = false;
-    if (worker.joinable()) {
+    if (worker.joinable())
+    {
         worker.join();
     }
 }
@@ -108,12 +132,13 @@ void SpeechToTextDetector::run()
 {
     Pa_Initialize();
 
-    PaStream *stream = nullptr;
+    PaStream* stream = nullptr;
 
     Pa_OpenDefaultStream(&stream, 1, 0, paInt16, 16000, 8000, paCallback, this);
     Pa_StartStream(stream);
 
-    while (running) {
+    while (running)
+    {
         Pa_Sleep(10);
     }
 

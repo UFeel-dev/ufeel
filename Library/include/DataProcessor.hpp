@@ -1,23 +1,21 @@
-/*
-** EPITECH PROJECT, 2026
-** test_lib
-** File description:
-** DataProcessor
-*/
-
 #ifndef DATAPROCESSOR_HPP
-    #define DATAPROCESSOR_HPP
+#define DATAPROCESSOR_HPP
 
-#include "Emotions/EmotionDetector.hpp"
-#include "EyeTracking/EyeTrackingDetector.hpp"
-#include "SpeechToText/SpeechToTextDetector.hpp"
-// #include "HeartRateSensor/HeartRateSensorDetector.hpp"
-#include <opencv2/opencv.hpp>
+#include "opencv2/core/mat.hpp"
+#include "opencv2/videoio.hpp"
 
+#include <map>
+#include <memory>
+#include <string>
+
+class EmotionDetector;
+class EyeTrackingDetector;
+class SpeechToTextDetector;
 
 class DataProcessor
 {
     public:
+
         DataProcessor();
         ~DataProcessor();
 
@@ -40,6 +38,7 @@ class DataProcessor
         auto getFrame() -> cv::Mat;
 
     protected:
+
         cv::VideoCapture cap_;
         cv::Mat frame_;
 

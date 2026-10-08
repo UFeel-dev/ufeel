@@ -1,11 +1,4 @@
-﻿/*
-** EPITECH PROJECT, 2026
-** lib_ufeel
-** File description:
-** Program
-*/
-
-using System;
+﻿using System;
 using System.Runtime.InteropServices;
 
 class Program

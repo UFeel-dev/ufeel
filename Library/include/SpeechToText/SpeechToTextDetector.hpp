@@ -1,25 +1,18 @@
-/*
-** EPITECH PROJECT, 2026
-** ufeel
-** File description:
-** SpeechToTextDetector
-*/
-
 #ifndef SPEECHTOTEXT_SPEECHTOTEXTDETECTOR_HPP
 #define SPEECHTOTEXT_SPEECHTOTEXTDETECTOR_HPP
 
 #include "vosk_api.h"
+
 #include <atomic>
-#include <cstring>
-#include <iostream>
+#include <cstdint>
 #include <portaudio.h>
 #include <string>
 #include <thread>
-#include <vector>
 
 class SpeechToTextDetector
 {
     public:
+
         SpeechToTextDetector();
         ~SpeechToTextDetector();
 
@@ -33,6 +26,7 @@ class SpeechToTextDetector
         [[nodiscard]] auto process() const -> std::string;
 
     private:
+
         VoskModel* model = nullptr;
         VoskRecognizer* recognizer = nullptr;
 
@@ -44,11 +38,18 @@ class SpeechToTextDetector
 
         static auto extract_text(const char* json) -> std::string;
 
-        static auto paCallback(const void *input, void *, uint64_t frameCount, const PaStreamCallbackTimeInfo*, PaStreamCallbackFlags, void *userData) -> int;
+        static auto paCallback(
+            const void* input,
+            void* /*unused*/,
+            uint64_t frameCount,
+            const PaStreamCallbackTimeInfo* /*unused*/,
+            PaStreamCallbackFlags /*unused*/,
+            void* userData
+        ) -> int;
 
         void start();
         void stop();
         void run();
 };
 
-#endif // SPEECHTOTEXT_SPEECHTOTEXTDETECTOR_HPP 
+#endif // SPEECHTOTEXT_SPEECHTOTEXTDETECTOR_HPP

@@ -1,5 +1,6 @@
 Checks: >
   *,
+  misc-include-cleaner,
   -cppcoreguidelines-avoid-magic-numbers,
   -cppcoreguidelines-pro-bounds-pointer-arithmetic,
   -readability-magic-numbers,
@@ -42,9 +43,5 @@ Checks: >
   -cert-msc51-cpp,
   -cert-msc32-c,
   -llvm-namespace-comment,
-  -google-readability-namespace-comments
-
-WarningsAsErrors: >
-  modernize-use-nodiscard,
-  modernize-use-trailing-return-type,
-  modernize-use-ranges
+  -google-readability-namespace-comments,
+  -llvm-use-ranges

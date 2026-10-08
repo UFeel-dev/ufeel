@@ -1,35 +1,51 @@
 #include "EyeTracking/IrisDetection/DetectionPostProcess.hpp"
-#include <iostream>
+
+#include "opencv2/core/types.hpp"
+
+#include <algorithm>
+#include <vector>
 
 /*
 Helper function
 */
-auto generateAnchors(my::AnchorOptions options) -> std::vector<cv::Rect2f> {
+static auto generateAnchors(
+    my::AnchorOptions options
+) -> std::vector<cv::Rect2f>
+{
     std::vector<cv::Rect2f> anchors;
-    for (int i = 0; i < NUM_SIZES; ++i) {
+    for (int i = 0; i < NUM_SIZES; ++i)
+    {
         auto size = options.sizes[i];
         auto numLayer = options.numLayers[i];
 
-        for (auto y = 0; y < size; ++y) {
-            for (auto x = 0; x < size; ++x) {
-                float x_center = (x + options.offsetX) * 1.f / size;
-                float y_center = (y + options.offsetY) * 1.f / size;
-                float w = 1.f;
-                float h = 1.f;
-                anchors.insert(anchors.end(), numLayer, cv::Rect2f(x_center - w/2.f, y_center - h/2.f, w, h));
+        for (auto y = 0; y < size; ++y)
+        {
+            for (auto x = 0; x < size; ++x)
+            {
+                float const x_center = (x + options.offsetX) * 1.f / size;
+                float const y_center = (y + options.offsetY) * 1.f / size;
+                float const w = 1.f;
+                float const h = 1.f;
+                anchors.insert(
+                    anchors.end(),
+                    numLayer,
+                    cv::Rect2f(x_center - (w / 2.f), y_center - (h / 2.f), w, h)
+                );
             }
         }
     }
     return anchors;
 }
 
+my::DetectionPostProcess::DetectionPostProcess()
+    : m_anchors(generateAnchors(AnchorOptions()))
+{
+}
 
-my::DetectionPostProcess::DetectionPostProcess() :
-    m_anchors(generateAnchors(AnchorOptions())) {}
-
-
-auto my::DetectionPostProcess::decodeBox
-(const std::vector<float>& rawBoxes, int index) const -> cv::Rect2f {
+auto my::DetectionPostProcess::decodeBox(
+    const std::vector<float>& rawBoxes, int index
+) const -> cv::Rect2f
+{
     auto anchor = m_anchors[index];
     auto center = (anchor.tl() + anchor.br()) * 0.5;
 
@@ -39,20 +55,23 @@ auto my::DetectionPostProcess::decodeBox
     float w = rawBoxes[boxOffset + 2];
     float h = rawBoxes[boxOffset + 3];
 
-    cx = cx / DETECTION_SIZE * anchor.width + center.x;
-    cy = cy / DETECTION_SIZE * anchor.height + center.y;
+    cx = (cx / DETECTION_SIZE * anchor.width) + center.x;
+    cy = (cy / DETECTION_SIZE * anchor.height) + center.y;
     w = w / DETECTION_SIZE * anchor.width;
     h = h / DETECTION_SIZE * anchor.height;
 
-    return cv::Rect2f(cx - w/2, cy - h/2, w, h);
+    return {cx - (w / 2), cy - (h / 2), w, h};
 }
 
-
-auto my::DetectionPostProcess::getHighestScoreDetection
-(const std::vector<float>& rawBoxes, const std::vector<float>& scores) const -> my::Detection {
+auto my::DetectionPostProcess::getHighestScoreDetection(
+    const std::vector<float>& rawBoxes, const std::vector<float>& scores
+) const -> my::Detection
+{
     my::Detection detection;
-    for (int i = 0; i < NUM_BOXES; i++) {
-        if (scores[i] > std::max(MIN_THRESHOLD, detection.score)) {
+    for (int i = 0; i < NUM_BOXES; i++)
+    {
+        if (scores[i] > std::max(MIN_THRESHOLD, detection.score))
+        {
             auto data = decodeBox(rawBoxes, i);
             detection = my::Detection(scores[i], CLASS_ID, data);
         }
