@@ -1,4 +1,5 @@
 #include "SpeechToText/SpeechToTextDetector.hpp"
+
 #include "SpeechToText/AudioCapture.hpp"
 
 #include <cstdint>
@@ -20,7 +21,9 @@ SpeechToTextDetector::~SpeechToTextDetector()
     stop();
 }
 
-void SpeechToTextDetector::toggle(bool state)
+void SpeechToTextDetector::toggle(
+    bool state
+)
 {
     if (state)
     {
@@ -49,10 +52,7 @@ void SpeechToTextDetector::start()
         return;
     }
 
-    worker_ = std::thread(
-        &SpeechToTextDetector::run,
-        this
-    );
+    worker_ = std::thread(&SpeechToTextDetector::run, this);
 }
 
 void SpeechToTextDetector::stop()
@@ -72,9 +72,7 @@ void SpeechToTextDetector::stop()
 
 void SpeechToTextDetector::run()
 {
-    std::vector<int16_t> buffer(
-        AudioCapture::framesPerBuffer
-    );
+    std::vector<int16_t> buffer(AudioCapture::framesPerBuffer);
 
     while (running_)
     {
@@ -86,8 +84,7 @@ void SpeechToTextDetector::run()
         processAudio(buffer);
     }
 
-    const std::string finalText =
-        recognizer_.finalize();
+    const std::string finalText = recognizer_.finalize();
 
     if (!finalText.empty())
     {
@@ -99,11 +96,7 @@ void SpeechToTextDetector::processAudio(
     const std::vector<int16_t>& buffer
 )
 {
-    const std::string text =
-        recognizer_.process(
-            buffer.data(),
-            buffer.size()
-        );
+    const std::string text = recognizer_.process(buffer.data(), buffer.size());
 
     if (!text.empty())
     {
@@ -111,7 +104,9 @@ void SpeechToTextDetector::processAudio(
     }
 }
 
-void SpeechToTextDetector::setText(std::string text)
+void SpeechToTextDetector::setText(
+    std::string text
+)
 {
     std::lock_guard lock(textMutex_);
     currentText_ = std::move(text);

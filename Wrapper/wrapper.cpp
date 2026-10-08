@@ -1,23 +1,19 @@
-#include "ufeel.h"
-
 #include "DataProcessor.hpp"
-
 #include "opencv2/core/mat.hpp"
+#include "ufeel.h"
 
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <string>
 
-extern "C"
-{
+extern "C" {
 
 __attribute__((visibility("default"))) auto ufeel_create(
     const char* speechModelPath
 ) -> void*
 {
-    if (speechModelPath == nullptr ||
-        speechModelPath[0] == '\0')
+    if (speechModelPath == nullptr || speechModelPath[0] == '\0')
     {
         return nullptr;
     }
@@ -48,9 +44,7 @@ __attribute__((visibility("default"))) auto ufeel_update(
         return 0;
     }
 
-    return static_cast<DataProcessor*>(processor)->update()
-        ? 1
-        : 0;
+    return static_cast<DataProcessor*>(processor)->update() ? 1 : 0;
 }
 
 __attribute__((visibility("default"))) auto ufeel_get_frame(
@@ -62,8 +56,7 @@ __attribute__((visibility("default"))) auto ufeel_get_frame(
         return nullptr;
     }
 
-    cv::Mat const frame =
-        static_cast<DataProcessor*>(processor)->getFrame();
+    cv::Mat const frame = static_cast<DataProcessor*>(processor)->getFrame();
 
     if (frame.empty())
     {
@@ -77,31 +70,19 @@ __attribute__((visibility("default"))) auto ufeel_get_frame(
 
     auto* out = new UFeelFrame();
 
-    out->width =
-        static_cast<uint32_t>(frame.cols);
+    out->width = static_cast<uint32_t>(frame.cols);
 
-    out->height =
-        static_cast<uint32_t>(frame.rows);
+    out->height = static_cast<uint32_t>(frame.rows);
 
-    out->stride =
-        static_cast<uint32_t>(
-            frame.cols * 3);
+    out->stride = static_cast<uint32_t>(frame.cols * 3);
 
-    size_t const size =
-        static_cast<size_t>(out->stride) *
-        out->height;
+    size_t const size = static_cast<size_t>(out->stride) * out->height;
 
-    out->data =
-        new uint8_t[size];
+    out->data = new uint8_t[size];
 
     for (uint32_t y = 0; y < out->height; y++)
     {
-        std::memcpy(
-            out->data +
-                (static_cast<size_t>(y) * out->stride),
-            frame.ptr(y),
-            out->stride
-        );
+        std::memcpy(out->data + (static_cast<size_t>(y) * out->stride), frame.ptr(y), out->stride);
     }
 
     return out;
@@ -121,8 +102,7 @@ __attribute__((visibility("default"))) void ufeel_free_frame(
 }
 
 __attribute__((visibility("default"))) auto ufeel_get_emotions(
-    void* processor,
-    uint32_t* size
+    void* processor, uint32_t* size
 ) -> UFeelPair*
 {
     if (processor == nullptr || size == nullptr)
@@ -130,20 +110,16 @@ __attribute__((visibility("default"))) auto ufeel_get_emotions(
         return nullptr;
     }
 
-    auto const& emotions =
-        static_cast<DataProcessor*>(processor)
-            ->getEmotions();
+    auto const& emotions = static_cast<DataProcessor*>(processor)->getEmotions();
 
-    *size =
-        static_cast<uint32_t>(emotions.size());
+    *size = static_cast<uint32_t>(emotions.size());
 
     if (*size == 0)
     {
         return nullptr;
     }
 
-    auto* out =
-        new UFeelPair[*size];
+    auto* out = new UFeelPair[*size];
 
     uint32_t i = 0;
 
@@ -158,8 +134,7 @@ __attribute__((visibility("default"))) auto ufeel_get_emotions(
 }
 
 __attribute__((visibility("default"))) void ufeel_free_emotions(
-    UFeelPair* emotions,
-    uint32_t size
+    UFeelPair* emotions, uint32_t size
 )
 {
     if (emotions == nullptr)
@@ -184,13 +159,11 @@ __attribute__((visibility("default"))) void ufeel_calibrate_directions(
         return;
     }
 
-    static_cast<DataProcessor*>(processor)
-        ->calibrateEyeTracking();
+    static_cast<DataProcessor*>(processor)->calibrateEyeTracking();
 }
 
 __attribute__((visibility("default"))) auto ufeel_get_directions(
-    void* processor,
-    uint32_t* size
+    void* processor, uint32_t* size
 ) -> UFeelBoolPair*
 {
     if (processor == nullptr || size == nullptr)
@@ -198,20 +171,16 @@ __attribute__((visibility("default"))) auto ufeel_get_directions(
         return nullptr;
     }
 
-    auto const& directions =
-        static_cast<DataProcessor*>(processor)
-            ->getDirections();
+    auto const& directions = static_cast<DataProcessor*>(processor)->getDirections();
 
-    *size =
-        static_cast<uint32_t>(directions.size());
+    *size = static_cast<uint32_t>(directions.size());
 
     if (*size == 0)
     {
         return nullptr;
     }
 
-    auto* out =
-        new UFeelBoolPair[*size];
+    auto* out = new UFeelBoolPair[*size];
 
     uint32_t i = 0;
 
@@ -226,8 +195,7 @@ __attribute__((visibility("default"))) auto ufeel_get_directions(
 }
 
 __attribute__((visibility("default"))) void ufeel_free_directions(
-    UFeelBoolPair* directions,
-    uint32_t size
+    UFeelBoolPair* directions, uint32_t size
 )
 {
     if (directions == nullptr)
@@ -244,8 +212,7 @@ __attribute__((visibility("default"))) void ufeel_free_directions(
 }
 
 __attribute__((visibility("default"))) void ufeel_toggle_speech(
-    void* processor,
-    uint8_t state
+    void* processor, uint8_t state
 )
 {
     if (processor == nullptr)
@@ -253,8 +220,7 @@ __attribute__((visibility("default"))) void ufeel_toggle_speech(
         return;
     }
 
-    static_cast<DataProcessor*>(processor)
-        ->toggleSpeechToText(state != 0);
+    static_cast<DataProcessor*>(processor)->toggleSpeechToText(state != 0);
 }
 
 __attribute__((visibility("default"))) auto ufeel_get_speech(
@@ -266,9 +232,7 @@ __attribute__((visibility("default"))) auto ufeel_get_speech(
         return nullptr;
     }
 
-    std::string const& speech =
-        static_cast<DataProcessor*>(processor)
-            ->getSpeech();
+    std::string const& speech = static_cast<DataProcessor*>(processor)->getSpeech();
 
     return strdup(speech.c_str());
 }
@@ -279,5 +243,4 @@ __attribute__((visibility("default"))) void ufeel_free_speech(
 {
     free(speech);
 }
-
 }

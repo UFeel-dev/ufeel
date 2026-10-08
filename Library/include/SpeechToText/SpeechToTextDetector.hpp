@@ -15,9 +15,7 @@ class SpeechToTextDetector
 {
     public:
 
-        explicit SpeechToTextDetector(
-            const std::string& modelPath
-        );
+        explicit SpeechToTextDetector(const std::string& modelPath);
 
         ~SpeechToTextDetector();
 
@@ -47,9 +45,7 @@ class SpeechToTextDetector
         void stop();
         void run();
 
-        void processAudio(
-            const std::vector<int16_t>& buffer
-        );
+        void processAudio(const std::vector<int16_t>& buffer);
 
         void setText(std::string text);
 

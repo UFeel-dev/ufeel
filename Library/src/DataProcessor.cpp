@@ -19,16 +19,11 @@ DataProcessor::DataProcessor(
         std::cerr << "[ERROR] Cannot open camera capture_id=0\n";
     }
 
-    emotionDetector_ =
-        std::make_unique<EmotionDetector>();
+    emotionDetector_ = std::make_unique<EmotionDetector>();
 
-    eyeTrackingDetector_ =
-        std::make_unique<EyeTrackingDetector>();
+    eyeTrackingDetector_ = std::make_unique<EyeTrackingDetector>();
 
-    speechToTextDetector_ =
-        std::make_unique<SpeechToTextDetector>(
-            speechModelPath
-        );
+    speechToTextDetector_ = std::make_unique<SpeechToTextDetector>(speechModelPath);
 }
 
 auto DataProcessor::update() -> bool
@@ -42,14 +37,11 @@ auto DataProcessor::update() -> bool
         return false;
     }
 
-    emotions_ =
-        emotionDetector_->process(frame_);
+    emotions_ = emotionDetector_->process(frame_);
 
-    directions_ =
-        eyeTrackingDetector_->process(frame_);
+    directions_ = eyeTrackingDetector_->process(frame_);
 
-    speech_ =
-        speechToTextDetector_->process();
+    speech_ = speechToTextDetector_->process();
 
     return true;
 }
@@ -59,14 +51,12 @@ auto DataProcessor::getFrame() const -> cv::Mat
     return frame_;
 }
 
-auto DataProcessor::getEmotions() const
-    -> const std::map<std::string, float>&
+auto DataProcessor::getEmotions() const -> const std::map<std::string, float>&
 {
     return emotions_;
 }
 
-auto DataProcessor::getDirections() const
-    -> const std::map<std::string, bool>&
+auto DataProcessor::getDirections() const -> const std::map<std::string, bool>&
 {
     return directions_;
 }
@@ -76,11 +66,11 @@ auto DataProcessor::getSpeech() const -> const std::string&
     return speech_;
 }
 
-void DataProcessor::calibrateEyeTracking()
-{
-}
+void DataProcessor::calibrateEyeTracking() {}
 
-void DataProcessor::toggleSpeechToText(bool state)
+void DataProcessor::toggleSpeechToText(
+    bool state
+)
 {
     speechToTextDetector_->toggle(state);
 }

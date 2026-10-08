@@ -11,9 +11,7 @@ class SpeechRecognizer
 {
     public:
 
-        explicit SpeechRecognizer(
-            const std::string& modelPath
-        );
+        explicit SpeechRecognizer(const std::string& modelPath);
 
         ~SpeechRecognizer();
 
@@ -23,10 +21,7 @@ class SpeechRecognizer
         SpeechRecognizer(SpeechRecognizer&&) = delete;
         auto operator=(SpeechRecognizer&&) -> SpeechRecognizer& = delete;
 
-        auto process(
-            const int16_t* samples,
-            std::size_t sampleCount
-        ) -> std::string;
+        auto process(const int16_t* samples, std::size_t sampleCount) -> std::string;
 
         auto finalize() -> std::string;
         void reset();
@@ -38,18 +33,11 @@ class SpeechRecognizer
         VoskModel* model_ = nullptr;
         VoskRecognizer* recognizer_ = nullptr;
 
-        static auto extractText(
-            const char* json,
-            const char* key
-        ) -> std::string;
+        static auto extractText(const char* json, const char* key) -> std::string;
 
-        static auto extractFinalText(
-            const char* json
-        ) -> std::string;
+        static auto extractFinalText(const char* json) -> std::string;
 
-        static auto extractPartialText(
-            const char* json
-        ) -> std::string;
+        static auto extractPartialText(const char* json) -> std::string;
 };
 
 #endif // SPEECHTOTEXT_SPEECHRECOGNIZER_HPP

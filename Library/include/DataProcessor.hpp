@@ -16,9 +16,7 @@ class DataProcessor
 {
     public:
 
-        DataProcessor(
-            const std::string& speechModelPath
-        );
+        DataProcessor(const std::string& speechModelPath);
 
         ~DataProcessor();
 
@@ -32,11 +30,9 @@ class DataProcessor
 
         auto getFrame() const -> cv::Mat;
 
-        auto getEmotions() const
-            -> const std::map<std::string, float>&;
+        auto getEmotions() const -> const std::map<std::string, float>&;
 
-        auto getDirections() const
-            -> const std::map<std::string, bool>&;
+        auto getDirections() const -> const std::map<std::string, bool>&;
 
         auto getSpeech() const -> const std::string&;
 

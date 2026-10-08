@@ -33,12 +33,9 @@ class AudioCapture
 
     private:
 
-        using AudioBuffer =
-            std::array<int16_t, framesPerBuffer>;
+        using AudioBuffer = std::array<int16_t, framesPerBuffer>;
 
-        static_assert(
-            std::atomic<std::uint64_t>::is_always_lock_free
-        );
+        static_assert(std::atomic<std::uint64_t>::is_always_lock_free);
 
         PaStream* stream_ = nullptr;
         bool initialized_ = false;
@@ -61,14 +58,9 @@ class AudioCapture
         void closeStream();
         void terminate();
 
-        auto push(
-            const int16_t* samples,
-            std::size_t frameCount
-        ) -> int;
+        auto push(const int16_t* samples, std::size_t frameCount) -> int;
 
-        auto pop(
-            std::vector<int16_t>& buffer
-        ) -> bool;
+        auto pop(std::vector<int16_t>& buffer) -> bool;
 
         static auto callback(
             const void* input,

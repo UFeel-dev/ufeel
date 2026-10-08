@@ -1,4 +1,5 @@
 #include "SpeechToText/SpeechRecognizer.hpp"
+
 #include "vosk_api.h"
 
 #include <cstddef>
@@ -14,24 +15,17 @@ SpeechRecognizer::SpeechRecognizer(
 
     if (model_ == nullptr)
     {
-        throw std::runtime_error(
-            "Failed to load Vosk model."
-        );
+        throw std::runtime_error("Failed to load Vosk model.");
     }
 
-    recognizer_ = vosk_recognizer_new(
-        model_,
-        sampleRate
-    );
+    recognizer_ = vosk_recognizer_new(model_, sampleRate);
 
     if (recognizer_ == nullptr)
     {
         vosk_model_free(model_);
         model_ = nullptr;
 
-        throw std::runtime_error(
-            "Failed to create Vosk recognizer."
-        );
+        throw std::runtime_error("Failed to create Vosk recognizer.");
     }
 }
 
@@ -51,39 +45,25 @@ SpeechRecognizer::~SpeechRecognizer()
 }
 
 auto SpeechRecognizer::process(
-    const int16_t* samples,
-    std::size_t sampleCount
+    const int16_t* samples, std::size_t sampleCount
 ) -> std::string
 {
-    const int bytes =
-        static_cast<int>(
-            sampleCount * sizeof(int16_t)
-        );
+    const int bytes = static_cast<int>(sampleCount * sizeof(int16_t));
 
     const int accepted =
-        vosk_recognizer_accept_waveform(
-            recognizer_,
-            reinterpret_cast<const char*>(samples),
-            bytes
-        );
+        vosk_recognizer_accept_waveform(recognizer_, reinterpret_cast<const char*>(samples), bytes);
 
     if (accepted != 0)
     {
-        return extractFinalText(
-            vosk_recognizer_result(recognizer_)
-        );
+        return extractFinalText(vosk_recognizer_result(recognizer_));
     }
 
-    return extractPartialText(
-        vosk_recognizer_partial_result(recognizer_)
-    );
+    return extractPartialText(vosk_recognizer_partial_result(recognizer_));
 }
 
 auto SpeechRecognizer::finalize() -> std::string
 {
-    return extractFinalText(
-        vosk_recognizer_final_result(recognizer_)
-    );
+    return extractFinalText(vosk_recognizer_final_result(recognizer_));
 }
 
 void SpeechRecognizer::reset()
@@ -92,8 +72,7 @@ void SpeechRecognizer::reset()
 }
 
 auto SpeechRecognizer::extractText(
-    const char* json,
-    const char* key
+    const char* json, const char* key
 ) -> std::string
 {
     if (json == nullptr)
@@ -102,40 +81,30 @@ auto SpeechRecognizer::extractText(
     }
 
     const std::string value(json);
-    const std::string search =
-        std::string("\"") + key + "\"";
+    const std::string search = std::string("\"") + key + "\"";
 
-    const std::size_t keyPosition =
-        value.find(search);
+    const std::size_t keyPosition = value.find(search);
 
     if (keyPosition == std::string::npos)
     {
         return {};
     }
 
-    const std::size_t start =
-        value.find(
-            '"',
-            keyPosition + search.size()
-        );
+    const std::size_t start = value.find('"', keyPosition + search.size());
 
     if (start == std::string::npos)
     {
         return {};
     }
 
-    const std::size_t end =
-        value.find('"', start + 1);
+    const std::size_t end = value.find('"', start + 1);
 
     if (end == std::string::npos)
     {
         return {};
     }
 
-    return value.substr(
-        start + 1,
-        end - start - 1
-    );
+    return value.substr(start + 1, end - start - 1);
 }
 
 auto SpeechRecognizer::extractFinalText(
