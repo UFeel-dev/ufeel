@@ -28,36 +28,24 @@ public partial class MainWindow : Window
                 "UFEEL_PACKAGE_PATH is not set.");
         }
 
-        Console.WriteLine("Avalonia: MainWindow constructor begin");
-
         processor = new UFeelProcessor(libraryPath);
-
-        Console.WriteLine("Avalonia: processor created");
 
         Closed += OnClosed;
 
         _ = ProcessLoop();
-
-        Console.WriteLine("Avalonia: ProcessLoop started");
     }
 
     private async Task ProcessLoop()
     {
-        Console.WriteLine("ProcessLoop: begin");
-
         while (!cancellation.IsCancellationRequested)
         {
             try
             {
-                Console.WriteLine("ProcessLoop: calling update");
-
                 if (!processor.Update())
                 {
                     await Task.Delay(100, cancellation.Token);
                     continue;
                 }
-
-                Console.WriteLine("ProcessLoop: update returned true");
 
                 FrameData? frame = processor.GetFrame();
                 Dictionary<string, float> emotions =
