@@ -25,22 +25,32 @@ class DataProcessor
         DataProcessor(DataProcessor&&) = delete;
         auto operator=(DataProcessor&&) -> DataProcessor& = delete;
 
-        auto processEmotion() -> std::map<std::string, float>;
+        auto update() -> bool;
+
+        auto getFrame() const -> cv::Mat;
+
+        auto getEmotions() const
+            -> const std::map<std::string, float>&;
+
+        auto getDirections() const
+            -> const std::map<std::string, bool>&;
+
+        auto getSpeech() const -> const std::string&;
 
         void calibrateEyeTracking();
-        auto processEyeTracking() -> std::map<std::string, bool>;
 
-        auto processSpeechToText() -> std::string;
         void toggleSpeechToText(bool state);
 
         // auto processHeartRateSensor() -> int;
-
-        auto getFrame() -> cv::Mat;
 
     protected:
 
         cv::VideoCapture cap_;
         cv::Mat frame_;
+
+        std::map<std::string, float> emotions_;
+        std::map<std::string, bool> directions_;
+        std::string speech_;
 
         std::unique_ptr<EmotionDetector> emotionDetector_;
         std::unique_ptr<EyeTrackingDetector> eyeTrackingDetector_;
