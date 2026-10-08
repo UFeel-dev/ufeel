@@ -74,6 +74,8 @@ test()
     require_package
 
     echo "Running C# integration test..."
+    UFEEL_PACKAGE_PATH="${PACKAGE_PATH}/libufeel_wrapper.so" \
+    LD_LIBRARY_PATH="" \
     dotnet run \
         --project "${CSHARP_PROJECT}"
 }
