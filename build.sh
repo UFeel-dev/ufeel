@@ -5,6 +5,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_DIR="${ROOT_DIR}/build"
 PACKAGE_DIR="${ROOT_DIR}/package"
+PACKAGE_PLATFORM="Linux-x86_64"
+PACKAGE_PATH="${PACKAGE_DIR}/${PACKAGE_PLATFORM}"
 CSHARP_PROJECT="${ROOT_DIR}/csharp"
 
 CMAKE_GENERATOR="Ninja"
@@ -15,6 +17,15 @@ require_build()
     if [ ! -f "${BUILD_DIR}/build.ninja" ]; then
         echo "Build directory is not configured."
         echo "Run: ./build.sh configure"
+        exit 1
+    fi
+}
+
+require_package()
+{
+    if [ ! -f "${PACKAGE_PATH}/libufeel_wrapper.so" ]; then
+        echo "Package does not exist."
+        echo "Run: ./build.sh package"
         exit 1
     fi
 }
@@ -45,14 +56,6 @@ build()
         --parallel
 }
 
-test()
-{
-    require_build
-
-    echo "Running C# test..."
-    dotnet run --project "${CSHARP_PROJECT}"
-}
-
 package()
 {
     require_build
@@ -63,7 +66,16 @@ package()
     echo "Installing package..."
     cmake \
         --install "${BUILD_DIR}" \
-        --prefix "${PACKAGE_DIR}/Linux-x86_64"
+        --prefix "${PACKAGE_PATH}"
+}
+
+test()
+{
+    require_package
+
+    echo "Running C# integration test..."
+    dotnet run \
+        --project "${CSHARP_PROJECT}"
 }
 
 format()
@@ -136,14 +148,8 @@ all()
 {
     configure
     build
-    test
-}
-
-package_all()
-{
-    configure
-    build
     package
+    test
 }
 
 usage()
@@ -151,10 +157,9 @@ usage()
     echo "Usage:"
     echo "  ./build.sh configure [cmake-options]"
     echo "  ./build.sh build"
+    echo "  ./build.sh package"
     echo "  ./build.sh test"
     echo "  ./build.sh all"
-    echo "  ./build.sh package"
-    echo "  ./build.sh package-all"
     echo "  ./build.sh format [files...]"
     echo "  ./build.sh lint [files...]"
     echo "  ./build.sh fix [files...]"
@@ -168,17 +173,14 @@ case "${1:-}" in
     build)
         build
         ;;
+    package)
+        package
+        ;;
     test)
         test
         ;;
     all)
         all
-        ;;
-    package)
-        package
-        ;;
-    package-all)
-        package_all
         ;;
     format)
         format "${@:2}"

@@ -18,6 +18,9 @@ RUN apt-get update && \
     cmake \
     ninja-build \
     libasound2t64 \
+    libfontconfig1 \
+    libice6 \
+    libsm6 \
     libyaml-cpp-dev \
     iwyu && \
     rm -rf /var/lib/apt/lists/*
