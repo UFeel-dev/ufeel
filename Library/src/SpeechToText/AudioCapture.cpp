@@ -138,7 +138,7 @@ auto AudioCapture::openStream() -> bool
         return false;
     }
 
-    std::cerr
+    std::clog
         << "[AudioCapture] Selected input: "
         << info->name
         << '\n';
