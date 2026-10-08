@@ -1,0 +1,74 @@
+<Window
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:Class="UFeelTest.MainWindow"
+    Width="1280"
+    Height="900"
+    Title="UFeel Integration Test">
+
+    <Grid RowDefinitions="*,Auto">
+
+        <Grid ColumnDefinitions="*,320">
+
+            <Border Margin="10">
+                <Image
+                    x:Name="FrameImage"
+                    Stretch="Uniform" />
+            </Border>
+
+            <ScrollViewer
+                Grid.Column="1"
+                Margin="10">
+
+                <StackPanel Spacing="12">
+
+                    <TextBlock
+                        Text="Emotions"
+                        FontSize="22"
+                        FontWeight="Bold" />
+
+                    <TextBlock
+                        x:Name="EmotionsText"
+                        Text="Waiting..." />
+
+                    <TextBlock
+                        Text="Eye tracking"
+                        FontSize="22"
+                        FontWeight="Bold" />
+
+                    <TextBlock
+                        x:Name="DirectionsText"
+                        Text="Waiting..." />
+
+                    <TextBlock
+                        Text="Speech"
+                        FontSize="22"
+                        FontWeight="Bold" />
+
+                    <TextBlock
+                        x:Name="SpeechText"
+                        Text="Disabled" />
+
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+
+        <StackPanel
+            Grid.Row="1"
+            Orientation="Horizontal"
+            Spacing="10"
+            Margin="10">
+
+            <Button
+                x:Name="SpeechButton"
+                Content="Enable speech"
+                Click="SpeechButton_OnClick" />
+
+            <Button
+                Content="Calibrate eye tracking"
+                Click="CalibrateButton_OnClick" />
+
+        </StackPanel>
+
+    </Grid>
+</Window>
