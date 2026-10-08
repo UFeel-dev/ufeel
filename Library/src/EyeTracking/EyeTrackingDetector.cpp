@@ -64,7 +64,7 @@ auto EyeTrackingDetector::process(
         cv::circle(rframe, landmark, 2, cv::Scalar(0, 0, 255), -1);
     }
 
-    cv::imwrite("/tmp/ufeel_face.png", rframe);
+    // cv::imwrite("/tmp/ufeel_face.png", rframe);
 
     // auto compute = [](const auto& eye, const auto& iris)
     // {
