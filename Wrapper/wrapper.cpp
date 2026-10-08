@@ -1,7 +1,7 @@
 #include "DataProcessor.hpp"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/core/types.hpp"
-#include "opencv2/highgui.hpp"
+#include "opencv2/imgcodecs.hpp"
 #include "opencv2/imgproc.hpp"
 
 #include <cstddef>
@@ -14,7 +14,8 @@
 #include <string>
 #include <utility>
 
-extern "C" {
+extern "C"
+{
 // WRAPPER API
 __attribute__((visibility("default"))) auto ufeel_create() -> void*
 {
@@ -220,7 +221,7 @@ __attribute__((visibility("default"))) void ufeel_debug_show_emotions(
         y += lineHeight;
     }
 
-    cv::imshow("Emotion Detection", cvFrame);
+    cv::imwrite("/tmp/ufeel_emotions.png", cvFrame);
 }
 
 __attribute__((visibility("default"))) void ufeel_debug_show_directions(
@@ -261,7 +262,7 @@ __attribute__((visibility("default"))) void ufeel_debug_show_directions(
         y += lineHeight;
     }
 
-    cv::imshow("Eye Tracking Detection", cvFrame);
+    cv::imwrite("/tmp/ufeel_directions.png", cvFrame);
 }
 
 __attribute__((visibility("default"))) void ufeel_debug_show_speech(
@@ -288,7 +289,7 @@ __attribute__((visibility("default"))) void ufeel_debug_show_speech(
         2
     );
 
-    cv::imshow("Debug UFeel", cvFrame);
+    cv::imwrite("/tmp/ufeel_speech.png", cvFrame);
 }
 
 __attribute__((visibility("default"))) void ufeel_debug_show_frame(
@@ -301,13 +302,6 @@ __attribute__((visibility("default"))) void ufeel_debug_show_frame(
     }
 
     cv::Mat const& cvFrame = *static_cast<cv::Mat*>(frame);
-    cv::imshow("Debug UFeel", cvFrame);
-}
-
-__attribute__((visibility("default"))) auto ufeel_debug_wait_key(
-    int delay
-) -> int
-{
-    return cv::waitKey(delay);
+    cv::imwrite("/tmp/ufeel_frame.png", cvFrame);
 }
 }
