@@ -1,0 +1,138 @@
+
+<Window
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:Class="UFeelTest.MainWindow"
+    Width="1280"
+    Height="850"
+    MinWidth="900"
+    MinHeight="600"
+    Title="UFeel Integration Test"
+    Background="#F4F6F8">
+
+    <Grid RowDefinitions="*,Auto" Margin="16">
+        <Grid ColumnDefinitions="*,320" ColumnSpacing="16">
+
+            <Border
+                Grid.Column="0"
+                Background="#171B22"
+                CornerRadius="10"
+                Padding="8">
+
+                <Grid RowDefinitions="Auto,*">
+                    <TextBlock
+                        Text="Camera"
+                        Foreground="#FFFFFF"
+                        FontSize="16"
+                        FontWeight="SemiBold"
+                        Margin="8,4,8,12" />
+
+                    <Border
+                        Grid.Row="1"
+                        Background="#0E1116"
+                        CornerRadius="6"
+                        ClipToBounds="True">
+
+                        <Image
+                            x:Name="FrameImage"
+                            Stretch="Uniform" />
+                    </Border>
+                </Grid>
+            </Border>
+
+            <ScrollViewer
+                Grid.Column="1"
+                VerticalScrollBarVisibility="Auto">
+
+                <StackPanel Spacing="12">
+
+                    <Border
+                        Background="#FFFFFF"
+                        CornerRadius="10"
+                        Padding="16">
+
+                        <StackPanel Spacing="10">
+                            <TextBlock
+                                Text="Emotions"
+                                FontSize="20"
+                                FontWeight="SemiBold" />
+
+                            <TextBlock
+                                x:Name="EmotionsText"
+                                Text="Waiting for data..."
+                                TextWrapping="Wrap"
+                                FontFamily="Monospace" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border
+                        Background="#FFFFFF"
+                        CornerRadius="10"
+                        Padding="16">
+
+                        <StackPanel Spacing="10">
+                            <TextBlock
+                                Text="Eye tracking"
+                                FontSize="20"
+                                FontWeight="SemiBold" />
+
+                            <TextBlock
+                                x:Name="DirectionsText"
+                                Text="Waiting for data..."
+                                TextWrapping="Wrap"
+                                FontFamily="Monospace" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border
+                        Background="#FFFFFF"
+                        CornerRadius="10"
+                        Padding="16">
+
+                        <StackPanel Spacing="10">
+                            <TextBlock
+                                Text="Speech recognition"
+                                FontSize="20"
+                                FontWeight="SemiBold" />
+
+                            <TextBlock
+                                x:Name="SpeechText"
+                                Text="Speech disabled"
+                                TextWrapping="Wrap"
+                                MinHeight="48" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+
+        <Border
+            Grid.Row="1"
+            Background="#FFFFFF"
+            CornerRadius="10"
+            Padding="12"
+            Margin="0,16,0,0">
+
+            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
+                <TextBlock
+                    x:Name="StatusText"
+                    Text="Ready"
+                    VerticalAlignment="Center"
+                    TextWrapping="Wrap" />
+
+                <Button
+                    Grid.Column="1"
+                    x:Name="SpeechButton"
+                    Content="Enable speech"
+                    Click="SpeechButton_OnClick"
+                    Padding="16,8" />
+
+                <Button
+                    Grid.Column="2"
+                    Content="Calibrate eye tracking"
+                    Click="CalibrateButton_OnClick"
+                    Padding="16,8" />
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

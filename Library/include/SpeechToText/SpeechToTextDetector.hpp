@@ -1,19 +1,22 @@
 #ifndef SPEECHTOTEXT_SPEECHTOTEXTDETECTOR_HPP
 #define SPEECHTOTEXT_SPEECHTOTEXTDETECTOR_HPP
 
-#include "vosk_api.h"
+#include "SpeechToText/AudioCapture.hpp"
+#include "SpeechToText/SpeechRecognizer.hpp"
 
 #include <atomic>
 #include <cstdint>
-#include <portaudio.h>
+#include <mutex>
 #include <string>
 #include <thread>
+#include <vector>
 
 class SpeechToTextDetector
 {
     public:
 
-        SpeechToTextDetector();
+        explicit SpeechToTextDetector(const std::string& modelPath);
+
         ~SpeechToTextDetector();
 
         SpeechToTextDetector(const SpeechToTextDetector&) = delete;
@@ -23,33 +26,31 @@ class SpeechToTextDetector
         auto operator=(SpeechToTextDetector&&) -> SpeechToTextDetector& = delete;
 
         void toggle(bool state);
-        [[nodiscard]] auto process() const -> std::string;
+
+        [[nodiscard]]
+        auto process() const -> std::string;
 
     private:
 
-        VoskModel* model = nullptr;
-        VoskRecognizer* recognizer = nullptr;
+        AudioCapture audioCapture_;
+        SpeechRecognizer recognizer_;
 
-        std::thread worker;
-        std::atomic<bool> process_enable{false};
-        std::atomic<bool> running{false};
+        std::thread worker_;
+        std::atomic<bool> running_{false};
 
-        std::string current_text;
-
-        static auto extract_text(const char* json) -> std::string;
-
-        static auto paCallback(
-            const void* input,
-            void* /*unused*/,
-            uint64_t frameCount,
-            const PaStreamCallbackTimeInfo* /*unused*/,
-            PaStreamCallbackFlags /*unused*/,
-            void* userData
-        ) -> int;
+        mutable std::mutex textMutex_;
+        std::string currentText_;
 
         void start();
         void stop();
         void run();
+
+        void processAudio(const std::vector<int16_t>& buffer);
+
+        void setText(std::string text);
+
+        [[nodiscard]]
+        auto getText() const -> std::string;
 };
 
 #endif // SPEECHTOTEXT_SPEECHTOTEXTDETECTOR_HPP

@@ -3,7 +3,7 @@
 #include "opencv2/core.hpp"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/core/types.hpp"
-#include "opencv2/highgui.hpp"
+#include "opencv2/imgcodecs.hpp"
 #include "opencv2/imgproc.hpp"
 
 #include <iostream>
@@ -64,7 +64,7 @@ auto EyeTrackingDetector::process(
         cv::circle(rframe, landmark, 2, cv::Scalar(0, 0, 255), -1);
     }
 
-    cv::imshow("Face detector", rframe);
+    // cv::imwrite("/tmp/ufeel_face.png", rframe);
 
     // auto compute = [](const auto& eye, const auto& iris)
     // {

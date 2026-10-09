@@ -3,14 +3,15 @@
 #include "Emotions/EmotionDetector.hpp"
 #include "EyeTracking/EyeTrackingDetector.hpp"
 #include "SpeechToText/SpeechToTextDetector.hpp"
-#include "opencv2/core/mat.hpp"
 
 #include <iostream>
 #include <map>
 #include <memory>
 #include <string>
 
-DataProcessor::DataProcessor()
+DataProcessor::DataProcessor(
+    const std::string& speechModelPath
+)
     : cap_(0)
 {
     if (!cap_.isOpened())
@@ -19,51 +20,59 @@ DataProcessor::DataProcessor()
     }
 
     emotionDetector_ = std::make_unique<EmotionDetector>();
+
     eyeTrackingDetector_ = std::make_unique<EyeTrackingDetector>();
-    speechToTextDetector_ = std::make_unique<SpeechToTextDetector>();
-    // heartRateSensorDetector_ = std::make_unique<HeartRateSensorDetector>();
+
+    speechToTextDetector_ = std::make_unique<SpeechToTextDetector>(speechModelPath);
 }
 
-auto DataProcessor::getFrame() -> cv::Mat
+auto DataProcessor::update() -> bool
 {
     cap_ >> frame_;
+
+    if (frame_.empty())
+    {
+        emotions_.clear();
+        directions_.clear();
+        return false;
+    }
+
+    emotions_ = emotionDetector_->process(frame_);
+
+    directions_ = eyeTrackingDetector_->process(frame_);
+
+    speech_ = speechToTextDetector_->process();
+
+    return true;
+}
+
+auto DataProcessor::getFrame() const -> cv::Mat
+{
     return frame_;
 }
 
-auto DataProcessor::processEmotion() -> std::map<std::string, float>
+auto DataProcessor::getEmotions() const -> const std::map<std::string, float>&
 {
-    cap_ >> frame_;
-    if (frame_.empty())
-    {
-        return {}; // TODO: add default value for all of this
-    }
+    return emotions_;
+}
 
-    return emotionDetector_->process(frame_);
+auto DataProcessor::getDirections() const -> const std::map<std::string, bool>&
+{
+    return directions_;
+}
+
+auto DataProcessor::getSpeech() const -> const std::string&
+{
+    return speech_;
 }
 
 void DataProcessor::calibrateEyeTracking() {}
-
-auto DataProcessor::processEyeTracking() -> std::map<std::string, bool>
-{
-    cap_ >> frame_;
-    if (frame_.empty())
-    {
-        return {};
-    }
-
-    return eyeTrackingDetector_->process(frame_);
-}
 
 void DataProcessor::toggleSpeechToText(
     bool state
 )
 {
     speechToTextDetector_->toggle(state);
-}
-
-auto DataProcessor::processSpeechToText() -> std::string
-{
-    return speechToTextDetector_->process();
 }
 
 // int DataProcessor::processHeartRateSensor()
@@ -79,8 +88,8 @@ DataProcessor::~DataProcessor()
         cap_.release();
     }
 
-    emotionDetector_->close();
-    eyeTrackingDetector_->close();
+    // emotionDetector_->close();
+    // eyeTrackingDetector_->close();
     // speechToTextDetector_->close();
     // heartRateSensorDetector_->close();
 }

@@ -21,7 +21,7 @@ void my::FaceDetection::loadImageToInput(
 )
 {
     m_originImage = in;
-    ModelLoader::loadImageToInput(in);
+    ModelLoader::loadImageToInput(in, 0);
 }
 
 void my::FaceDetection::runInference()
