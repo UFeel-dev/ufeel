@@ -1,0 +1,54 @@
+set(PATCHELF_EXECUTABLE "@PATCHELF_EXECUTABLE@")
+
+file(GLOB BUNDLED_LIBS
+    "${CMAKE_INSTALL_PREFIX}/dependencies/*.so"
+    "${CMAKE_INSTALL_PREFIX}/dependencies/*.so.*"
+)
+
+foreach(LIB IN LISTS BUNDLED_LIBS)
+    if(NOT IS_SYMLINK "${LIB}")
+        execute_process(
+            COMMAND "${PATCHELF_EXECUTABLE}"
+                --set-rpath "$ORIGIN" "${LIB}"
+            RESULT_VARIABLE RESULT
+            ERROR_VARIABLE PATCHELF_ERROR
+        )
+
+        if(NOT RESULT EQUAL 0)
+            message(FATAL_ERROR
+                "Failed to set RUNPATH on ${LIB}: ${PATCHELF_ERROR}"
+            )
+        endif()
+    endif()
+endforeach()
+
+file(GLOB OPENCV_LIBS
+    "${CMAKE_INSTALL_PREFIX}/dependencies/libopencv_*.so.4.8.1"
+)
+
+foreach(LIB IN LISTS OPENCV_LIBS)
+    get_filename_component(NAME "${LIB}" NAME)
+    string(REGEX REPLACE "\\.so\\.4\\.8\\.1$" ".so.408" SONAME "${NAME}")
+
+    execute_process(
+        COMMAND "${CMAKE_COMMAND}" -E create_symlink
+            "${NAME}"
+            "${CMAKE_INSTALL_PREFIX}/dependencies/${SONAME}"
+        RESULT_VARIABLE RESULT
+    )
+
+    if(NOT RESULT EQUAL 0)
+        message(FATAL_ERROR "Failed to create symlink for ${LIB}")
+    endif()
+endforeach()
+
+execute_process(
+    COMMAND "${CMAKE_COMMAND}" -E create_symlink
+        libportaudio.so.2.0.0
+        "${CMAKE_INSTALL_PREFIX}/dependencies/libportaudio.so.2"
+    RESULT_VARIABLE RESULT
+)
+
+if(NOT RESULT EQUAL 0)
+    message(FATAL_ERROR "Failed to create PortAudio symlink")
+endif()

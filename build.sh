@@ -41,7 +41,6 @@ configure()
         -B "${BUILD_DIR}" \
         -G "${CMAKE_GENERATOR}" \
         -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_C_COMPILER=clang-22 \
         -DCMAKE_CXX_COMPILER=clang++-22 \
         "${CMAKE_ARGS[@]}"
 }

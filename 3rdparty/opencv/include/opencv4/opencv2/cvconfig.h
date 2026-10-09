@@ -63,10 +63,10 @@
 #define HAVE_INTTYPES_H 1
 
 /* Intel Integrated Performance Primitives */
-#define HAVE_IPP
-#define HAVE_IPP_ICV
-#define HAVE_IPP_IW
-#define HAVE_IPP_IW_LL
+/* #undef HAVE_IPP */
+/* #undef HAVE_IPP_ICV */
+/* #undef HAVE_IPP_IW */
+/* #undef HAVE_IPP_IW_LL */
 
 /* JPEG-2000 codec */
 #define HAVE_OPENJPEG
@@ -93,7 +93,7 @@
 /* #undef HAVE_NVCUVENC */
 
 /* OpenCL Support */
-#define HAVE_OPENCL
+/* #undef HAVE_OPENCL */
 /* #undef HAVE_OPENCL_STATIC */
 /* #undef HAVE_OPENCL_SVM */
 
@@ -101,7 +101,7 @@
 /* #undef HAVE_OPENCL_D3D11_NV */
 
 /* OpenEXR codec */
-/* #undef HAVE_OPENEXR */
+#define HAVE_OPENEXR
 
 /* OpenGL support*/
 /* #undef HAVE_OPENGL */

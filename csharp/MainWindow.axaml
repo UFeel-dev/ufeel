@@ -1,74 +1,138 @@
+
 <Window
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     x:Class="UFeelTest.MainWindow"
     Width="1280"
-    Height="900"
-    Title="UFeel Integration Test">
+    Height="850"
+    MinWidth="900"
+    MinHeight="600"
+    Title="UFeel Integration Test"
+    Background="#F4F6F8">
 
-    <Grid RowDefinitions="*,Auto">
+    <Grid RowDefinitions="*,Auto" Margin="16">
+        <Grid ColumnDefinitions="*,320" ColumnSpacing="16">
 
-        <Grid ColumnDefinitions="*,320">
+            <Border
+                Grid.Column="0"
+                Background="#171B22"
+                CornerRadius="10"
+                Padding="8">
 
-            <Border Margin="10">
-                <Image
-                    x:Name="FrameImage"
-                    Stretch="Uniform" />
+                <Grid RowDefinitions="Auto,*">
+                    <TextBlock
+                        Text="Camera"
+                        Foreground="#FFFFFF"
+                        FontSize="16"
+                        FontWeight="SemiBold"
+                        Margin="8,4,8,12" />
+
+                    <Border
+                        Grid.Row="1"
+                        Background="#0E1116"
+                        CornerRadius="6"
+                        ClipToBounds="True">
+
+                        <Image
+                            x:Name="FrameImage"
+                            Stretch="Uniform" />
+                    </Border>
+                </Grid>
             </Border>
 
             <ScrollViewer
                 Grid.Column="1"
-                Margin="10">
+                VerticalScrollBarVisibility="Auto">
 
                 <StackPanel Spacing="12">
 
-                    <TextBlock
-                        Text="Emotions"
-                        FontSize="22"
-                        FontWeight="Bold" />
+                    <Border
+                        Background="#FFFFFF"
+                        CornerRadius="10"
+                        Padding="16">
 
-                    <TextBlock
-                        x:Name="EmotionsText"
-                        Text="Waiting..." />
+                        <StackPanel Spacing="10">
+                            <TextBlock
+                                Text="Emotions"
+                                FontSize="20"
+                                FontWeight="SemiBold" />
 
-                    <TextBlock
-                        Text="Eye tracking"
-                        FontSize="22"
-                        FontWeight="Bold" />
+                            <TextBlock
+                                x:Name="EmotionsText"
+                                Text="Waiting for data..."
+                                TextWrapping="Wrap"
+                                FontFamily="Monospace" />
+                        </StackPanel>
+                    </Border>
 
-                    <TextBlock
-                        x:Name="DirectionsText"
-                        Text="Waiting..." />
+                    <Border
+                        Background="#FFFFFF"
+                        CornerRadius="10"
+                        Padding="16">
 
-                    <TextBlock
-                        Text="Speech"
-                        FontSize="22"
-                        FontWeight="Bold" />
+                        <StackPanel Spacing="10">
+                            <TextBlock
+                                Text="Eye tracking"
+                                FontSize="20"
+                                FontWeight="SemiBold" />
 
-                    <TextBlock
-                        x:Name="SpeechText"
-                        Text="Disabled" />
+                            <TextBlock
+                                x:Name="DirectionsText"
+                                Text="Waiting for data..."
+                                TextWrapping="Wrap"
+                                FontFamily="Monospace" />
+                        </StackPanel>
+                    </Border>
 
+                    <Border
+                        Background="#FFFFFF"
+                        CornerRadius="10"
+                        Padding="16">
+
+                        <StackPanel Spacing="10">
+                            <TextBlock
+                                Text="Speech recognition"
+                                FontSize="20"
+                                FontWeight="SemiBold" />
+
+                            <TextBlock
+                                x:Name="SpeechText"
+                                Text="Speech disabled"
+                                TextWrapping="Wrap"
+                                MinHeight="48" />
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
             </ScrollViewer>
         </Grid>
 
-        <StackPanel
+        <Border
             Grid.Row="1"
-            Orientation="Horizontal"
-            Spacing="10"
-            Margin="10">
+            Background="#FFFFFF"
+            CornerRadius="10"
+            Padding="12"
+            Margin="0,16,0,0">
 
-            <Button
-                x:Name="SpeechButton"
-                Content="Enable speech"
-                Click="SpeechButton_OnClick" />
+            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
+                <TextBlock
+                    x:Name="StatusText"
+                    Text="Ready"
+                    VerticalAlignment="Center"
+                    TextWrapping="Wrap" />
 
-            <Button
-                Content="Calibrate eye tracking"
-                Click="CalibrateButton_OnClick" />
+                <Button
+                    Grid.Column="1"
+                    x:Name="SpeechButton"
+                    Content="Enable speech"
+                    Click="SpeechButton_OnClick"
+                    Padding="16,8" />
 
-        </StackPanel>
-
+                <Button
+                    Grid.Column="2"
+                    Content="Calibrate eye tracking"
+                    Click="CalibrateButton_OnClick"
+                    Padding="16,8" />
+            </Grid>
+        </Border>
     </Grid>
 </Window>

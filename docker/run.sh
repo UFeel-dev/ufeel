@@ -22,4 +22,7 @@ docker run -it \
     --device=/dev/video0:/dev/video0 \
     --group-add "$AUDIO_GID" \
     "${AUDIO_DEVICES[@]}" \
-    ufeeldocker:latest
+    --entrypoint /bin/bash \
+    ufeeldocker:latest \
+    -c 'if ! getent group "$1" >/dev/null; then groupadd -g "$1" hostaudio; fi; exec bash' \
+    _ "$AUDIO_GID"
