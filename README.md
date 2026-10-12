@@ -41,7 +41,7 @@ Manual installation:
 
 - Linux
 - GLIBC >= 2.39
-- `dotnet` installed == 8.0
+- `dotnet` == 10.0
 - `clang` >= 22.0
 - `cmake` >= 3.20
 - `ninja-build` >= 1.13.2

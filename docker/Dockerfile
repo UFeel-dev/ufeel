@@ -21,7 +21,7 @@ RUN apt-get update && \
     apt-get install -y \
         git \
         git-lfs \
-        dotnet-sdk-8.0 \
+        dotnet-sdk-10.0 \
         clang-22 \
         clang-tidy-22 \
         clang-format-22 \
