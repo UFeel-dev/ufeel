@@ -6,6 +6,8 @@
 #include "opencv2/core/mat.hpp"
 #include "opencv2/core/types.hpp"
 
+#include <opencv2/core/mat.inl.hpp>
+#include <opencv2/core/saturate.hpp>
 #include <string>
 #include <vector>
 

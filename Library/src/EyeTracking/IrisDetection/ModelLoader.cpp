@@ -12,7 +12,9 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <stdexcept>
 #include <string>
+#include <tensorflow/lite/model_builder.h>
 #include <vector>
 
 #define INPUT_NORM_MEAN 127.5f
@@ -167,8 +169,7 @@ void my::ModelLoader::loadModel(
     m_model = tflite::FlatBufferModel::BuildFromFile(modelPath);
     if (m_model == nullptr)
     {
-        std::cerr << "Fail to build FlatBufferModel from file: " << modelPath << '\n';
-        std::exit(1);
+        throw std::runtime_error(std::string("Failed to load TensorFlow Lite model: ") + modelPath);
     }
 }
 
@@ -180,8 +181,7 @@ void my::ModelLoader::buildInterpreter(
 
     if (tflite::InterpreterBuilder(*m_model, resolver)(&m_interpreter) != kTfLiteOk)
     {
-        std::cerr << "Failed to build interpreter." << '\n';
-        std::exit(1);
+        throw std::runtime_error("Failed to build TensorFlow Lite interpreter.");
     }
     m_interpreter->SetNumThreads(numThreads);
 }
@@ -190,8 +190,7 @@ void my::ModelLoader::allocateTensors()
 {
     if (m_interpreter->AllocateTensors() != kTfLiteOk)
     {
-        std::cerr << "Failed to allocate tensors." << '\n';
-        std::exit(1);
+        throw std::runtime_error("Failed to allocate TensorFlow Lite tensors.");
     }
 }
 

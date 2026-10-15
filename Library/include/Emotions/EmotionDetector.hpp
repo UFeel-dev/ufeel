@@ -4,6 +4,7 @@
 #include "opencv2/core/cvstd_wrapper.hpp"
 #include "opencv2/core/mat.hpp"
 
+#include <filesystem>
 #include <map>
 #include <string>
 #include <torch/csrc/jit/api/module.h>
@@ -20,7 +21,7 @@ class EmotionDetector
 {
     public:
 
-        EmotionDetector();
+        explicit EmotionDetector(const std::filesystem::path& modelDirectory);
         ~EmotionDetector();
 
         EmotionDetector(const EmotionDetector&) = delete;
