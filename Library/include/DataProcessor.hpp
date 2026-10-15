@@ -4,6 +4,7 @@
 #include "EyeTracking/EyeTrackingDetector.hpp"
 #include "EyeTracking/GazeCalibrationModel.hpp"
 #include "HeartRate/HeartRateDetector.hpp"
+#include "EyeTracking/EyeTrackingDetector.hpp"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/videoio.hpp"
 
@@ -42,18 +43,6 @@ public:
     [[nodiscard]] auto getHeartRate() const -> HeartRateResult;
 
     [[nodiscard]] auto getHeartRate() const -> int;
-
-    void toggleSpeechToText(bool state);
-
-protected:
-
-    cv::VideoCapture cap_;
-    cv::Mat frame_;
-
-    std::map<std::string, float> emotions_;
-    GazeResult gaze_;
-    std::string speech_;
-    HeartRateResult heartrate_{};
 
     std::unique_ptr<EmotionDetector> emotionDetector_;
     std::unique_ptr<EyeTrackingDetector> eyeTrackingDetector_;

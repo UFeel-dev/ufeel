@@ -8,9 +8,15 @@ public sealed class UFeelProcessor : IDisposable
     private bool disposed;
 
     public UFeelProcessor(
+<<<<<<< HEAD
         string modelDirectory,
         string speechModelPath,
         string? nativeLibraryPath = null)
+=======
+        string libraryPath,
+        string modelDirectory,
+        string speechModelPath)
+>>>>>>> 6f7e253 (feat: new eye tracking logic, calibration, demo)
     {
         ValidatePath(modelDirectory, nameof(modelDirectory));
         ValidatePath(speechModelPath, nameof(speechModelPath));
@@ -18,7 +24,13 @@ public sealed class UFeelProcessor : IDisposable
         if (!string.IsNullOrWhiteSpace(nativeLibraryPath))
             UFeelNative.ConfigureLibrary(nativeLibraryPath);
 
+<<<<<<< HEAD
         handle = UFeelNative.ufeel_create(modelDirectory, speechModelPath);
+=======
+        processor = UFeelNative.ufeel_create(
+            modelDirectory,
+            speechModelPath);
+>>>>>>> 6f7e253 (feat: new eye tracking logic, calibration, demo)
 
         if (handle == IntPtr.Zero)
             throw new InvalidOperationException(
@@ -106,6 +118,7 @@ public sealed class UFeelProcessor : IDisposable
         }
     }
 
+<<<<<<< HEAD
     public GazeResultData GetGaze()
     {
         UFeelNative.Status status =
@@ -134,6 +147,94 @@ public sealed class UFeelProcessor : IDisposable
             (UFeelNative.Status)
                 UFeelNative.ufeel_begin_eye_tracking_calibration(Handle),
             "begin eye-tracking calibration");
+=======
+    public GazeData GetGaze()
+    {
+        int status = UFeelNative.ufeel_get_gaze_ex(
+            processor,
+            out UFeelNative.UFeelGazeEx gaze);
+
+        if (status == (int)UFeelNative.UFeelStatus.NoGaze)
+            return new GazeData(
+                0.0F,
+                0.0F,
+                0.0F,
+                UFeelNative.GazeDirection.None,
+                (UFeelNative.GazeStatus)gaze.status);
+
+        EnsureStatus(status, "get gaze");
+        return new GazeData(
+            gaze.x,
+            gaze.y,
+            gaze.confidence,
+            (UFeelNative.GazeDirection)gaze.directions,
+            (UFeelNative.GazeStatus)gaze.status);
+    }
+
+    public void BeginCalibration()
+    {
+        EnsureStatus(
+            UFeelNative.ufeel_begin_calibration(processor),
+            "begin calibration");
+    }
+
+    public void SetCalibrationTarget(float x, float y)
+    {
+        EnsureStatus(
+            UFeelNative.ufeel_set_calibration_target(processor, x, y),
+            "set calibration target");
+    }
+
+    public bool FinishCalibration()
+    {
+        int status = UFeelNative.ufeel_finish_calibration(processor);
+        if (status == (int)UFeelNative.UFeelStatus.CalibrationFailed)
+            return false;
+
+        EnsureStatus(status, "finish calibration");
+        return true;
+    }
+
+    public void CancelCalibration()
+    {
+        EnsureStatus(
+            UFeelNative.ufeel_cancel_calibration(processor),
+            "cancel calibration");
+    }
+
+    public CalibrationProgress GetCalibrationProgress()
+    {
+        EnsureStatus(
+            UFeelNative.ufeel_get_calibration_progress(
+                processor,
+                out UFeelNative.UFeelCalibrationProgress progress),
+            "get calibration progress");
+        return new CalibrationProgress(
+            progress.targets_with_enough_samples,
+            progress.target_count,
+            progress.samples_for_current_target,
+            progress.required_samples_per_target);
+    }
+
+    public bool SaveCalibrationProfile(string path)
+    {
+        int status = UFeelNative.ufeel_save_calibration_profile(processor, path);
+        if (status == (int)UFeelNative.UFeelStatus.ProfileFailed)
+            return false;
+
+        EnsureStatus(status, "save calibration profile");
+        return true;
+    }
+
+    public bool LoadCalibrationProfile(string path)
+    {
+        int status = UFeelNative.ufeel_load_calibration_profile(processor, path);
+        if (status == (int)UFeelNative.UFeelStatus.ProfileFailed)
+            return false;
+
+        EnsureStatus(status, "load calibration profile");
+        return true;
+>>>>>>> 6f7e253 (feat: new eye tracking logic, calibration, demo)
     }
 
     public void SetEyeTrackingCalibrationTarget(float screenX, float screenY)
@@ -303,8 +404,28 @@ public sealed class UFeelProcessor : IDisposable
 
         GC.SuppressFinalize(this);
     }
+
+    private static void EnsureStatus(int status, string operation)
+    {
+        if (status == (int)UFeelNative.UFeelStatus.Ok)
+            return;
+
+        string reason = (UFeelNative.UFeelStatus)status switch
+        {
+            UFeelNative.UFeelStatus.InvalidArgument => "invalid argument",
+            UFeelNative.UFeelStatus.InvalidState => "invalid operation state",
+            UFeelNative.UFeelStatus.CalibrationFailed => "calibration failed",
+            UFeelNative.UFeelStatus.ProfileFailed => "eye-tracking profile is invalid or inaccessible",
+            UFeelNative.UFeelStatus.NoGaze => "gaze is unavailable",
+            _ => $"unknown native status ({status})"
+        };
+
+        throw new InvalidOperationException(
+            $"Unable to {operation}: {reason}.");
+    }
 }
 
+<<<<<<< HEAD
 public sealed class FrameData
 {
     public byte[] Data { get; }
@@ -432,3 +553,26 @@ public sealed class EyeTrackingCalibrationDiagnostics
         TargetsWithInsufficientRetainedSamples = targetsWithInsufficientRetainedSamples;
     }
 }
+=======
+public sealed record GazeData(
+    float X,
+    float Y,
+    float Confidence,
+    UFeelNative.GazeDirection Directions,
+    UFeelNative.GazeStatus Status)
+{
+    public bool IsValid => Status == UFeelNative.GazeStatus.Valid;
+}
+
+public sealed record CalibrationProgress(
+    uint TargetsWithEnoughSamples,
+    uint TargetCount,
+    uint SamplesForCurrentTarget,
+    uint RequiredSamplesPerTarget);
+
+public sealed record FrameData(
+    byte[] Data,
+    int Width,
+    int Height,
+    int Stride);
+>>>>>>> 6f7e253 (feat: new eye tracking logic, calibration, demo)

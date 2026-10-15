@@ -31,12 +31,77 @@ typedef struct
     int32_t stride;
 } UFeelFrame;
 
+<<<<<<< HEAD
 /** One named emotion and its computed score. Release the array with ufeel_free_emotions(). */
 typedef struct
 {
     char* name;
     float value;
 } UFeelPair;
+=======
+typedef struct UFeelGaze
+{
+        float x;
+        float y;
+        uint32_t directions;
+        uint32_t valid;
+} UFeelGaze;
+
+typedef struct UFeelGazeEx
+{
+        float x;
+        float y;
+        float confidence;
+        uint32_t directions;
+        uint32_t status;
+} UFeelGazeEx;
+
+typedef struct UFeelCalibrationProgress
+{
+        uint32_t targets_with_enough_samples;
+        uint32_t target_count;
+        uint32_t samples_for_current_target;
+        uint32_t required_samples_per_target;
+} UFeelCalibrationProgress;
+
+/* Return values for calibration, gaze, and profile calls. */
+typedef enum UFeelStatus
+{
+    UFEEL_STATUS_OK = 0,
+    UFEEL_STATUS_NO_GAZE = 1,
+    UFEEL_STATUS_INVALID_ARGUMENT = 2,
+    UFEEL_STATUS_INVALID_STATE = 3,
+    UFEEL_STATUS_CALIBRATION_FAILED = 4,
+    UFEEL_STATUS_PROFILE_FAILED = 5
+} UFeelStatus;
+
+/* State of the latest gaze result. */
+typedef enum UFeelGazeStatus
+{
+    UFEEL_GAZE_NOT_CALIBRATED = 0,
+    UFEEL_GAZE_FACE_UNAVAILABLE = 1,
+    UFEEL_GAZE_BLINKING = 2,
+    UFEEL_GAZE_LOW_QUALITY = 3,
+    UFEEL_GAZE_CALIBRATING = 4,
+    UFEEL_GAZE_VALID = 5,
+    UFEEL_GAZE_DISABLED = 6,
+    UFEEL_GAZE_FRAME_UNAVAILABLE = 7
+} UFeelGazeStatus;
+
+/* Gaze direction bit flags, multiple non-center flags may be set together. */
+enum UFeelGazeDirection
+{
+    UFEEL_GAZE_LEFT = 1U << 0U,
+    UFEEL_GAZE_RIGHT = 1U << 1U,
+    UFEEL_GAZE_UP = 1U << 2U,
+    UFEEL_GAZE_DOWN = 1U << 3U,
+    UFEEL_GAZE_CENTER = 1U << 4U
+};
+
+/* Both paths must refer to directories in the installed package. */
+void* ufeel_create(const char* model_directory, const char* speech_model_path);
+void ufeel_destroy(void* processor);
+>>>>>>> 6f7e253 (feat: new eye tracking logic, calibration, demo)
 
 /** Status describing whether a gaze estimate is currently usable. */
 typedef enum
