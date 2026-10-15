@@ -16,8 +16,12 @@
 #include <c10/util/Exception.h>
 #include <cmath>
 #include <cstddef>
+#include <filesystem>
 #include <iostream>
 #include <map>
+#include <opencv2/core/cvstd_wrapper.hpp>
+#include <opencv2/core/mat.inl.hpp>
+#include <stdexcept>
 #include <string>
 #include <torch/csrc/autograd/generated/variable_factories.h>
 #include <torch/csrc/jit/serialization/import.h>
@@ -25,20 +29,24 @@
 #include <torch/types.h>
 #include <vector>
 
-EmotionDetector::EmotionDetector()
+EmotionDetector::EmotionDetector(
+    const std::filesystem::path& modelDirectory
+)
 {
-    std::string const modelPath = "models/GiMeFive.pt";
+    std::filesystem::path const modelPath = modelDirectory / "GiMeFive.pt";
     try
     {
-        net_ = torch::jit::load(modelPath);
+        net_ = torch::jit::load(modelPath.string());
     }
     catch (const c10::Error& e)
     {
-        std::cerr << "error loading the model: {" << modelPath << "}" << '\n';
+        std::cerr << "error loading the model: {" << modelPath.string() << "}: " << e.what()
+                  << '\n';
+        throw std::runtime_error("Failed to load emotion model.");
     }
 
     faceDetector_ = cv::FaceDetectorYN::create(
-        "models/face_detection_yunet_2023mar.onnx",
+        (modelDirectory / "face_detection_yunet_2023mar.onnx").string(),
         "",
         cv::Size(320, 320),
         0.9F,
@@ -50,7 +58,10 @@ EmotionDetector::EmotionDetector()
 
     if (faceDetector_.empty())
     {
-        std::cerr << "FaceDetector is EMPTY" << '\n';
+        throw std::runtime_error(
+            "Failed to load face detection model: " +
+            (modelDirectory / "face_detection_yunet_2023mar.onnx").string()
+        );
     }
     std::cout << "Success Emotion Detector Constructor" << '\n';
 
@@ -92,7 +103,7 @@ auto EmotionDetector::preProcess(
     cv::Mat rgb;
     cv::Mat gray;
     cv::Mat gray3;
-    std::vector<cv::Mat> ch(3);
+    std::vector<cv::Mat> ch;
 
     cv::resize(face, resized, cv::Size(64, 64));
     cv::cvtColor(resized, rgb, cv::COLOR_BGR2RGB);

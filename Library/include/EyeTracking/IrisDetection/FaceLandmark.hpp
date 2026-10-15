@@ -42,6 +42,11 @@ class FaceLandmark : public my::FaceDetection
         [[nodiscard]] virtual auto getFaceLandmarkAt(int index) const -> cv::Point;
 
         /*
+        Get a face landmark in image-space x/y and image-scaled model-space depth.
+        */
+        [[nodiscard]] auto getFaceLandmark3DAt(int index) const -> cv::Point3f;
+
+        /*
         Get all landmarks from output.
         The positions is relative to the input image at InputTensor(0)
         */

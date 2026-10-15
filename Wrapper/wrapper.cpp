@@ -1,30 +1,37 @@
 #include "DataProcessor.hpp"
+#include "EyeTracking/EyeTrackingDetector.hpp"
+#include "opencv2/core.hpp"
 #include "HeartRate/UFeelHeartRateStatus.hpp"
 #include "opencv2/core/mat.hpp"
 #include "ufeel.h"
 
+#include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <exception>
+#include <iostream>
 #include <string>
 
 extern "C" {
 
 __attribute__((visibility("default"))) auto ufeel_create(
-    const char* speechModelPath
+    const char* model_directory, const char* speech_model_path
 ) -> void*
 {
-    if (speechModelPath == nullptr || speechModelPath[0] == '\0')
+    if (model_directory == nullptr || model_directory[0] == '\0' || speech_model_path == nullptr ||
+        speech_model_path[0] == '\0')
     {
         return nullptr;
     }
 
     try
     {
-        return new DataProcessor(speechModelPath);
+        return new DataProcessor(model_directory, speech_model_path);
     }
-    catch (...)
+    catch (const std::exception& exception)
     {
+        std::cerr << "[ufeel] Failed to create processor: " << exception.what() << '\n';
         return nullptr;
     }
 }
@@ -58,34 +65,22 @@ __attribute__((visibility("default"))) auto ufeel_get_frame(
     }
 
     cv::Mat const frame = static_cast<DataProcessor*>(processor)->getFrame();
-
-    if (frame.empty())
-    {
-        return nullptr;
-    }
-
-    if (frame.type() != CV_8UC3)
+    if (frame.empty() || frame.type() != CV_8UC3)
     {
         return nullptr;
     }
 
     auto* out = new UFeelFrame();
-
     out->width = static_cast<uint32_t>(frame.cols);
-
     out->height = static_cast<uint32_t>(frame.rows);
-
     out->stride = static_cast<uint32_t>(frame.cols * 3);
 
     size_t const size = static_cast<size_t>(out->stride) * out->height;
-
     out->data = new uint8_t[size];
-
     for (uint32_t y = 0; y < out->height; y++)
     {
         std::memcpy(out->data + (static_cast<size_t>(y) * out->stride), frame.ptr(y), out->stride);
     }
-
     return out;
 }
 
@@ -112,25 +107,20 @@ __attribute__((visibility("default"))) auto ufeel_get_emotions(
     }
 
     auto const& emotions = static_cast<DataProcessor*>(processor)->getEmotions();
-
     *size = static_cast<uint32_t>(emotions.size());
-
     if (*size == 0)
     {
         return nullptr;
     }
 
     auto* out = new UFeelPair[*size];
-
     uint32_t i = 0;
-
     for (auto const& [key, value] : emotions)
     {
         out[i].key = strdup(key.c_str());
         out[i].value = value;
         i++;
     }
-
     return out;
 }
 
@@ -147,69 +137,177 @@ __attribute__((visibility("default"))) void ufeel_free_emotions(
     {
         free((void*)emotions[i].key);
     }
-
     delete[] emotions;
 }
 
-__attribute__((visibility("default"))) void ufeel_calibrate_directions(
+__attribute__((visibility("default"))) auto ufeel_begin_calibration(
     void* processor
-)
+) -> int32_t
 {
     if (processor == nullptr)
     {
-        return;
+        return UFEEL_STATUS_INVALID_ARGUMENT;
     }
 
-    static_cast<DataProcessor*>(processor)->calibrateEyeTracking();
+    static_cast<DataProcessor*>(processor)->beginEyeTrackingCalibration();
+    return UFEEL_STATUS_OK;
 }
 
-__attribute__((visibility("default"))) auto ufeel_get_directions(
-    void* processor, uint32_t* size
-) -> UFeelBoolPair*
+__attribute__((visibility("default"))) auto ufeel_set_calibration_target(
+    void* processor, float x, float y
+) -> int32_t
 {
-    if (processor == nullptr || size == nullptr)
+    if (processor == nullptr || !std::isfinite(x) || !std::isfinite(y) || x < 0.0F || x > 1.0F ||
+        y < 0.0F || y > 1.0F)
     {
-        return nullptr;
+        return UFEEL_STATUS_INVALID_ARGUMENT;
     }
 
-    auto const& directions = static_cast<DataProcessor*>(processor)->getDirections();
-
-    *size = static_cast<uint32_t>(directions.size());
-
-    if (*size == 0)
+    if (!static_cast<DataProcessor*>(processor)->setEyeTrackingCalibrationTarget(x, y))
     {
-        return nullptr;
+        return UFEEL_STATUS_INVALID_STATE;
     }
-
-    auto* out = new UFeelBoolPair[*size];
-
-    uint32_t i = 0;
-
-    for (auto const& [key, value] : directions)
-    {
-        out[i].key = strdup(key.c_str());
-        out[i].value = value ? 1 : 0;
-        i++;
-    }
-
-    return out;
+    return UFEEL_STATUS_OK;
 }
 
-__attribute__((visibility("default"))) void ufeel_free_directions(
-    UFeelBoolPair* directions, uint32_t size
-)
+__attribute__((visibility("default"))) auto ufeel_finish_calibration(
+    void* processor
+) -> int32_t
 {
-    if (directions == nullptr)
+    if (processor == nullptr)
     {
-        return;
+        return UFEEL_STATUS_INVALID_ARGUMENT;
     }
 
-    for (uint32_t i = 0; i < size; i++)
+    return static_cast<DataProcessor*>(processor)->finishEyeTrackingCalibration()
+               ? UFEEL_STATUS_OK
+               : UFEEL_STATUS_CALIBRATION_FAILED;
+}
+
+__attribute__((visibility("default"))) auto ufeel_cancel_calibration(
+    void* processor
+) -> int32_t
+{
+    if (processor == nullptr)
     {
-        free((void*)directions[i].key);
+        return UFEEL_STATUS_INVALID_ARGUMENT;
     }
 
-    delete[] directions;
+    static_cast<DataProcessor*>(processor)->cancelEyeTrackingCalibration();
+    return UFEEL_STATUS_OK;
+}
+
+__attribute__((visibility("default"))) auto ufeel_get_gaze(
+    void* processor, UFeelGaze* gaze
+) -> int32_t
+{
+    if (processor == nullptr || gaze == nullptr)
+    {
+        return UFEEL_STATUS_INVALID_ARGUMENT;
+    }
+
+    *gaze = {};
+    auto const result = static_cast<DataProcessor*>(processor)->getGaze();
+    if (result.status != GazeStatus::Valid)
+    {
+        return UFEEL_STATUS_NO_GAZE;
+    }
+
+    gaze->x = result.x;
+    gaze->y = result.y;
+    gaze->directions = result.directions;
+    gaze->valid = 1;
+    return UFEEL_STATUS_OK;
+}
+
+__attribute__((visibility("default"))) auto ufeel_get_gaze_ex(
+    void* processor, UFeelGazeEx* gaze
+) -> int32_t
+{
+    if (processor == nullptr || gaze == nullptr)
+    {
+        return UFEEL_STATUS_INVALID_ARGUMENT;
+    }
+
+    *gaze = {};
+    auto const result = static_cast<DataProcessor*>(processor)->getGaze();
+    gaze->status = static_cast<uint32_t>(result.status);
+    if (result.status != GazeStatus::Valid)
+    {
+        return UFEEL_STATUS_NO_GAZE;
+    }
+
+    gaze->x = result.x;
+    gaze->y = result.y;
+    gaze->confidence = result.confidence;
+    gaze->directions = result.directions;
+    return UFEEL_STATUS_OK;
+}
+
+__attribute__((visibility("default"))) auto ufeel_get_calibration_progress(
+    void* processor, UFeelCalibrationProgress* progress
+) -> int32_t
+{
+    if (processor == nullptr || progress == nullptr)
+    {
+        return UFEEL_STATUS_INVALID_ARGUMENT;
+    }
+
+    *progress = {};
+    auto const result = static_cast<DataProcessor*>(processor)->getEyeTrackingCalibrationProgress();
+    progress->targets_with_enough_samples = result.targetsWithEnoughSamples;
+    progress->target_count = result.targetCount;
+    progress->samples_for_current_target = result.samplesForCurrentTarget;
+    progress->required_samples_per_target = result.requiredSamplesPerTarget;
+    return UFEEL_STATUS_OK;
+}
+
+__attribute__((visibility("default"))) auto ufeel_save_calibration_profile(
+    void* processor, const char* profile_path
+) -> int32_t
+{
+    if (processor == nullptr || profile_path == nullptr || profile_path[0] == '\0')
+    {
+        return UFEEL_STATUS_INVALID_ARGUMENT;
+    }
+
+    try
+    {
+        return static_cast<DataProcessor*>(processor)->saveEyeTrackingCalibrationProfile(
+                   profile_path
+               )
+                   ? UFEEL_STATUS_OK
+                   : UFEEL_STATUS_PROFILE_FAILED;
+    }
+    catch (const std::exception& exception)
+    {
+        std::cerr << "[ufeel] Failed to save eye-tracking profile: " << exception.what() << '\n';
+        return UFEEL_STATUS_PROFILE_FAILED;
+    }
+}
+
+__attribute__((visibility("default"))) auto ufeel_load_calibration_profile(
+    void* processor, const char* profile_path
+) -> int32_t
+{
+    if (processor == nullptr || profile_path == nullptr || profile_path[0] == '\0')
+    {
+        return UFEEL_STATUS_INVALID_ARGUMENT;
+    }
+
+    try
+    {
+        return static_cast<DataProcessor*>(processor)->loadEyeTrackingCalibrationProfile(
+                   profile_path
+               )
+                   ? UFEEL_STATUS_OK
+                   : UFEEL_STATUS_PROFILE_FAILED;
+    }
+    catch (const std::exception& exception)
+    {
+        std::cerr << "[ufeel] Failed to load eye-tracking profile: " << exception.what() << '\n';
+        return UFEEL_STATUS_PROFILE_FAILED;
+    }
 }
 
 __attribute__((visibility("default"))) void ufeel_toggle_speech(
@@ -234,7 +332,6 @@ __attribute__((visibility("default"))) auto ufeel_get_speech(
     }
 
     std::string const& speech = static_cast<DataProcessor*>(processor)->getSpeech();
-
     return strdup(speech.c_str());
 }
 

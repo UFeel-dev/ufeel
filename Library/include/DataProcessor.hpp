@@ -2,6 +2,7 @@
 #define DATAPROCESSOR_HPP
 
 #include "HeartRate/HeartRateDetector.hpp"
+#include "EyeTracking/EyeTrackingDetector.hpp"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/videoio.hpp"
 
@@ -10,7 +11,6 @@
 #include <string>
 
 class EmotionDetector;
-class EyeTrackingDetector;
 class SpeechToTextDetector;
 class HeartRateSensorDetector;
 
@@ -18,7 +18,7 @@ class DataProcessor
 {
     public:
 
-        DataProcessor(const std::string& speechModelPath);
+        DataProcessor(const std::string& modelDirectory, const std::string& speechModelPath);
 
         ~DataProcessor();
 
@@ -30,17 +30,24 @@ class DataProcessor
 
         auto update() -> bool;
 
-        auto getFrame() const -> cv::Mat;
+        [[nodiscard]] auto getFrame() const -> cv::Mat;
 
-        auto getEmotions() const -> const std::map<std::string, float>&;
-
-        auto getDirections() const -> const std::map<std::string, bool>&;
-
-        auto getSpeech() const -> const std::string&;
+        [[nodiscard]] auto getEmotions() const -> const std::map<std::string, float>&;
 
         [[nodiscard]] auto getHeartRate() const -> HeartRateResult;
 
         void calibrateEyeTracking();
+        [[nodiscard]] auto getGaze() const -> GazeResult;
+
+        [[nodiscard]] auto getSpeech() const -> const std::string&;
+
+        void beginEyeTrackingCalibration();
+        [[nodiscard]] auto setEyeTrackingCalibrationTarget(float x, float y) -> bool;
+        [[nodiscard]] auto finishEyeTrackingCalibration() -> bool;
+        void cancelEyeTrackingCalibration();
+        [[nodiscard]] auto getEyeTrackingCalibrationProgress() const -> CalibrationProgress;
+        [[nodiscard]] auto saveEyeTrackingCalibrationProfile(const std::string& path) const -> bool;
+        [[nodiscard]] auto loadEyeTrackingCalibrationProfile(const std::string& path) -> bool;
 
         void toggleSpeechToText(bool state);
 
@@ -50,7 +57,7 @@ class DataProcessor
         cv::Mat frame_;
 
         std::map<std::string, float> emotions_;
-        std::map<std::string, bool> directions_;
+        GazeResult gaze_;
         std::string speech_;
         HeartRateResult heartrate_{};
 
