@@ -1,6 +1,12 @@
-#include <torch/torch.h>
+#include <c10/core/Device.h>
+#include <string>
+#include <torch/headeronly/core/DeviceType.h>
+#include <torch/serialize/input-archive.h>
 
-template<typename Model> Model load_checkpoint(Model model, const std::string& path, torch::Device device = torch::kCPU)
+template <typename Model>
+static auto load_checkpoint(
+    Model model, const std::string& path, torch::Device device = torch::kCPU
+) -> Model
 {
     torch::serialize::InputArchive archive;
     archive.load_from(path);

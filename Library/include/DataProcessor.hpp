@@ -1,47 +1,55 @@
-/*
-** EPITECH PROJECT, 2026
-** test_lib
-** File description:
-** DataProcessor
-*/
+#ifndef DATAPROCESSOR_HPP
+#define DATAPROCESSOR_HPP
 
-#ifndef DATAPROCESSOR_HPP_
-    #define DATAPROCESSOR_HPP_
+#include "opencv2/core/mat.hpp"
+#include "opencv2/videoio.hpp"
 
-#include "Emotions/EmotionDetector.hpp"
-#include "EyeTracking/EyeTrackingDetector.hpp"
-#include "SpeechToText/SpeechToTextDetector.hpp"
-// #include "HeartRateSensor/HeartRateSensorDetector.hpp"
-#include <opencv2/opencv.hpp>
+#include <map>
+#include <memory>
+#include <string>
 
+class EmotionDetector;
+class EyeTrackingDetector;
+class SpeechToTextDetector;
 
 class DataProcessor
 {
     public:
-        DataProcessor();
+
+        DataProcessor(const std::string& speechModelPath);
+
         ~DataProcessor();
 
         DataProcessor(const DataProcessor&) = delete;
-        DataProcessor& operator=(const DataProcessor&) = delete;
+        auto operator=(const DataProcessor&) -> DataProcessor& = delete;
 
         DataProcessor(DataProcessor&&) = delete;
-        DataProcessor& operator=(DataProcessor&&) = delete;
+        auto operator=(DataProcessor&&) -> DataProcessor& = delete;
 
-        std::map<std::string, float> processEmotion();
+        auto update() -> bool;
+
+        auto getFrame() const -> cv::Mat;
+
+        auto getEmotions() const -> const std::map<std::string, float>&;
+
+        auto getDirections() const -> const std::map<std::string, bool>&;
+
+        auto getSpeech() const -> const std::string&;
 
         void calibrateEyeTracking();
-        std::map<std::string, bool> processEyeTracking();
 
-        std::string processSpeechToText();
         void toggleSpeechToText(bool state);
 
-        // int processHeartRateSensor();
-
-        cv::Mat getFrame();
+        // auto processHeartRateSensor() -> int;
 
     protected:
+
         cv::VideoCapture cap_;
         cv::Mat frame_;
+
+        std::map<std::string, float> emotions_;
+        std::map<std::string, bool> directions_;
+        std::string speech_;
 
         std::unique_ptr<EmotionDetector> emotionDetector_;
         std::unique_ptr<EyeTrackingDetector> eyeTrackingDetector_;
@@ -51,4 +59,4 @@ class DataProcessor
     private:
 };
 
-#endif /* !DATAPROCESSOR_HPP_ */
+#endif // DATAPROCESSOR_HPP

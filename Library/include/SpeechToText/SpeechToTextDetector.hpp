@@ -1,18 +1,12 @@
-/*
-** EPITECH PROJECT, 2026
-** ufeel
-** File description:
-** SpeechToTextDetector
-*/
+#ifndef SPEECHTOTEXT_SPEECHTOTEXTDETECTOR_HPP
+#define SPEECHTOTEXT_SPEECHTOTEXTDETECTOR_HPP
 
-#ifndef SPEECHTOTEXTDETECTOR_HPP_
-#define SPEECHTOTEXTDETECTOR_HPP_
+#include "SpeechToText/AudioCapture.hpp"
+#include "SpeechToText/SpeechRecognizer.hpp"
 
-#include "vosk_api.h"
 #include <atomic>
-#include <cstring>
-#include <iostream>
-#include <portaudio.h>
+#include <cstdint>
+#include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
@@ -20,35 +14,43 @@
 class SpeechToTextDetector
 {
     public:
-        SpeechToTextDetector();
+
+        explicit SpeechToTextDetector(const std::string& modelPath);
+
         ~SpeechToTextDetector();
 
         SpeechToTextDetector(const SpeechToTextDetector&) = delete;
-        SpeechToTextDetector& operator=(const SpeechToTextDetector&) = delete;
+        auto operator=(const SpeechToTextDetector&) -> SpeechToTextDetector& = delete;
 
         SpeechToTextDetector(SpeechToTextDetector&&) = delete;
-        SpeechToTextDetector& operator=(SpeechToTextDetector&&) = delete;
+        auto operator=(SpeechToTextDetector&&) -> SpeechToTextDetector& = delete;
 
         void toggle(bool state);
-        [[nodiscard]] std::string process() const;
+
+        [[nodiscard]]
+        auto process() const -> std::string;
 
     private:
-        VoskModel* model = nullptr;
-        VoskRecognizer* recognizer = nullptr;
 
-        std::thread worker;
-        std::atomic<bool> process_enable{false};
-        std::atomic<bool> running{false};
+        AudioCapture audioCapture_;
+        SpeechRecognizer recognizer_;
 
-        std::string current_text;
+        std::thread worker_;
+        std::atomic<bool> running_{false};
 
-        static std::string extract_text(const char* json);
-
-        static int paCallback(const void *input, void *, uint64_t frameCount, const PaStreamCallbackTimeInfo*, PaStreamCallbackFlags, void *userData);
+        mutable std::mutex textMutex_;
+        std::string currentText_;
 
         void start();
         void stop();
         void run();
+
+        void processAudio(const std::vector<int16_t>& buffer);
+
+        void setText(std::string text);
+
+        [[nodiscard]]
+        auto getText() const -> std::string;
 };
 
-#endif /* !SPEECHTOTEXTDETECTOR_HPP_ */
+#endif // SPEECHTOTEXT_SPEECHTOTEXTDETECTOR_HPP

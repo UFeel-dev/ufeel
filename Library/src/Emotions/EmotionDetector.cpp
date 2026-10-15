@@ -1,19 +1,40 @@
-/*
-** EPITECH PROJECT, 2026
-** test_lib
-** File description:
-** EmotionDetector
-*/
-
 #include "Emotions/EmotionDetector.hpp"
+
+#include "opencv2/core.hpp"
+#include "opencv2/core/hal/interface.h"
+#include "opencv2/core/mat.hpp"
+#include "opencv2/core/types.hpp"
+#include "opencv2/dnn/dnn.hpp"
+#include "opencv2/imgproc.hpp"
+#include "opencv2/objdetect/face.hpp"
+
+#include <ATen/core/TensorBody.h>
+#include <ATen/core/ivalue.h>
+#include <ATen/core/ivalue_inl.h>
+#include <algorithm>
+#include <c10/util/ArrayRef.h>
+#include <c10/util/Exception.h>
+#include <cmath>
+#include <cstddef>
+#include <iostream>
+#include <map>
+#include <string>
+#include <torch/csrc/autograd/generated/variable_factories.h>
+#include <torch/csrc/jit/serialization/import.h>
+#include <torch/csrc/jit/serialization/pickler.h>
+#include <torch/types.h>
+#include <vector>
 
 EmotionDetector::EmotionDetector()
 {
-    std::string modelPath = "models/GiMeFive.pt";
-    try {
+    std::string const modelPath = "models/GiMeFive.pt";
+    try
+    {
         net_ = torch::jit::load(modelPath);
-    } catch (const c10::Error& e) {
-        std::cerr << "error loading the model: {" << modelPath << "}" << std::endl;
+    }
+    catch (const c10::Error& e)
+    {
+        std::cerr << "error loading the model: {" << modelPath << "}" << '\n';
     }
 
     faceDetector_ = cv::FaceDetectorYN::create(
@@ -27,23 +48,24 @@ EmotionDetector::EmotionDetector()
         cv::dnn::DNN_TARGET_CPU
     );
 
-    if (faceDetector_.empty()) {
-        std::cerr << "FaceDetector is EMPTY" << std::endl;
+    if (faceDetector_.empty())
+    {
+        std::cerr << "FaceDetector is EMPTY" << '\n';
     }
-    std::cout << "Success Emotion Detector Constructor" << std::endl;
+    std::cout << "Success Emotion Detector Constructor" << '\n';
 
-    std::cout << "FaceDetector created" << std::endl;
-    cv::Mat dummy(320, 320, CV_8UC3, cv::Scalar(0,0,0));
+    std::cout << "FaceDetector created" << '\n';
+    cv::Mat const dummy(320, 320, CV_8UC3, cv::Scalar(0, 0, 0));
     cv::Mat faces;
 
     try
     {
         faceDetector_->detect(dummy, faces);
-        std::cout << "Detect OK" << std::endl;
+        std::cout << "Detect OK" << '\n';
     }
     catch (const cv::Exception& e)
     {
-        std::cerr << "Detect failed: " << e.what() << std::endl;
+        std::cerr << "Detect failed: " << e.what() << '\n';
     }
 }
 
@@ -52,107 +74,121 @@ EmotionDetector::~EmotionDetector()
     close();
 }
 
-void EmotionDetector::toggleEmotionDetection(bool state)
+void EmotionDetector::toggleEmotionDetection(
+    bool state
+)
 {
     processEnable_ = state;
-    std::cout << "[EmotionDetector] Emotion detection " << (state ? "enabled" : "disabled") << std::endl;
+    std::cout << "[EmotionDetector] Emotion detection " << (state ? "enabled" : "disabled") << '\n';
 }
 
-cv::Mat EmotionDetector::preProcess(const cv::Mat &face)
+auto EmotionDetector::preProcess(
+    const cv::Mat& face
+) -> cv::Mat
 {
-    const float mean[3] { 0.485F, 0.456F, 0.406F };
-    const float std[3] { 0.229F, 0.224F, 0.225F };
+    const float mean[3]{0.485F, 0.456F, 0.406F};
+    const float std[3]{0.229F, 0.224F, 0.225F};
     cv::Mat resized;
     cv::Mat rgb;
     cv::Mat gray;
     cv::Mat gray3;
     std::vector<cv::Mat> ch(3);
 
-    cv::resize(face, resized, cv::Size(64,64));
+    cv::resize(face, resized, cv::Size(64, 64));
     cv::cvtColor(resized, rgb, cv::COLOR_BGR2RGB);
     cv::cvtColor(rgb, gray, cv::COLOR_RGB2GRAY);
     cv::merge(std::vector<cv::Mat>{gray, gray, gray}, gray3);
     gray3.convertTo(gray3, CV_32FC3, 1.0 / 255.0);
     cv::split(gray3, ch);
-    for (size_t i = 0; i < 3; i++) {
+    for (size_t i = 0; i < 3; i++)
+    {
         ch[i] = (ch[i] - mean[i]) / std[i];
     }
     cv::merge(ch, gray3);
     return gray3;
 }
 
-std::vector<float> EmotionDetector::processFace(const cv::Mat &face)
+auto EmotionDetector::processFace(
+    const cv::Mat& face
+) -> std::vector<float>
 {
-    if (face.empty()) {
-        std::cerr << "[EmotionDetector] processFace() got EMPTY face" << std::endl;
+    if (face.empty())
+    {
+        std::cerr << "[EmotionDetector] processFace() got EMPTY face" << '\n';
         return {};
     }
 
     std::vector<torch::jit::IValue> inputs;
     float sum = 0.0F;
-    float neutralFactor = 0.001F;
+    float const neutralFactor = 0.001F;
     float total = 0.0F;
 
-    cv::Mat input = preProcess(face);
+    cv::Mat const input = preProcess(face);
     cv::Mat blob = cv::dnn::blobFromImage(input);
 
-    torch::Tensor tensor = torch::from_blob(
-        blob.ptr<float>(),
-        {1, 3, 64, 64},
-        torch::kFloat32
-    ).clone();
-
+    torch::Tensor const tensor =
+        torch::from_blob(blob.ptr<float>(), {1, 3, 64, 64}, torch::kFloat32).clone();
 
     inputs.emplace_back(tensor);
 
-    at::Tensor output = net_.forward(inputs).toTensor();
+    at::Tensor const output = net_.forward(inputs).toTensor();
     std::vector<float> scores(output.data_ptr<float>(), output.data_ptr<float>() + output.numel());
 
-    float maxLogit = *std::max_element(scores.begin(), scores.end());
-    for (auto &s : scores) {
+    float const maxLogit = *std::max_element(scores.begin(), scores.end());
+    for (auto& s : scores)
+    {
         s = std::exp(s - maxLogit);
         sum += s;
     }
-    for (auto &s : scores) {
+    for (auto& s : scores)
+    {
         s /= sum;
     }
 
     scores[4] *= neutralFactor;
-    for (auto s : scores) {
+    for (auto s : scores)
+    {
         total += s;
     }
-    for (auto &s : scores) {
+    for (auto& s : scores)
+    {
         s /= total;
     }
 
     return scores;
 }
 
-std::map<std::string,float> EmotionDetector::process(const cv::Mat &image)
+auto EmotionDetector::process(
+    const cv::Mat& image
+) -> std::map<std::string, float>
 {
-    if (image.empty()) {
-        std::cerr << "[EmotionDetector] process() got EMPTY image" << std::endl;
+    if (image.empty())
+    {
+        std::cerr << "[EmotionDetector] process() got EMPTY image" << '\n';
         return {};
     }
 
     cv::Mat resized;
-    cv::Mat inputImage = image.clone();
-    const cv::Size yunetSize(320,320);
+    cv::Mat const inputImage = image.clone();
+    const cv::Size yunetSize(320, 320);
     cv::Mat faces;
 
     cv::resize(inputImage, resized, yunetSize);
     faceDetector_->setInputSize(resized.size());
     faceDetector_->detect(resized, faces);
 
-    if (faces.empty()) {
+    if (faces.empty())
+    {
         return {};
     }
-    float scaleX = static_cast<float>(image.cols) / static_cast<float>(yunetSize.width);
-    float scaleY = static_cast<float>(image.rows) / static_cast<float>(yunetSize.height);
+    float const scaleX = static_cast<float>(image.cols) / static_cast<float>(yunetSize.width);
+    float const scaleY = static_cast<float>(image.rows) / static_cast<float>(yunetSize.height);
 
-    for (int i = 0; i < faces.rows; i++) {
-        float conf = faces.at<float>(i, 14);
-        if (conf < 0.9F) {
+    for (int i = 0; i < faces.rows; i++)
+    {
+        float const conf = faces.at<float>(i, 14);
+        if (conf < 0.9F)
+        {
             continue;
         }
         cv::Rect faceRect(
@@ -164,7 +200,8 @@ std::map<std::string,float> EmotionDetector::process(const cv::Mat &image)
         faceRect &= cv::Rect(0, 0, image.cols, image.rows);
         std::vector<float> scores = processFace(inputImage(faceRect));
         std::map<std::string, float> labeled;
-        for(size_t j = 0; j < classLabels_.size(); j++) {
+        for (size_t j = 0; j < classLabels_.size(); j++)
+        {
             labeled[classLabels_[j]] = scores[j];
         }
         return labeled;
@@ -172,6 +209,4 @@ std::map<std::string,float> EmotionDetector::process(const cv::Mat &image)
     return {};
 }
 
-void EmotionDetector::close()
-{
-}
+void EmotionDetector::close() {}

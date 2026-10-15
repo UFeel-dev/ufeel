@@ -10,46 +10,46 @@
 ![C++](https://img.shields.io/badge/c++-%2300599C.svg?style=for-the-badge&logo=c%2B%2B&logoColor=white)
 ![C#](https://img.shields.io/badge/c%23-%23239120.svg?style=for-the-badge&logo=csharp&logoColor=white)![Espressif](https://img.shields.io/badge/espressif-E7352C.svg?style=for-the-badge&logo=espressif&logoColor=white)
 
-This project provides the **UFEEL native library** with a C# test application.
+This project provides the **UFEEL native library**, a tool to handle emotion recognition, eye tracking, speech to text and heart rate sensing.
 
 ## Quick Start
 
-Use the `build.sh` script to build and run the project:
+1. Clone the [repository](https://github.com/UFeel-dev/ufeel).
+
+2. Setup the docker environment (or install dependencies): [Docker-based setup documentation](docker/README.md).
+
+3. Use the `build.sh` script to build and run the project:
 
 ```bash
 ./build.sh all
 ```
 
-## What the script does
-
-The script performs the following steps:
-
-1. **Build**
-   Creates the `build/` directory.
-
-2. **Compile**
-
-   - Compiles the native sources into a library
-   - Moves the required artifacts into the C# project folder
-
-3. **Run**
-   Starts the C# test application.
-
 ## Requirements
 
+Manual installation:
+
 - Linux
-- GLIBC >= 2.39
-- `dotnet` installed >= 8.0
-- `clang` >= 14.0.6 or `gcc` >= 12.2.0
+- GLIBC >= 2.36
+- `dotnet` == 10.0
+- `clang` >= 22.0
 - `cmake` >= 3.20
-- `portaudio` >= 19.6.0
+- `ninja-build` >= 1.13.2
 - `git-lfs` >= 3.4.1
+- `clang-tidy` >= 22.0
+- `clang-format` >= 22.0
+- `iwyu` >= 0.26
+
+Docker installation:
+
+- Docker >= 20.0
+
+In case some dependencies are missing for your system, we would be grateful if you can open an appropriate issue. You might be able to find some of the dependencies in the [Dockerfile](docker/Dockerfile).
 
 ## Third-Party Libraries (Git LFS Required)
 
 This project uses **Git LFS** to store large third-party libraries located in the `3rdparty/` folder (e.g. `.so`, `.a` files).
 
-After cloning the repository, you must install Git LFS and pull the required files.
+After cloning the repository, you may need to install Git LFS and pull the required files.
 
 ### Install Git LFS (Ubuntu / Debian)
 
@@ -77,13 +77,12 @@ This will download all required libraries inside the `3rdparty/` folder.
 ### Full setup example
 
 ```bash
-git clone git@github.com:augustin-grosnon/ufeel.git
+git clone https://github.com/UFeel-dev/ufeel
 git lfs install
 git lfs pull
 ```
 
 You can now build the project normally.
-
 
 ## Project Structure
 
@@ -94,7 +93,8 @@ You can now build the project normally.
 ├── Library/       # native sources
 ├── Wrapper/       # C++ Wrapper
 ├── 3rdparty/      # external dependencies
-└── build/         # generated (created by script)
+├── build/         # generated (created by script)
+└── docker/        # Docker environment
 ```
 
 ## Manual build (optional)
@@ -102,7 +102,19 @@ You can now build the project normally.
 If you prefer running steps manually:
 
 ```bash
+./build.sh configure
 ./build.sh build
-./build.sh compile
-./build.sh run
+./build.sh package
 ```
+
+## Documentation
+
+| Document | Description |
+| --- | --- |
+| [Contributing](CONTRIBUTING.md) | Contribution guidelines |
+| [Disclaimer](DISCLAIMER.md) | Limitations and prohibited use |
+| [Docker](docker/README.md) | Docker setup instructions |
+
+## License
+
+MIT License - see [LICENSE](LICENSE).
