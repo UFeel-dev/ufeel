@@ -763,6 +763,7 @@ public sealed class UFeelProcessor : IDisposable
         GC.SuppressFinalize(this);
     }
 
+<<<<<<< HEAD
         if (handle != IntPtr.Zero)
         {
             UFeelNative.ufeel_destroy(handle);
