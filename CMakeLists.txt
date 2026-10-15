@@ -134,8 +134,6 @@ target_include_directories(ufeel_detection_library
         ${TFLITE_DIR}/include
         ${VOSK_DIR}/include
         ${PORTAUDIO_DIR}/include
-        ${CPR_DIR}/include
-        ${JSON_DIR}/include
 )
 
 target_link_libraries(ufeel_detection_library

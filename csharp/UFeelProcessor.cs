@@ -513,6 +513,24 @@ public sealed class UFeelProcessor : IDisposable
             $"Failed to {operation}: {message} (status {(int)status}).");
     }
 
+    public int GetHeartRate()
+    {
+        IntPtr bpm =
+            UFeelNative.ufeel_get_heartrate(Handle);
+
+        if (bpm == IntPtr.Zero)
+            return -1;
+
+        try
+        {
+            return (int)bpm;
+        }
+        catch
+        {
+            return -1;
+        }
+    }
+
     public void Dispose()
     {
         if (disposed)

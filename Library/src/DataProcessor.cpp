@@ -5,6 +5,7 @@
 #include "EyeTracking/GazeCalibrationModel.hpp"
 #include "HeartRate/HeartRateDetector.hpp"
 #include "SpeechToText/SpeechToTextDetector.hpp"
+#include "HeartRate/HeartRateDetector.hpp"
 
 #include <filesystem>
 #include <iostream>
