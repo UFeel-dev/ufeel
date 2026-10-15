@@ -1,4 +1,3 @@
-
 #ifndef EYETRACKING_GAZECALIBRATIONMODEL_HPP
 #define EYETRACKING_GAZECALIBRATIONMODEL_HPP
 
@@ -16,7 +15,6 @@ inline constexpr std::size_t GAZE_MINIMUM_CALIBRATION_TARGETS = 9;
 inline constexpr std::size_t GAZE_MINIMUM_SAMPLES_PER_TARGET = 15;
 inline constexpr std::size_t GAZE_MAXIMUM_SAMPLES_PER_TARGET = 120;
 inline constexpr std::size_t GAZE_MAXIMUM_CALIBRATION_TARGETS = 64;
-
 using GazeFeatureVector = std::array<double, GAZE_FEATURE_COUNT>;
 
 struct GazeCalibrationTarget

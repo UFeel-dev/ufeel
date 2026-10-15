@@ -21,6 +21,17 @@ public partial class MainWindow : Window
     private readonly SemaphoreSlim processorGate = new(1, 1);
 
     private readonly Task processTask;
+    private Task? calibrationTask;
+    private CancellationTokenSource? calibrationCancellation;
+    private GazeData lastGaze = new(
+        0.0F,
+        0.0F,
+        0.0F,
+        UFeelNative.GazeDirection.None,
+        UFeelNative.GazeStatus.NotCalibrated);
+    private readonly string calibrationProfilePath;
+    private float calibrationTargetX;
+    private float calibrationTargetY;
     private bool speechEnabled;
     private bool closing;
 
@@ -55,8 +66,44 @@ public partial class MainWindow : Window
             throw new DirectoryNotFoundException(
                 $"Vosk model directory not found: {speechModelPath}");
 
-        processor = new UFeelProcessor(libraryPath, speechModelPath);
+        string localDataDirectory = Environment.GetFolderPath(
+            Environment.SpecialFolder.LocalApplicationData);
+        if (string.IsNullOrWhiteSpace(localDataDirectory))
+            throw new InvalidOperationException(
+                "Cannot determine the per-user application data directory for the gaze profile.");
 
+        calibrationProfilePath = Path.Combine(
+            localDataDirectory,
+            "UFeel",
+            "gaze-profile-v2.txt");
+
+        processor = new UFeelProcessor(
+            libraryPath,
+            modelDirectory,
+            speechModelPath);
+
+        if (File.Exists(calibrationProfilePath))
+        {
+            try
+            {
+                StatusText.Text = processor.LoadCalibrationProfile(calibrationProfilePath)
+                    ? "Loaded saved eye-tracking calibration"
+                    : "Saved eye-tracking calibration is invalid, recalibrate to replace it";
+            }
+            catch (Exception exception)
+            {
+                StatusText.Text = $"Could not load eye-tracking calibration: {exception.Message}";
+            }
+        }
+
+        CalibrationCanvas.SizeChanged += (_, _) =>
+            UpdateCalibrationMarker(calibrationTargetX, calibrationTargetY);
+        GazeCanvas.SizeChanged += (_, _) =>
+        {
+            if (GazeOverlay.IsVisible)
+                UpdateGazeMarker(lastGaze);
+        };
+        KeyDown += MainWindow_OnKeyDown;
         Closed += OnClosed;
         processTask = ProcessLoopAsync(cancellation.Token);
     }
@@ -71,7 +118,7 @@ public partial class MainWindow : Window
             {
                 bool updated;
                 Dictionary<string, float> emotions;
-                Dictionary<string, bool> directions;
+                GazeData gaze;
                 string speech;
                 HeartRateResultData heartrate;
 
@@ -84,7 +131,12 @@ public partial class MainWindow : Window
                     if (!updated)
                     {
                         emotions = new();
-                        directions = new();
+                        gaze = new(
+                            0.0F,
+                            0.0F,
+                            0.0F,
+                            UFeelNative.GazeDirection.None,
+                            UFeelNative.GazeStatus.FrameUnavailable);
                         speech = string.Empty;
                         heartrate = new HeartRateResultData(
                             HeartRateStatus.RequestFailed,
@@ -98,7 +150,7 @@ public partial class MainWindow : Window
                             bitmap = FrameBitmapFactory.Create(frame);
 
                         emotions = processor.GetEmotions();
-                        directions = processor.GetDirections();
+                        gaze = processor.GetGaze();
                         speech = speechEnabled
                             ? processor.GetSpeechToText()
                             : string.Empty;
@@ -112,6 +164,16 @@ public partial class MainWindow : Window
 
                 if (!updated)
                 {
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        if (closing)
+                            return;
+
+                        DirectionsText.Text = FormatDirections(gaze);
+                        GazeText.Text = FormatGaze(gaze);
+                        lastGaze = gaze;
+                        GazeOverlay.IsVisible = false;
+                    });
                     await Task.Delay(50, token);
                     continue;
                 }
@@ -191,15 +253,56 @@ public partial class MainWindow : Window
                 .Select(pair => $"{pair.Key}: {pair.Value:F3}"));
     }
 
-    private static string FormatDirections(
-        Dictionary<string, bool> directions)
+    private static string FormatDirections(GazeData gaze)
     {
-        if (directions.Count == 0)
-            return "No data";
+        if (!gaze.IsValid)
+        {
+            return gaze.Status switch
+            {
+                UFeelNative.GazeStatus.NotCalibrated => "Not calibrated",
+                UFeelNative.GazeStatus.FaceUnavailable => "Face not detected",
+                UFeelNative.GazeStatus.Blinking => "Blink detected",
+                UFeelNative.GazeStatus.LowQuality => "Eye landmarks are low quality",
+                UFeelNative.GazeStatus.Calibrating => "Calibration in progress",
+                UFeelNative.GazeStatus.Disabled => "Eye tracking is disabled",
+                UFeelNative.GazeStatus.FrameUnavailable => "Camera frame unavailable",
+                _ => "Gaze unavailable"
+            };
+        }
 
-        return string.Join(
-            Environment.NewLine,
-            directions.Select(pair => $"{pair.Key}: {pair.Value}"));
+        var directions = new List<string>();
+        if (gaze.Directions.HasFlag(UFeelNative.GazeDirection.Left))
+            directions.Add("left");
+        if (gaze.Directions.HasFlag(UFeelNative.GazeDirection.Right))
+            directions.Add("right");
+        if (gaze.Directions.HasFlag(UFeelNative.GazeDirection.Up))
+            directions.Add("up");
+        if (gaze.Directions.HasFlag(UFeelNative.GazeDirection.Down))
+            directions.Add("down");
+        if (gaze.Directions.HasFlag(UFeelNative.GazeDirection.Center))
+            directions.Add("center");
+
+        return directions.Count == 0
+            ? "No direction"
+            : string.Join(", ", directions);
+    }
+
+    private static string FormatGaze(GazeData gaze)
+    {
+        return gaze.IsValid
+            ? $"Normalized client-area position: ({gaze.X:F3}, {gaze.Y:F3}) | confidence {gaze.Confidence:P0}"
+            : "Screen position unavailable";
+    }
+
+    private void UpdateGazeMarker(GazeData gaze)
+    {
+        double width = GazeCanvas.Bounds.Width;
+        double height = GazeCanvas.Bounds.Height;
+        if (width <= 0 || height <= 0)
+            return;
+
+        Canvas.SetLeft(GazeMarker, gaze.X * width - GazeMarker.Width / 2);
+        Canvas.SetTop(GazeMarker, gaze.Y * height - GazeMarker.Height / 2);
     }
 
     private static string FormatHeartRate(HeartRateResultData heartrate)
@@ -268,18 +371,127 @@ public partial class MainWindow : Window
 
         try
         {
-            await processorGate.WaitAsync(cancellation.Token);
+            calibrationTask = RunCalibrationAsync(source.Token);
+            await calibrationTask;
+        }
+        finally
+        {
+            calibrationTask = null;
+            calibrationCancellation = null;
+            source.Dispose();
+            CalibrateButton.Content = "Calibrate / recalibrate";
+        }
+    }
 
+    private async Task RunCalibrationAsync(CancellationToken token)
+    {
+        bool calibrationStarted = false;
+
+        try
+        {
+            await processorGate.WaitAsync(token);
             try
             {
-                processor.CalibrateDirections();
+                processor.BeginCalibration();
+                calibrationStarted = true;
             }
             finally
             {
                 processorGate.Release();
             }
 
-            StatusText.Text = "Eye tracking calibrated";
+            CalibrationOverlay.IsVisible = true;
+
+            (float X, float Y)[] targets =
+            [
+                (0.5F, 0.5F),
+                (0.1F, 0.1F),
+                (0.5F, 0.1F),
+                (0.9F, 0.1F),
+                (0.9F, 0.5F),
+                (0.9F, 0.9F),
+                (0.5F, 0.9F),
+                (0.1F, 0.9F),
+                (0.1F, 0.5F)
+            ];
+
+            for (int i = 0; i < targets.Length; i++)
+            {
+                var target = targets[i];
+                calibrationTargetX = target.X;
+                calibrationTargetY = target.Y;
+                UpdateCalibrationMarker(target.X, target.Y);
+                CalibrationInstruction.Text =
+                    $"Look at the target and keep your head still ({i + 1}/{targets.Length})";
+
+                await Task.Delay(400, token);
+                await processorGate.WaitAsync(token);
+                try
+                {
+                    processor.SetCalibrationTarget(target.X, target.Y);
+                }
+                finally
+                {
+                    processorGate.Release();
+                }
+
+                Stopwatch targetTimer = Stopwatch.StartNew();
+                CalibrationProgress progress;
+                do
+                {
+                    await processorGate.WaitAsync(token);
+                    try
+                    {
+                        progress = processor.GetCalibrationProgress();
+                    }
+                    finally
+                    {
+                        processorGate.Release();
+                    }
+
+                    StatusText.Text =
+                        $"Calibration target {i + 1}/{targets.Length}: " +
+                        $"{progress.SamplesForCurrentTarget}/{progress.RequiredSamplesPerTarget} usable frames";
+                    CalibrationInstruction.Text =
+                        $"Keep looking at the target ({progress.SamplesForCurrentTarget}/" +
+                        $"{progress.RequiredSamplesPerTarget} usable frames)";
+                    if (progress.SamplesForCurrentTarget >= progress.RequiredSamplesPerTarget ||
+                        targetTimer.Elapsed >= TimeSpan.FromSeconds(3))
+                    {
+                        break;
+                    }
+                    await Task.Delay(200, token);
+                }
+                while (true);
+            }
+
+            await processorGate.WaitAsync(token);
+            bool calibrated;
+            bool profileSaved = false;
+            CalibrationProgress? failureProgress = null;
+            try
+            {
+                calibrated = processor.FinishCalibration();
+                calibrationStarted = false;
+                if (calibrated)
+                    profileSaved = SaveCalibrationProfile();
+                else
+                    failureProgress = processor.GetCalibrationProgress();
+            }
+            finally
+            {
+                processorGate.Release();
+            }
+
+            StatusText.Text = calibrated
+                ? profileSaved
+                    ? "Eye tracking calibrated and profile saved"
+                    : "Eye tracking calibrated, but the profile could not be saved"
+                : failureProgress is not null &&
+                    failureProgress.TargetsWithEnoughSamples < targets.Length
+                    ? $"Calibration incomplete: only {failureProgress.TargetsWithEnoughSamples}/" +
+                        $"{targets.Length} targets had enough usable frames"
+                    : "Calibration quality check failed; keep your face steady and use widely spaced targets";
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
