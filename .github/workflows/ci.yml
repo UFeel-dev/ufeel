@@ -14,7 +14,7 @@ on:
 jobs:
   build-and-analysis:
     name: Build and Static Analysis
-    runs-on: ubuntu-latest #ubuntu-24.04 ?
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
@@ -67,6 +67,6 @@ jobs:
           files-changed-only: false
           database: 'build'
 
-      # - name: Fail on lint errors    // CI will fail even with warnings
+      # - name: Fail on lint errors
       #   if: steps.linter.outputs.checks-failed > 0
         # run: exit 1
