@@ -5,6 +5,7 @@
 #include "EyeTracking/GazeCalibrationModel.hpp"
 #include "HeartRate/HeartRateDetector.hpp"
 #include "SpeechToText/SpeechToTextDetector.hpp"
+#include "HeartRate/HeartRateDetector.hpp"
 
 #include <filesystem>
 #include <iostream>
@@ -52,7 +53,11 @@ auto DataProcessor::update() -> bool
 
     speech_ = speechToTextDetector_->process();
 
+<<<<<<< HEAD
     heartrate_ = HeartRateSensorDetector::process();
+=======
+    // heartrate_ = heartRateSensorDetector_->process();
+>>>>>>> e88a471 (feat: add heartbeat in cpp library)
 
     return true;
 }
@@ -128,7 +133,11 @@ auto DataProcessor::loadEyeTrackingCalibrationProfile(
     return eyeTrackingDetector_->loadCalibrationProfile(path);
 }
 
+<<<<<<< HEAD
 auto DataProcessor::getHeartRate() const -> HeartRateResult
+=======
+auto DataProcessor::getHeartRate() const -> int
+>>>>>>> e88a471 (feat: add heartbeat in cpp library)
 {
     return heartrate_;
 }

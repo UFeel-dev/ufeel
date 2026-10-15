@@ -564,6 +564,7 @@ void ufeel_free_string(
 }
 
 __attribute__((visibility("default"))) auto ufeel_get_heartrate(
+<<<<<<< HEAD
     UFeelProcessor* processor, UFeelHeartRateResult* result
 ) -> int32_t
 {
@@ -589,4 +590,15 @@ __attribute__((visibility("default"))) auto ufeel_get_heartrate(
     );
 
     return UFEEL_STATUS_OK;
+=======
+    void* processor
+) -> int
+{
+    if (processor == nullptr)
+    {
+        return -1;
+    }
+
+    return static_cast<DataProcessor*>(processor)->getHeartRate();
+>>>>>>> e88a471 (feat: add heartbeat in cpp library)
 }
