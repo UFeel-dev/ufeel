@@ -38,11 +38,13 @@ typedef struct
     float value;
 } UFeelPair;
 
-typedef struct UFeelBoolPair
+typedef struct UFeelGaze
 {
-        const char* key;
-        uint8_t value;
-} UFeelBoolPair;
+        float x;
+        float y;
+        uint32_t directions;
+        uint32_t valid;
+} UFeelGaze;
 
 typedef enum
 {
