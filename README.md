@@ -14,17 +14,25 @@ This project provides the **UFEEL native library**, a tool to handle emotion rec
 
 ## Quick Start
 
-1. Clone the [repository](https://github.com/UFeel-dev/ufeel).
+1. Make sure you have git lfs installed and setup. If not, refer to the [instructions to install Git LFS](#download-third-party-libraries).
 
-2. Setup the docker environment (or install dependencies): [Docker-based setup documentation](docker/README.md).
+2. Clone the [repository](https://github.com/UFeel-dev/ufeel).
 
-3. Use the `build.sh` script to build and run the project:
+3. Setup the docker environment: [Docker-based setup documentation](docker/README.md) (or install dependencies).
+
+4. Use the `build.sh` script to build and run the project:
 
 ```bash
 ./build.sh all
 ```
 
+Note: you will need appropriate input devices to test some of the features, such as a camera and a microphone.
+
 ## Requirements
+
+Docker installation:
+
+- Docker >= 20.0
 
 Manual installation:
 
@@ -38,10 +46,6 @@ Manual installation:
 - `clang-tidy` >= 22.0
 - `clang-format` >= 22.0
 - `iwyu` >= 0.26
-
-Docker installation:
-
-- Docker >= 20.0
 
 In case some dependencies are missing for your system, we would be grateful if you can open an appropriate issue. You might be able to find some of the dependencies in the [Dockerfile](docker/Dockerfile).
 
@@ -117,4 +121,4 @@ If you prefer running steps manually:
 
 ## License
 
-MIT License - see [LICENSE](LICENSE).
+Apache 2.0 License - see [LICENSE](LICENSE).
