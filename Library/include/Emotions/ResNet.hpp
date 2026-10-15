@@ -1,5 +1,5 @@
-#ifndef EMOTIONS_RESNETIMPL_HPP
-#define EMOTIONS_RESNETIMPL_HPP
+#ifndef EMOTIONS_RESNET_HPP
+#define EMOTIONS_RESNET_HPP
 
 #include <cstdint>
 #include <torch/nn/module.h>
@@ -60,4 +60,4 @@ TORCH_MODULE(ResNet);
 
 auto resnet34() -> ResNet;
 
-#endif // EMOTIONS_RESNETIMPL_HPP
+#endif // EMOTIONS_RESNET_HPP

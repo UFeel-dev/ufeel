@@ -19,7 +19,7 @@ DataProcessor::DataProcessor(
         std::cerr << "[ERROR] Cannot open camera capture_id=0\n";
     }
 
-    emotionDetector_ = std::make_unique<EmotionDetector>();
+    emotionDetector_ = std::make_unique<EmotionDetector>(emotionModelPath, emotionConfigPath);
 
     eyeTrackingDetector_ = std::make_unique<EyeTrackingDetector>();
 

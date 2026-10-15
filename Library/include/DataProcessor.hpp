@@ -57,6 +57,11 @@ class DataProcessor
         // std::unique_ptr<HeartRateSensorDetector> heartRateSensorDetector_;
 
     private:
+
+        const std::string emotionModelPath =
+            "models/Emotions/binary_affectnet_resnet34_pretrained_scripted.pt";
+        const std::string emotionConfigPath =
+            "models/Emotions/binary_affectnet_resnet34_pretrained.yaml";
 };
 
 #endif // DATAPROCESSOR_HPP

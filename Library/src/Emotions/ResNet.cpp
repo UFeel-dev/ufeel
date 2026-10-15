@@ -1,4 +1,4 @@
-#include "Emotions/ResNetImpl.hpp"
+#include "Emotions/ResNet.hpp"
 
 #include <ATen/ops/adaptive_avg_pool2d.h>
 #include <ATen/ops/flatten.h>

@@ -1,5 +1,6 @@
 #include "Emotions/EmotionDetector.hpp"
 
+#include "Emotions/CheckPointLoader.hpp"
 #include "opencv2/core.hpp"
 #include "opencv2/core/hal/interface.h"
 #include "opencv2/core/mat.hpp"
@@ -25,53 +26,75 @@
 #include <torch/types.h>
 #include <vector>
 
-EmotionDetector::EmotionDetector()
+EmotionDetector::EmotionDetector(
+    const std::string& modelPath, const std::string& configPath, std::string device
+)
+    : device_(torch::Device(device))
 {
-    std::string const modelPath = "models/GiMeFive.pt";
-    try
-    {
-        net_ = torch::jit::load(modelPath);
-    }
-    catch (const c10::Error& e)
-    {
-        std::cerr << "error loading the model: {" << modelPath << "}" << '\n';
-    }
+    YAML::Node config = loadConfig(configPath);
 
-    faceDetector_ = cv::FaceDetectorYN::create(
-        "models/face_detection_yunet_2023mar.onnx",
-        "",
-        cv::Size(320, 320),
-        0.9F,
-        0.3F,
-        5000,
-        cv::dnn::DNN_BACKEND_OPENCV,
-        cv::dnn::DNN_TARGET_CPU
+    auto model_cfg = config["model"];
+    auto data_cfg = config["data"];
+
+    model_ = EmotionModel(model_cfg["backbone_name"].as<std::string>());
+
+    model_ =
+        loadCheckpoint(model_, "models/Emotions/binary_affectnet_resnet34_pretrained.pt", device_);
+
+    auto detector = std::make_shared<YuNetFaceDetector>(
+        "models/EyeTracking/face_detection_yunet_2023mar.onnx", 0.9f, 0.3f, 5000
     );
 
-    if (faceDetector_.empty())
-    {
-        std::cerr << "FaceDetector is EMPTY" << '\n';
-    }
-    std::cout << "Success Emotion Detector Constructor" << '\n';
+    auto face_crop = std::make_shared<MTCNNCropTransform>(data_cfg["img_size"].as<int>(), detector);
 
-    std::cout << "FaceDetector created" << '\n';
-    cv::Mat const dummy(320, 320, CV_8UC3, cv::Scalar(0, 0, 0));
-    cv::Mat faces;
+    pipeline_ = std::make_shared<InferencePipeline>(
+        model_, device_, face_crop, data_cfg["img_size"].as<int>()
+    );
 
-    try
+    std::unordered_map<std::string, float> thresholds;
+
+    const auto thresholds_node = model_cfg["thresholds"];
+
+    for (const auto& node : thresholds_node)
     {
-        faceDetector_->detect(dummy, faces);
-        std::cout << "Detect OK" << '\n';
+        const auto emotion = node.first.as<std::string>();
+        const auto threshold = node.second.as<float>();
+
+        thresholds[emotion] = threshold;
     }
-    catch (const cv::Exception& e)
-    {
-        std::cerr << "Detect failed: " << e.what() << '\n';
-    }
+    pipeline_->set_calibration(HeadCalibration(thresholds));
+
+    processEnable_ = false;
 }
 
 EmotionDetector::~EmotionDetector()
 {
     close();
+}
+
+auto EmotionDetector::loadConfig(
+    const std::string& configPath
+) -> YAML::Node
+{
+    namespace fs = std::filesystem;
+
+    fs::path path(configPath);
+
+    if (!fs::exists(path))
+    {
+        std::cerr << "Configuration file not found: " << path << '\n';
+
+        throw std::runtime_error("Configuration file not found: " + path.string());
+    }
+
+    try
+    {
+        return YAML::LoadFile(path.string());
+    }
+    catch (const YAML::Exception& e)
+    {
+        throw std::runtime_error("Failed to parse configuration file: " + std::string(e.what()));
+    }
 }
 
 void EmotionDetector::toggleEmotionDetection(
@@ -82,129 +105,32 @@ void EmotionDetector::toggleEmotionDetection(
     std::cout << "[EmotionDetector] Emotion detection " << (state ? "enabled" : "disabled") << '\n';
 }
 
-auto EmotionDetector::preProcess(
-    const cv::Mat& face
-) -> cv::Mat
-{
-    const float mean[3]{0.485F, 0.456F, 0.406F};
-    const float std[3]{0.229F, 0.224F, 0.225F};
-    cv::Mat resized;
-    cv::Mat rgb;
-    cv::Mat gray;
-    cv::Mat gray3;
-    std::vector<cv::Mat> ch(3);
-
-    cv::resize(face, resized, cv::Size(64, 64));
-    cv::cvtColor(resized, rgb, cv::COLOR_BGR2RGB);
-    cv::cvtColor(rgb, gray, cv::COLOR_RGB2GRAY);
-    cv::merge(std::vector<cv::Mat>{gray, gray, gray}, gray3);
-    gray3.convertTo(gray3, CV_32FC3, 1.0 / 255.0);
-    cv::split(gray3, ch);
-    for (size_t i = 0; i < 3; i++)
-    {
-        ch[i] = (ch[i] - mean[i]) / std[i];
-    }
-    cv::merge(ch, gray3);
-    return gray3;
-}
-
-auto EmotionDetector::processFace(
-    const cv::Mat& face
-) -> std::vector<float>
-{
-    if (face.empty())
-    {
-        std::cerr << "[EmotionDetector] processFace() got EMPTY face" << '\n';
-        return {};
-    }
-
-    std::vector<torch::jit::IValue> inputs;
-    float sum = 0.0F;
-    float const neutralFactor = 0.001F;
-    float total = 0.0F;
-
-    cv::Mat const input = preProcess(face);
-    cv::Mat blob = cv::dnn::blobFromImage(input);
-
-    torch::Tensor const tensor =
-        torch::from_blob(blob.ptr<float>(), {1, 3, 64, 64}, torch::kFloat32).clone();
-
-    inputs.emplace_back(tensor);
-
-    at::Tensor const output = net_.forward(inputs).toTensor();
-    std::vector<float> scores(output.data_ptr<float>(), output.data_ptr<float>() + output.numel());
-
-    float const maxLogit = *std::max_element(scores.begin(), scores.end());
-    for (auto& s : scores)
-    {
-        s = std::exp(s - maxLogit);
-        sum += s;
-    }
-    for (auto& s : scores)
-    {
-        s /= sum;
-    }
-
-    scores[4] *= neutralFactor;
-    for (auto s : scores)
-    {
-        total += s;
-    }
-    for (auto& s : scores)
-    {
-        s /= total;
-    }
-
-    return scores;
-}
-
 auto EmotionDetector::process(
     const cv::Mat& image
 ) -> std::map<std::string, float>
 {
     if (image.empty())
     {
-        std::cerr << "[EmotionDetector] process() got EMPTY image" << '\n';
+        std::cerr << "[EmotionDetector] process() got EMPTY image" << std::endl;
         return {};
     }
 
-    cv::Mat resized;
-    cv::Mat const inputImage = image.clone();
-    const cv::Size yunetSize(320, 320);
-    cv::Mat faces;
+    auto out = pipeline_->predict(image);
 
-    cv::resize(inputImage, resized, yunetSize);
-    faceDetector_->setInputSize(resized.size());
-    faceDetector_->detect(resized, faces);
-
-    if (faces.empty())
+    if (out.binary.empty())
     {
+        std::cerr << "[EmotionDetector] pipeline->predict() got empty binary/heads" << std::endl;
         return {};
     }
-    float const scaleX = static_cast<float>(image.cols) / static_cast<float>(yunetSize.width);
-    float const scaleY = static_cast<float>(image.rows) / static_cast<float>(yunetSize.height);
 
-    for (int i = 0; i < faces.rows; i++)
+    std::vector<std::string> selected;
+
+    for (const auto& [emotion, enabled] : out.binary)
     {
-        float const conf = faces.at<float>(i, 14);
-        if (conf < 0.9F)
+        if (enabled)
         {
-            continue;
+            selected.push_back(emotion);
         }
-        cv::Rect faceRect(
-            static_cast<int>(faces.at<float>(i, 0) * scaleX),
-            static_cast<int>(faces.at<float>(i, 1) * scaleY),
-            static_cast<int>(faces.at<float>(i, 2) * scaleX),
-            static_cast<int>(faces.at<float>(i, 3) * scaleY)
-        );
-        faceRect &= cv::Rect(0, 0, image.cols, image.rows);
-        std::vector<float> scores = processFace(inputImage(faceRect));
-        std::map<std::string, float> labeled;
-        for (size_t j = 0; j < classLabels_.size(); j++)
-        {
-            labeled[classLabels_[j]] = scores[j];
-        }
-        return labeled;
     }
     return {};
 }

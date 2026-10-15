@@ -37,7 +37,7 @@ public partial class MainWindow : Window
 
         string speechModelPath = Path.Combine(
             packageDirectory,
-            "models",
+            "models/SpeechToText/",
             "vosk-model-small-fr-0.22");
 
         if (!Directory.Exists(speechModelPath))

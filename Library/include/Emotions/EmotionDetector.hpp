@@ -1,26 +1,28 @@
 #ifndef EMOTIONS_EMOTIONDETECTOR_HPP
 #define EMOTIONS_EMOTIONDETECTOR_HPP
 
-#include "opencv2/core/cvstd_wrapper.hpp"
-#include "opencv2/core/mat.hpp"
+#include "CheckPointLoader.hpp"
+#include "EmotionModel.hpp"
+#include "Inference/InferencePipeline.hpp"
 
-#include <map>
+#include <filesystem>
+#include <fstream>
+#include <memory>
+#include <opencv2/opencv.hpp>
+#include <stdexcept>
 #include <string>
-#include <torch/csrc/jit/api/module.h>
+#include <torch/script.h>
+#include <unordered_map>
 #include <vector>
-
-namespace cv
-{
-
-class FaceDetectorYN;
-
-} // namespace cv
+#include <yaml-cpp/yaml.h>
 
 class EmotionDetector
 {
     public:
 
-        EmotionDetector();
+        EmotionDetector(
+            const std::string& modelPath, const std::string& configPath, std::string device = "cpu"
+        );
         ~EmotionDetector();
 
         EmotionDetector(const EmotionDetector&) = delete;
@@ -35,16 +37,24 @@ class EmotionDetector
 
     private:
 
-        static auto preProcess(const cv::Mat& face) -> cv::Mat;
-        auto processFace(const cv::Mat& face) -> std::vector<float>;
+        static auto loadConfig(const std::string& configPath) -> YAML::Node;
 
         bool processEnable_ = false;
 
-        torch::jit::script::Module net_;
-        cv::Ptr<cv::FaceDetectorYN> faceDetector_;
+        torch::Device device_;
+        EmotionModel model_ = nullptr;
+
+        std::shared_ptr<InferencePipeline> pipeline_;
 
         const std::vector<std::string> classLabels_{
-            "happiness", "surprise", "sadness", "anger", "neutral", "fear"};
+            "angry",
+            "contemptuous",
+            "disgusted",
+            "fearful",
+            "happy",
+            "neutral",
+            "sad",
+            "surprised"};
 };
 
 #endif // EMOTIONS_EMOTIONDETECTOR_HPP
