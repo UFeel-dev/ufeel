@@ -62,6 +62,7 @@ public partial class MainWindow : Window
                 Dictionary<string, float> emotions;
                 Dictionary<string, bool> directions;
                 string speech;
+                int heartrate;
 
                 await processorGate.WaitAsync(token);
 
@@ -74,6 +75,7 @@ public partial class MainWindow : Window
                         emotions = new();
                         directions = new();
                         speech = string.Empty;
+                        heartrate = -1;
                     }
                     else
                     {
@@ -87,6 +89,7 @@ public partial class MainWindow : Window
                         speech = speechEnabled
                             ? processor.GetSpeech()
                             : string.Empty;
+                        heartrate = processor.GetHeartRate();
                     }
                 }
                 finally
@@ -123,6 +126,7 @@ public partial class MainWindow : Window
                     SpeechText.Text = string.IsNullOrWhiteSpace(speech)
                         ? "No speech detected"
                         : speech;
+                    HeartRate.Text = heartrate.ToString();
                 });
 
                 await Task.Delay(33, token);
