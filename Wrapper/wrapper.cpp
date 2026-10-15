@@ -244,3 +244,15 @@ __attribute__((visibility("default"))) void ufeel_free_speech(
     free(speech);
 }
 }
+
+__attribute__((visibility("default"))) auto ufeel_get_heartrate(
+    void* processor
+) -> int
+{
+    if (processor == nullptr)
+    {
+        return -1;
+    }
+
+    return static_cast<DataProcessor*>(processor)->getHeartRate();
+}

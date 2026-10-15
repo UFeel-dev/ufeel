@@ -83,4 +83,8 @@ public static class UFeelNative
     [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
     public static extern void ufeel_free_speech(
         IntPtr speech);
+
+    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
+    public static extern IntPtr ufeel_get_heartrate(
+        IntPtr processor);
 }
