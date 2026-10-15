@@ -125,6 +125,7 @@ public partial class MainWindow : Window
                 Dictionary<string, float> emotions;
                 GazeResultData gaze;
                 string speech;
+                int heartrate;
 
                 await processorGate.WaitAsync(token);
 
@@ -147,6 +148,7 @@ public partial class MainWindow : Window
                         smoothedGazeY = null;
                         lastGazeTimestamp = null;
                         speech = string.Empty;
+                        heartrate = -1;
                     }
                     else
                     {
@@ -160,6 +162,7 @@ public partial class MainWindow : Window
                         speech = speechEnabled
                             ? processor.GetSpeechToText()
                             : string.Empty;
+                        heartrate = processor.GetHeartRate();
                     }
                 }
                 finally
@@ -211,6 +214,7 @@ public partial class MainWindow : Window
                     SpeechText.Text = string.IsNullOrWhiteSpace(speech)
                         ? "No speech detected"
                         : speech;
+                    HeartRate.Text = heartrate.ToString();
                 });
 
                 await Task.Delay(33, token);

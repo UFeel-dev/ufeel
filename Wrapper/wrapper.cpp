@@ -562,3 +562,15 @@ void ufeel_free_string(
     guardedVoid("ufeel_free_string", [value] -> void { std::free(value); });
 }
 }
+
+__attribute__((visibility("default"))) auto ufeel_get_heartrate(
+    void* processor
+) -> int
+{
+    if (processor == nullptr)
+    {
+        return -1;
+    }
+
+    return static_cast<DataProcessor*>(processor)->getHeartRate();
+}

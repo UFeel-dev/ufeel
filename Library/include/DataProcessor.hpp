@@ -12,6 +12,7 @@
 
 class EmotionDetector;
 class SpeechToTextDetector;
+class HeartRateSensorDetector;
 
 class DataProcessor
 {
@@ -46,9 +47,9 @@ public:
     [[nodiscard]] auto saveEyeTrackingCalibrationProfile(const std::string& path) const -> bool;
     [[nodiscard]] auto loadEyeTrackingCalibrationProfile(const std::string& path) -> bool;
 
-    void toggleSpeechToText(bool state);
+    [[nodiscard]] auto getHeartRate() const -> int;
 
-    // auto processHeartRateSensor() -> int;
+    void toggleSpeechToText(bool state);
 
 protected:
 
@@ -58,6 +59,7 @@ protected:
     std::map<std::string, float> emotions_;
     GazeResult gaze_;
     std::string speech_;
+    int heartrate_;
 
     std::unique_ptr<EmotionDetector> emotionDetector_;
     std::unique_ptr<EyeTrackingDetector> eyeTrackingDetector_;
