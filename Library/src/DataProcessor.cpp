@@ -5,6 +5,7 @@
 #include "EyeTracking/GazeCalibrationModel.hpp"
 #include "HeartRate/HeartRateDetector.hpp"
 #include "SpeechToText/SpeechToTextDetector.hpp"
+#include "HeartRate/HeartRateDetector.hpp"
 
 #include <filesystem>
 #include <iostream>
@@ -126,6 +127,11 @@ auto DataProcessor::loadEyeTrackingCalibrationProfile(
 ) -> bool
 {
     return eyeTrackingDetector_->loadCalibrationProfile(path);
+}
+
+auto DataProcessor::getHeartRate() const -> int
+{
+    return heartrate_;
 }
 
 void DataProcessor::toggleSpeechToText(

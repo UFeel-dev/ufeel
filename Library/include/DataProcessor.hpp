@@ -50,7 +50,7 @@ public:
     [[nodiscard]] auto saveEyeTrackingCalibrationProfile(const std::string& path) const -> bool;
     [[nodiscard]] auto loadEyeTrackingCalibrationProfile(const std::string& path) -> bool;
 
-    void toggleSpeechToText(bool state);
+    [[nodiscard]] auto getHeartRate() const -> int;
 
     protected:
 
@@ -62,11 +62,7 @@ public:
     std::string speech_;
     HeartRateResult heartrate_{};
 
-    std::unique_ptr<EmotionDetector> emotionDetector_;
     std::unique_ptr<EyeTrackingDetector> eyeTrackingDetector_;
-    std::unique_ptr<SpeechToTextDetector> speechToTextDetector_;
-    // std::unique_ptr<HeartRateSensorDetector> heartRateSensorDetector_;
-
 private:
 };
 
