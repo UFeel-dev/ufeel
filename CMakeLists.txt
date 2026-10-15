@@ -119,6 +119,9 @@ add_library(ufeel_detection_library STATIC
 target_include_directories(ufeel_detection_library
     PUBLIC
         ${LIBRARY_DIR}/include
+)
+
+target_include_directories(ufeel_detection_library
     SYSTEM PUBLIC
         ${OPENCV_DIR}/include/opencv4
         ${TORCH_INCLUDE_DIRS}
@@ -152,6 +155,9 @@ target_include_directories(ufeel_wrapper
     PUBLIC
         ${LIBRARY_DIR}/include
         ${WRAPPER_DIR}
+)
+
+target_include_directories(ufeel_wrapper
     SYSTEM PUBLIC
         ${OPENCV_DIR}/include/opencv4
         ${TORCH_INCLUDE_DIRS}
