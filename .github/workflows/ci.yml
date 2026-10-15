@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches-ignore:
+      - main
+      - release
+
+  pull_request:
+    branches-ignore:
+      - main
+      - release
+
+jobs:
+  build-and-analysis:
+    name: Build and Static Analysis
+    runs-on: ubuntu-latest #ubuntu-24.04 ?
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Install lint dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang \
+            clang-tidy \
+            clang-format \
+            git-lfs \
+            cmake \
+            ninja-build \
+
+      # - name: Install dependencies
+      #   run: |
+      #     sudo apt-get update
+      #     sudo apt-get install -y \
+      #       clang \
+      #       clang-tidy \
+      #       clang-format \
+      #       cmake \
+      #       ninja-build \
+      #       portaudio19-dev \
+      #       git-lfs \
+      #       dotnet-sdk-8.0 \
+      #       libjpeg62 \
+      #       libwebp7 \
+      #       libpng16-16 \
+      #       libtiff6 \
+      #       libopenexr-3-1-30 \
+      #       libdc1394-25 \
+      #       libgtk-3-0 \
+      #       libyaml-cpp-dev
+
+      - name: Configure CMake for Clang-Tidy
+        run: |
+          cmake -S . -B build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DCLANG_TIDY_AS_ERRORS=OFF
+
+
+      - name: Build Docker image
+        run: |
+          docker build -t ufeeldocker:latest ./docker
+
+      - name: Build project in Docker
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/mnt" \
+            -w /mnt \
+            ufeeldocker:latest \
+            bash -lc "./build.sh configure && ./build.sh build"
+
+      - name: Run cpp-linter
+        uses: cpp-linter/cpp-linter-action@v2
+        id: linter
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          version: '21'
+          style: file
+          tidy-checks: ''
+          extensions: 'cpp'
+          files-changed-only: false
+          database: 'build'
+
+      # - name: Fail on lint errors    // CI will fail even with warnings
+      #   if: steps.linter.outputs.checks-failed > 0
+        # run: exit 1
