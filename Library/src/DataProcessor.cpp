@@ -9,6 +9,8 @@
 #include <memory>
 #include <string>
 
+#error "CI failure test"
+
 DataProcessor::DataProcessor(
     const std::string& speechModelPath
 )
