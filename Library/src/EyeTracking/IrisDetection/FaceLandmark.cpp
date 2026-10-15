@@ -141,6 +141,38 @@ auto my::FaceLandmark::getFaceLandmark3DAt(
         z * depthScale};
 }
 
+auto my::FaceLandmark::getFaceLandmark3DAt(
+    int index
+) const -> cv::Point3f
+{
+    if (!isFaceLandmarkIndexValid(index) || getFaceRoi().empty() ||
+        m_landmarkModel.getOutputSize() < static_cast<std::size_t>((index + 1) * 3) * sizeof(float))
+    {
+        return {};
+    }
+
+    auto const roi = getFaceRoi();
+    auto const inputShape = m_landmarkModel.getInputShape();
+    if (inputShape.size() < 3 || inputShape[1] <= 0 || inputShape[2] <= 0)
+    {
+        return {};
+    }
+
+    auto const* output = m_landmarkModel.getOutputData();
+    if (output == nullptr)
+    {
+        return {};
+    }
+    float const x = output[index * 3];
+    float const y = output[(index * 3) + 1];
+    float const z = output[(index * 3) + 2];
+    float const depthScale = static_cast<float>(roi.width) / static_cast<float>(inputShape[2]);
+    return {
+        static_cast<float>(roi.x) + (x / static_cast<float>(inputShape[2]) * roi.width),
+        static_cast<float>(roi.y) + (y / static_cast<float>(inputShape[1]) * roi.height),
+        z * depthScale};
+}
+
 auto my::FaceLandmark::getAllFaceLandmarks() const -> std::vector<cv::Point>
 {
     if (FaceDetection::getFaceRoi().empty())
