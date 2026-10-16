@@ -14,7 +14,7 @@ on:
 jobs:
   build-and-analysis:
     name: Build and Static Analysis
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
@@ -74,33 +74,17 @@ jobs:
         run: |
           python3 - <<'PY'
           import json
-          from pathlib import Path
 
-          path = Path("build/compile_commands.json")
-          print("Database exists:", path.exists())
+          with open("build/compile_commands.json", encoding="utf-8") as f:
+              entries = json.load(f)
 
-          if path.exists():
-              entries = json.loads(path.read_text())
-              print("Number of entries:", len(entries))
+          print(f"Compilation entries: {len(entries)}")
 
-              for entry in entries:
-                  source = entry["file"]
-                  if "/Library/" in source or "/Wrapper/" in source:
-                      print(source)
+          for entry in entries:
+              source = entry["file"]
+              if "/Library/" in source or "/Wrapper/" in source:
+                  print(source)
           PY
-
-          echo "=== Clang-Tidy config ==="
-          if [ -f .clang-tidy ]; then
-            cat .clang-tidy
-          else
-            echo "No .clang-tidy at repository root"
-          fi
-
-      - name: Test clang-tidy directly
-        run: |
-          clang-tidy-21 \
-            -p build \
-            Library/src/EyeTracking/IrisDetection/FaceLandmark.cpp
 
       - name: Run cpp-linter
         uses: cpp-linter/cpp-linter-action@v2
