@@ -22,6 +22,12 @@ jobs:
         with:
           lfs: true
 
+      - name: Add .NET repository
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y software-properties-common
+          sudo add-apt-repository -y ppa:dotnet/backports
+
       - name: Install lint dependencies
         run: |
           sudo apt-get update
