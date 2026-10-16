@@ -25,7 +25,7 @@ constexpr double RIDGE_PENALTY = 0.08;
 constexpr double MAXIMUM_MEAN_CALIBRATION_ERROR = 0.35;
 constexpr double MAXIMUM_TARGET_CALIBRATION_ERROR = 0.60;
 constexpr char PROFILE_SIGNATURE[] = "UFEEL_GAZE_PROFILE";
-constexpr std::uint32_t PROFILE_VERSION = 2;
+constexpr std::uint32_t PROFILE_VERSION = 3;
 
 template <typename Values>
 [[nodiscard]] auto median(

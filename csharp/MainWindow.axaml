@@ -7,33 +7,55 @@
     MinWidth="900"
     MinHeight="600"
     Title="UFeel Integration Test"
-    Background="#F4F6F8">
+    Background="#F4F6F8"
+    Foreground="#17202A">
 
-    <Window.Styles>
-        <Style Selector="TextBlock">
-            <Setter Property="Foreground" Value="#17202A" />
-        </Style>
-        <Style Selector="Button">
+    <Window.Resources>
+        <ControlTheme x:Key="IntegrationButtonTheme" TargetType="Button">
             <Setter Property="Background" Value="#E7EDF4" />
             <Setter Property="Foreground" Value="#17202A" />
             <Setter Property="BorderBrush" Value="#AAB7C4" />
-        </Style>
-        <Style Selector="Button:pointerover">
-            <Setter Property="Background" Value="#D8E2ED" />
-            <Setter Property="Foreground" Value="#17202A" />
-            <Setter Property="BorderBrush" Value="#71869B" />
-        </Style>
-        <Style Selector="Button:pressed">
-            <Setter Property="Background" Value="#C7D5E3" />
-            <Setter Property="Foreground" Value="#17202A" />
-            <Setter Property="BorderBrush" Value="#536B82" />
-        </Style>
-        <Style Selector="Button:disabled">
-            <Setter Property="Background" Value="#E7EDF4" />
-            <Setter Property="Foreground" Value="#687785" />
-            <Setter Property="BorderBrush" Value="#AAB7C4" />
-        </Style>
-    </Window.Styles>
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <ContentPresenter
+                        x:Name="PART_ContentPresenter"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="{TemplateBinding CornerRadius}"
+                        Content="{TemplateBinding Content}"
+                        ContentTemplate="{TemplateBinding ContentTemplate}"
+                        Padding="{TemplateBinding Padding}"
+                        HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                        VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                        Foreground="{TemplateBinding Foreground}"
+                        RecognizesAccessKey="True" />
+                </ControlTemplate>
+            </Setter>
+            <Style Selector="^:pointerover">
+                <Setter Property="Background" Value="#D8E2ED" />
+                <Setter Property="Foreground" Value="#17202A" />
+                <Setter Property="BorderBrush" Value="#71869B" />
+            </Style>
+            <Style Selector="^:pressed">
+                <Setter Property="Background" Value="#C7D5E3" />
+                <Setter Property="Foreground" Value="#17202A" />
+                <Setter Property="BorderBrush" Value="#536B82" />
+            </Style>
+            <Style Selector="^:focus">
+                <Setter Property="BorderBrush" Value="#005A9E" />
+                <Setter Property="BorderThickness" Value="2" />
+            </Style>
+            <Style Selector="^:disabled">
+                <Setter Property="Background" Value="#E7EDF4" />
+                <Setter Property="Foreground" Value="#687785" />
+                <Setter Property="BorderBrush" Value="#AAB7C4" />
+                <Setter Property="BorderThickness" Value="1" />
+            </Style>
+        </ControlTheme>
+    </Window.Resources>
 
     <Grid>
         <Grid RowDefinitions="*,Auto" Margin="16">
@@ -143,12 +165,14 @@
                     <Button
                         Grid.Column="1"
                         x:Name="SpeechButton"
+                        Theme="{StaticResource IntegrationButtonTheme}"
                         Content="Enable speech"
                         Click="SpeechButton_OnClick"
                         Padding="16,8" />
                     <Button
                         Grid.Column="2"
                         x:Name="CalibrateButton"
+                        Theme="{StaticResource IntegrationButtonTheme}"
                         Content="Calibrate / recalibrate"
                         Click="CalibrateButton_OnClick"
                         Padding="16,8" />

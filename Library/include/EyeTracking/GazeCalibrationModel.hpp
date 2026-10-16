@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-inline constexpr std::size_t GAZE_FEATURE_COUNT = 12;
+inline constexpr std::size_t GAZE_FEATURE_COUNT = 60;
 inline constexpr std::size_t GAZE_MINIMUM_CALIBRATION_TARGETS = 9;
 inline constexpr std::size_t GAZE_MINIMUM_SAMPLES_PER_TARGET = 15;
 inline constexpr std::size_t GAZE_MAXIMUM_SAMPLES_PER_TARGET = 120;

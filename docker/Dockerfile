@@ -33,7 +33,8 @@ RUN apt-get update && \
         libsm6 \
         libyaml-cpp-dev \
         patchelf \
-        iwyu && \
+        iwyu \
+        && \
     rm -rf /var/lib/apt/lists/*
 
 RUN ln -s /usr/bin/clang-format-22 /usr/local/bin/clang-format && \
