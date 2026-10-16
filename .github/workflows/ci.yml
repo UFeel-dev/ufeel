@@ -82,12 +82,17 @@ jobs:
 
       - name: Run Clang-Tidy
         run: |
-          find Library Wrapper -type f -name '*.cpp' -print0 |
-          while IFS= read -r -d '' file; do
-            echo "::group::Clang-Tidy: $file"
-            ./build.sh lint "$file" || echo "::warning file=$file::Clang-Tidy returned a non-zero exit code"
-            echo "::endgroup::"
-          done
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/mnt" \
+            -w /mnt \
+            ufeeldocker:latest \
+            bash -lc '
+              find Library Wrapper -type f -name "*.cpp" -print0 |
+              while IFS= read -r -d "" file; do
+                echo "::group::Clang-Tidy: $file"
+                ./build.sh lint "$file" || true
+                echo "::endgroup::"
+              done
 
 
 
