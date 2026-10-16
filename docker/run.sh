@@ -26,3 +26,5 @@ docker run -it \
     ufeeldocker:latest \
     -c 'if ! getent group "$1" >/dev/null; then groupadd -g "$1" hostaudio; fi; exec bash' \
     _ "$AUDIO_GID"
+
+# TODO: improve device discovery logic (C++ side, running side)

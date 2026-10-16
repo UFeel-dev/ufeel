@@ -70,7 +70,7 @@ public partial class MainWindow : Window
         calibrationProfilePath = Path.Combine(
             localDataDirectory,
             "UFeel",
-            "gaze-profile-v2.txt");
+            "gaze-profile-v3.txt");
 
         processor = new UFeelProcessor(
             libraryPath,
@@ -378,18 +378,19 @@ public partial class MainWindow : Window
             }
 
             CalibrationOverlay.IsVisible = true;
+            await WaitForCalibrationReadinessAsync(token);
 
             (float X, float Y)[] targets =
             [
                 (0.5F, 0.5F),
                 (0.1F, 0.1F),
-                (0.5F, 0.1F),
-                (0.9F, 0.1F),
-                (0.9F, 0.5F),
-                (0.9F, 0.9F),
-                (0.5F, 0.9F),
                 (0.1F, 0.9F),
-                (0.1F, 0.5F)
+                (0.9F, 0.1F),
+                (0.9F, 0.9F),
+                (0.1F, 0.5F),
+                (0.5F, 0.1F),
+                (0.9F, 0.5F),
+                (0.5F, 0.9F)
             ];
 
             for (int i = 0; i < targets.Length; i++)
@@ -401,7 +402,7 @@ public partial class MainWindow : Window
                 CalibrationInstruction.Text =
                     $"Look at the target and keep your head still ({i + 1}/{targets.Length})";
 
-                await Task.Delay(400, token);
+                await Task.Delay(TimeSpan.FromSeconds(1), token);
                 await processorGate.WaitAsync(token);
                 try
                 {
@@ -432,7 +433,8 @@ public partial class MainWindow : Window
                     CalibrationInstruction.Text =
                         $"Keep looking at the target ({progress.SamplesForCurrentTarget}/" +
                         $"{progress.RequiredSamplesPerTarget} usable frames)";
-                    if (progress.SamplesForCurrentTarget >= progress.RequiredSamplesPerTarget ||
+                    if ((progress.SamplesForCurrentTarget >= progress.RequiredSamplesPerTarget &&
+                         targetTimer.Elapsed >= TimeSpan.FromSeconds(1)) ||
                         targetTimer.Elapsed >= TimeSpan.FromSeconds(3))
                     {
                         break;
@@ -468,7 +470,7 @@ public partial class MainWindow : Window
                     failureProgress.TargetsWithEnoughSamples < targets.Length
                     ? $"Calibration incomplete: only {failureProgress.TargetsWithEnoughSamples}/" +
                         $"{targets.Length} targets had enough usable frames"
-                    : "Calibration quality check failed; keep your face steady and use widely spaced targets";
+                    : "Calibration quality check failed, keep your face steady and use widely spaced targets";
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
@@ -482,23 +484,68 @@ public partial class MainWindow : Window
         }
         finally
         {
-            if (calibrationStarted)
+            try
             {
-                await processorGate.WaitAsync();
-                try
+                if (calibrationStarted)
                 {
-                    processor.CancelCalibration();
-                }
-                finally
-                {
-                    processorGate.Release();
+                    try
+                    {
+                        await processorGate.WaitAsync();
+                        try
+                        {
+                            processor.CancelCalibration();
+                        }
+                        finally
+                        {
+                            processorGate.Release();
+                        }
+                    }
+                    catch (Exception exception)
+                    {
+                        if (!closing)
+                        {
+                            StatusText.Text =
+                                $"Could not cancel eye-tracking calibration: {exception.Message}";
+                        }
+                    }
                 }
             }
+            finally
+            {
+                CalibrationOverlay.IsVisible = false;
+                GazeOverlay.IsVisible = lastGaze.IsValid;
+                if (GazeOverlay.IsVisible)
+                    UpdateGazeMarker(lastGaze);
+            }
+        }
+    }
 
-            CalibrationOverlay.IsVisible = false;
-            GazeOverlay.IsVisible = lastGaze.IsValid;
-            if (GazeOverlay.IsVisible)
-                UpdateGazeMarker(lastGaze);
+    private async Task WaitForCalibrationReadinessAsync(CancellationToken token)
+    {
+        Stopwatch? readyTimer = null;
+
+        while (true)
+        {
+            token.ThrowIfCancellationRequested();
+
+            if (lastGaze.Status == UFeelNative.GazeStatus.Calibrating)
+            {
+                readyTimer ??= Stopwatch.StartNew();
+                CalibrationInstruction.Text =
+                    "Face detected. Keep your face steady and eyes open";
+                StatusText.Text = "Hold a steady position before calibration";
+                if (readyTimer.Elapsed >= TimeSpan.FromSeconds(2))
+                    return;
+            }
+            else
+            {
+                readyTimer = null;
+                CalibrationInstruction.Text =
+                    "Position your face in the camera view and keep your eyes open";
+                StatusText.Text = "Waiting for a valid face and eye landmarks";
+            }
+
+            await Task.Delay(100, token);
         }
     }
 

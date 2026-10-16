@@ -8,6 +8,7 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <deque>
 #include <optional>
 #include <string>
 #include <vector>
@@ -88,7 +89,9 @@ class EyeTrackingDetector
         bool processEnable_ = true;
         bool calibrationActive_ = false;
         std::optional<std::size_t> calibrationTargetIndex_;
+        std::optional<std::chrono::steady_clock::time_point> calibrationTargetSetAt_;
         std::vector<GazeCalibrationTarget> calibrationTargets_;
+        std::deque<double> eyeAspectHistory_;
         GazeCalibrationModel calibrationModel_;
         std::optional<cv::Point2f> smoothedGaze_;
         std::optional<std::chrono::steady_clock::time_point> lastGazeTime_;

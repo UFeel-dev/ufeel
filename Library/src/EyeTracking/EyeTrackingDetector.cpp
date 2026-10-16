@@ -11,6 +11,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
+#include <numeric>
 #include <opencv2/core/saturate.hpp>
 #include <optional>
 #include <string>
@@ -18,9 +19,25 @@
 namespace
 {
 
-constexpr double BLINK_EAR_THRESHOLD = 0.12;
+constexpr std::size_t BLINK_EAR_HISTORY_LENGTH = 50;
+constexpr std::size_t BLINK_EAR_MINIMUM_HISTORY = 15;
+constexpr double BLINK_EAR_THRESHOLD_RATIO = 0.8;
+constexpr double INITIAL_BLINK_EAR_THRESHOLD = 0.2;
+constexpr auto CALIBRATION_SETTLE_TIME = std::chrono::milliseconds(1000);
 constexpr double DIRECTION_DEAD_ZONE = 0.12;
 constexpr std::size_t IRIS_LANDMARK_COUNT = 5;
+constexpr int FACE_LANDMARK_COUNT = 468;
+constexpr std::array<int, 8> EYE_FRAME_LANDMARKS = {33, 133, 159, 145, 263, 362, 386, 374};
+constexpr std::array<int, 9> FACE_FEATURE_LANDMARKS = {4, 10, 151, 9, 152, 234, 454, 58, 288};
+static_assert(
+    GAZE_FEATURE_COUNT == 4 + EYE_FRAME_LANDMARKS.size() * 3 + FACE_FEATURE_LANDMARKS.size() * 3 + 5
+);
+static_assert(std::ranges::all_of(EYE_FRAME_LANDMARKS, [](int index) {
+    return index >= 0 && index < FACE_LANDMARK_COUNT;
+}));
+static_assert(std::ranges::all_of(FACE_FEATURE_LANDMARKS, [](int index) {
+    return index >= 0 && index < FACE_LANDMARK_COUNT;
+}));
 
 using Vector3 = std::array<double, 3>;
 
@@ -190,6 +207,7 @@ void EyeTrackingDetector::toggleEyeTrackingDetection(
     {
         smoothedGaze_.reset();
         lastGazeTime_.reset();
+        eyeAspectHistory_.clear();
     }
     std::cout << "[EyeTrackingDetector] eye tracking detection " << (state ? "enabled" : "disabled")
               << '\n';
@@ -225,7 +243,10 @@ auto EyeTrackingDetector::process(
         if (calibrationTargetIndex_ && *calibrationTargetIndex_ < calibrationTargets_.size())
         {
             auto& samples = calibrationTargets_[*calibrationTargetIndex_].samples;
-            if (samples.size() < GAZE_MAXIMUM_SAMPLES_PER_TARGET)
+            auto const now = std::chrono::steady_clock::now();
+            if (calibrationTargetSetAt_ &&
+                now - *calibrationTargetSetAt_ >= CALIBRATION_SETTLE_TIME &&
+                samples.size() < GAZE_MAXIMUM_SAMPLES_PER_TARGET)
             {
                 samples.push_back(*features);
             }
@@ -303,6 +324,8 @@ void EyeTrackingDetector::beginCalibration()
 {
     calibrationTargets_.clear();
     calibrationTargetIndex_.reset();
+    calibrationTargetSetAt_.reset();
+    eyeAspectHistory_.clear();
     calibrationActive_ = true;
 }
 
@@ -317,10 +340,12 @@ auto EyeTrackingDetector::setCalibrationTarget(
     }
 
     cv::Point2f const newTarget(x, y);
+    auto const previousTargetIndex = calibrationTargetIndex_;
     auto target =
         std::ranges::find_if(calibrationTargets_, [&newTarget](GazeCalibrationTarget const& item) {
-            return cv::norm(item.target - newTarget) < 0.02;
+            return cv::norm(item.target - newTarget) < 1.0e-4;
         });
+    std::size_t targetIndex = 0;
     if (target == calibrationTargets_.end())
     {
         if (calibrationTargets_.size() >= GAZE_MAXIMUM_CALIBRATION_TARGETS)
@@ -328,12 +353,16 @@ auto EyeTrackingDetector::setCalibrationTarget(
             return false;
         }
         calibrationTargets_.push_back({newTarget, {}});
-        calibrationTargetIndex_ = calibrationTargets_.size() - 1;
+        targetIndex = calibrationTargets_.size() - 1;
     }
     else
     {
-        calibrationTargetIndex_ =
-            static_cast<std::size_t>(std::distance(calibrationTargets_.begin(), target));
+        targetIndex = static_cast<std::size_t>(std::distance(calibrationTargets_.begin(), target));
+    }
+    calibrationTargetIndex_ = targetIndex;
+    if (!previousTargetIndex || *previousTargetIndex != targetIndex)
+    {
+        calibrationTargetSetAt_ = std::chrono::steady_clock::now();
     }
     return true;
 }
@@ -347,6 +376,7 @@ auto EyeTrackingDetector::finishCalibration() -> bool
 
     calibrationActive_ = false;
     calibrationTargetIndex_.reset();
+    calibrationTargetSetAt_.reset();
     auto fittedModel = GazeCalibrationModel::fit(calibrationTargets_);
     if (!fittedModel)
     {
@@ -364,6 +394,7 @@ void EyeTrackingDetector::cancelCalibration()
 {
     calibrationActive_ = false;
     calibrationTargetIndex_.reset();
+    calibrationTargetSetAt_.reset();
     calibrationTargets_.clear();
 }
 
@@ -425,23 +456,38 @@ auto EyeTrackingDetector::extractFeatures(
         irisLandmarker_.getFaceLandmarkAt(158),
         irisLandmarker_.getFaceLandmarkAt(153)
     );
-    if (leftEar < BLINK_EAR_THRESHOLD && rightEar < BLINK_EAR_THRESHOLD)
+    double const averageEar = (leftEar + rightEar) * 0.5;
+    double blinkThreshold = INITIAL_BLINK_EAR_THRESHOLD;
+    if (eyeAspectHistory_.size() >= BLINK_EAR_MINIMUM_HISTORY)
+    {
+        double const meanEar =
+            std::accumulate(eyeAspectHistory_.begin(), eyeAspectHistory_.end(), 0.0) /
+            static_cast<double>(eyeAspectHistory_.size());
+        blinkThreshold = meanEar * BLINK_EAR_THRESHOLD_RATIO;
+    }
+    if (averageEar < blinkThreshold || leftEar < blinkThreshold || rightEar < blinkThreshold)
     {
         status = GazeStatus::Blinking;
         return std::nullopt;
     }
-    if (leftEar < BLINK_EAR_THRESHOLD || rightEar < BLINK_EAR_THRESHOLD || leftEar > 0.65 ||
-        rightEar > 0.65)
+    if (leftEar > 0.65 || rightEar > 0.65)
     {
         status = GazeStatus::LowQuality;
         return std::nullopt;
     }
 
+    auto addEyeAspectSample = [&]() {
+        eyeAspectHistory_.push_back(averageEar);
+        if (eyeAspectHistory_.size() > BLINK_EAR_HISTORY_LENGTH)
+        {
+            eyeAspectHistory_.pop_front();
+        }
+    };
+
     auto const leftOuter = vectorFrom(irisLandmarker_.getFaceLandmark3DAt(33));
     auto const rightOuter = vectorFrom(irisLandmarker_.getFaceLandmark3DAt(263));
-    auto const nose = vectorFrom(irisLandmarker_.getFaceLandmark3DAt(1));
-    auto const chin = vectorFrom(irisLandmarker_.getFaceLandmark3DAt(152));
-    if (!finite(leftOuter) || !finite(rightOuter) || !finite(nose) || !finite(chin))
+    auto const topOfHead = vectorFrom(irisLandmarker_.getFaceLandmark3DAt(10));
+    if (!finite(leftOuter) || !finite(rightOuter) || !finite(topOfHead))
     {
         status = GazeStatus::LowQuality;
         return std::nullopt;
@@ -464,7 +510,7 @@ auto EyeTrackingDetector::extractFeatures(
         (leftOuter[0] + rightOuter[0]) * 0.5,
         (leftOuter[1] + rightOuter[1]) * 0.5,
         (leftOuter[2] + rightOuter[2]) * 0.5};
-    Vector3 vertical = subtract(chin, eyeCenter);
+    Vector3 vertical = subtract(topOfHead, eyeCenter);
     if (!xAxis)
     {
         status = GazeStatus::LowQuality;
@@ -487,22 +533,63 @@ auto EyeTrackingDetector::extractFeatures(
         status = GazeStatus::LowQuality;
         return std::nullopt;
     }
-    Vector3 const noseOffset = subtract(nose, eyeCenter);
+    GazeFeatureVector features{};
+    std::size_t featureIndex = 0;
+    auto appendFeature = [&features, &featureIndex](double value) {
+        if (featureIndex >= features.size() || !std::isfinite(value))
+        {
+            return false;
+        }
+        features[featureIndex++] = value;
+        return true;
+    };
+    if (!appendFeature(leftPosition->x) || !appendFeature(leftPosition->y) ||
+        !appendFeature(rightPosition->x) || !appendFeature(rightPosition->y))
+    {
+        status = GazeStatus::LowQuality;
+        return std::nullopt;
+    }
 
-    GazeFeatureVector features = {
-        leftPosition->x,
-        leftPosition->y,
-        rightPosition->x,
-        rightPosition->y,
-        dot(noseOffset, *xAxis) / eyeSpan,
-        dot(noseOffset, *yAxis) / eyeSpan,
-        dot(noseOffset, *zAxis) / eyeSpan,
-        (*xAxis)[2],
-        (*xAxis)[1],
-        (*yAxis)[2],
-        leftEar,
-        rightEar};
-    if (!std::ranges::all_of(features, [](double value) { return std::isfinite(value); }) ||
+    auto appendLandmarkFeatures = [&](int landmarkIndex) {
+        auto const landmark = vectorFrom(irisLandmarker_.getFaceLandmark3DAt(landmarkIndex));
+        if (!finite(landmark))
+        {
+            return false;
+        }
+        Vector3 const offset = subtract(landmark, eyeCenter);
+        return appendFeature(dot(offset, *xAxis) / eyeSpan) &&
+               appendFeature(dot(offset, *yAxis) / eyeSpan) &&
+               appendFeature(dot(offset, *zAxis) / eyeSpan);
+    };
+
+    for (int landmarkIndex : EYE_FRAME_LANDMARKS)
+    {
+        if (!appendLandmarkFeatures(landmarkIndex))
+        {
+            status = GazeStatus::LowQuality;
+            return std::nullopt;
+        }
+    }
+    for (int landmarkIndex : FACE_FEATURE_LANDMARKS)
+    {
+        if (!appendLandmarkFeatures(landmarkIndex))
+        {
+            status = GazeStatus::LowQuality;
+            return std::nullopt;
+        }
+    }
+
+    if (!appendFeature(std::atan2((*xAxis)[1], (*xAxis)[0])) ||
+        !appendFeature(std::atan2(-(*xAxis)[2], std::hypot((*yAxis)[2], (*zAxis)[2]))) ||
+        !appendFeature(std::atan2((*yAxis)[2], (*zAxis)[2])) || !appendFeature(leftEar) ||
+        !appendFeature(rightEar))
+    {
+        status = GazeStatus::LowQuality;
+        return std::nullopt;
+    }
+
+    if (featureIndex != features.size() ||
+        !std::ranges::all_of(features, [](double value) { return std::isfinite(value); }) ||
         leftPosition->x < -0.25 || leftPosition->x > 1.25 || rightPosition->x < -0.25 ||
         rightPosition->x > 1.25 || leftPosition->y < -0.5 || leftPosition->y > 1.5 ||
         rightPosition->y < -0.5 || rightPosition->y > 1.5)
@@ -514,6 +601,7 @@ auto EyeTrackingDetector::extractFeatures(
     quality = qualityOf(
         *leftPosition, *rightPosition, leftEar, rightEar, imageEyeSpan, minimumFrameDimension
     );
+    addEyeAspectSample();
     status = GazeStatus::Valid;
     return features;
 }
@@ -557,6 +645,7 @@ auto EyeTrackingDetector::loadCalibrationProfile(
     calibrationActive_ = false;
     calibrationTargets_.clear();
     calibrationTargetIndex_.reset();
+    calibrationTargetSetAt_.reset();
     smoothedGaze_.reset();
     lastGazeTime_.reset();
     return true;

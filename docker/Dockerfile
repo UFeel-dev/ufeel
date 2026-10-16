@@ -35,7 +35,8 @@ RUN apt-get update && \
         libyaml-cpp-dev \
         patchelf \
         iwyu \
-        libcurl4-openssl-dev && \
+        libcurl4-openssl-dev \
+        && \
     rm -rf /var/lib/apt/lists/*
 
 RUN ln -s /usr/bin/clang-format-22 /usr/local/bin/clang-format && \
