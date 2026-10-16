@@ -26,7 +26,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            wget \
+            clang \
+            clang-tidy \
+            clang-format
             ca-certificates \
             lsb-release \
             git-lfs \
@@ -49,16 +51,6 @@ jobs:
             patchelf \
             iwyu
 
-          wget https://apt.llvm.org/llvm.sh
-          chmod +x llvm.sh
-          sudo ./llvm.sh 22
-          rm llvm.sh
-
-          sudo apt-get install -y \
-            clang-22 \
-            clang-tidy-22 \
-            clang-format-22
-
       - name: Configure CMake for Clang-Tidy
         run: |
           cmake -S . -B build \
@@ -79,6 +71,8 @@ jobs:
             -w /mnt \
             ufeeldocker:latest \
             bash -lc "./build.sh configure && ./build.sh build"
+
+  
 
       - name: Run cpp-linter
         uses: cpp-linter/cpp-linter-action@v2
