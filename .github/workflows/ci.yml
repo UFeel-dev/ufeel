@@ -30,7 +30,16 @@ jobs:
             ca-certificates \
             git-lfs \
             cmake \
-            ninja-build
+            ninja-build \
+            dotnet-sdk-8.0 \
+            libjpeg62 \
+            libwebp7 \
+            libpng16-16 \
+            libtiff6 \
+            libopenexr-3-1-30 \
+            libdc1394-25 \
+            libgtk-3-0 \
+            libyaml-cpp-dev
 
           wget https://apt.llvm.org/llvm.sh
           chmod +x llvm.sh
