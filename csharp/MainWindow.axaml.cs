@@ -75,7 +75,7 @@ public partial class MainWindow : Window
         calibrationProfilePath = Path.Combine(
             localDataDirectory,
             "UFeel",
-            "gaze-profile-v2.txt");
+            "gaze-profile-v3.txt");
 
         processor = new UFeelProcessor(
             libraryPath,
@@ -401,18 +401,19 @@ public partial class MainWindow : Window
             }
 
             CalibrationOverlay.IsVisible = true;
+            await WaitForCalibrationReadinessAsync(token);
 
             (float X, float Y)[] targets =
             [
                 (0.5F, 0.5F),
                 (0.1F, 0.1F),
-                (0.5F, 0.1F),
-                (0.9F, 0.1F),
-                (0.9F, 0.5F),
-                (0.9F, 0.9F),
-                (0.5F, 0.9F),
                 (0.1F, 0.9F),
-                (0.1F, 0.5F)
+                (0.9F, 0.1F),
+                (0.9F, 0.9F),
+                (0.1F, 0.5F),
+                (0.5F, 0.1F),
+                (0.9F, 0.5F),
+                (0.5F, 0.9F)
             ];
 
             for (int i = 0; i < targets.Length; i++)
@@ -424,7 +425,7 @@ public partial class MainWindow : Window
                 CalibrationInstruction.Text =
                     $"Look at the target and keep your head still ({i + 1}/{targets.Length})";
 
-                await Task.Delay(400, token);
+                await Task.Delay(TimeSpan.FromSeconds(1), token);
                 await processorGate.WaitAsync(token);
                 try
                 {
@@ -455,7 +456,8 @@ public partial class MainWindow : Window
                     CalibrationInstruction.Text =
                         $"Keep looking at the target ({progress.SamplesForCurrentTarget}/" +
                         $"{progress.RequiredSamplesPerTarget} usable frames)";
-                    if (progress.SamplesForCurrentTarget >= progress.RequiredSamplesPerTarget ||
+                    if ((progress.SamplesForCurrentTarget >= progress.RequiredSamplesPerTarget &&
+                         targetTimer.Elapsed >= TimeSpan.FromSeconds(1)) ||
                         targetTimer.Elapsed >= TimeSpan.FromSeconds(3))
                     {
                         break;
@@ -491,7 +493,7 @@ public partial class MainWindow : Window
                     failureProgress.TargetsWithEnoughSamples < targets.Length
                     ? $"Calibration incomplete: only {failureProgress.TargetsWithEnoughSamples}/" +
                         $"{targets.Length} targets had enough usable frames"
-                    : "Calibration quality check failed; keep your face steady and use widely spaced targets";
+                    : "Calibration quality check failed, keep your face steady and use widely spaced targets";
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
