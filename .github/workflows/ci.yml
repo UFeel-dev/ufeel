@@ -93,6 +93,7 @@ jobs:
                 ./build.sh lint "$file" || true
                 echo "::endgroup::"
               done
+            '
 
 
 
