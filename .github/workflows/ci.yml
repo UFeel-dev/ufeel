@@ -14,7 +14,7 @@ on:
 jobs:
   build-and-analysis:
     name: Build and Static Analysis
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout
@@ -26,22 +26,32 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            clang \
-            clang-tidy \
-            clang-format \
+            wget \
+            ca-certificates \
             git-lfs \
             cmake \
             ninja-build \
             portaudio19-dev \
-            dotnet-sdk-8.0 \
-            libjpeg62 \
-            libwebp7 \
-            libpng16-16 \
-            libtiff6 \
-            libopenexr-3-1-30 \
-            libdc1394-25 \
-            libgtk-3-0 \
-            libyaml-cpp-dev
+            dotnet-sdk-10.0 \
+            ninja-build \
+            libasound2 \
+            libfontconfig1 \
+            libice6 \
+            libsm6 \
+            libyaml-cpp-dev \
+            patchelf \
+            iwyu
+            
+
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 22
+          rm llvm.sh
+
+          sudo apt-get install -y \
+            clang-22 \
+            clang-tidy-22 \
+            clang-format-22
 
       - name: Configure CMake for Clang-Tidy
         run: |
@@ -64,19 +74,31 @@ jobs:
             ufeeldocker:latest \
             bash -lc "./build.sh configure && ./build.sh build"
 
+      - name: Run Clang-Tidy
+        run: |
+          find Library Wrapper -type f -name '*.cpp' -print0 |
+          while IFS= read -r -d '' file; do
+            echo "::group::Clang-Tidy: $file"
+            ./build.sh lint "$file" || echo "::warning file=$file::Clang-Tidy returned a non-zero exit code"
+            echo "::endgroup::"
+          done
 
-      - name: Run cpp-linter
-        uses: cpp-linter/cpp-linter-action@v2
-        id: linter
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          version: '21'
-          style: file
-          tidy-checks: ''
-          extensions: 'cpp'
-          files-changed-only: false
-          database: 'build'
+
+
+      # - name: Run cpp-linter
+      #   uses: cpp-linter/cpp-linter-action@v2
+      #   id: linter
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     version: '22'
+      #     style: file
+      #     tidy-checks: ''
+      #     extensions: 'cpp'
+      #     files-changed-only: false
+      #     database: 'build'
+
+
 
       # - name: Fail on lint errors
       #   if: steps.linter.outputs.checks-failed > 0
