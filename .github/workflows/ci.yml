@@ -37,8 +37,8 @@ jobs:
             libjpeg62 \
             libwebp7 \
             libpng16-16 \
-            libtiff5 \
-            libopenexr25 \
+            libtiff6 \
+            libopenexr-3-1-30 \
             libdc1394-25 \
             libgtk-3-0 \
             libyaml-cpp-dev \
