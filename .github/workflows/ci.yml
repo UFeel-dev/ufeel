@@ -41,13 +41,7 @@ jobs:
             libopenexr-3-1-30 \
             libdc1394-25 \
             libgtk-3-0 \
-            libyaml-cpp-dev \
-            libasound2 \
-            libfontconfig1 \
-            libice6 \
-            libsm6 \
-            patchelf \
-            iwyu
+            libyaml-cpp-dev
 
       - name: Configure CMake for Clang-Tidy
         run: |
@@ -70,21 +64,6 @@ jobs:
             ufeeldocker:latest \
             bash -lc "./build.sh configure && ./build.sh build"
 
-      - name: Verify compilation database
-        run: |
-          python3 - <<'PY'
-          import json
-
-          with open("build/compile_commands.json", encoding="utf-8") as f:
-              entries = json.load(f)
-
-          print(f"Compilation entries: {len(entries)}")
-
-          for entry in entries:
-              source = entry["file"]
-              if "/Library/" in source or "/Wrapper/" in source:
-                  print(source)
-          PY
 
       - name: Run cpp-linter
         uses: cpp-linter/cpp-linter-action@v2
