@@ -29,8 +29,6 @@ jobs:
             clang \
             clang-tidy \
             clang-format
-            ca-certificates \
-            lsb-release \
             git-lfs \
             cmake \
             ninja-build \
