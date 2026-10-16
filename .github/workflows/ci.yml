@@ -28,18 +28,26 @@ jobs:
           sudo apt-get install -y \
             wget \
             ca-certificates \
+            lsb-release \
             git-lfs \
             cmake \
             ninja-build \
+            portaudio19-dev \
             dotnet-sdk-8.0 \
             libjpeg62 \
             libwebp7 \
             libpng16-16 \
-            libtiff6 \
-            libopenexr-3-1-30 \
+            libtiff5 \
+            libopenexr25 \
             libdc1394-25 \
             libgtk-3-0 \
-            libyaml-cpp-dev
+            libyaml-cpp-dev \
+            libasound2 \
+            libfontconfig1 \
+            libice6 \
+            libsm6 \
+            patchelf \
+            iwyu
 
           wget https://apt.llvm.org/llvm.sh
           chmod +x llvm.sh
