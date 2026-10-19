@@ -49,6 +49,7 @@ public:
     std::unique_ptr<SpeechToTextDetector> speechToTextDetector_;
     // std::unique_ptr<HeartRateSensorDetector> heartRateSensorDetector_;
 
+    private:
 };
 
 #endif // DATAPROCESSOR_HPP
