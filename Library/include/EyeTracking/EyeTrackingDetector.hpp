@@ -4,7 +4,6 @@
 #include "EyeTracking/GazeCalibrationModel.hpp"
 #include "EyeTracking/GazeKalmanFilter.hpp"
 #include "EyeTracking/IrisDetection/IrisLandmark.hpp"
-#include "opencv2/core/types.hpp"
 
 #include <chrono>
 #include <cstddef>
