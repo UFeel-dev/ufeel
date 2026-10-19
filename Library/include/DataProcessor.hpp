@@ -5,6 +5,7 @@
 #include "EyeTracking/GazeCalibrationModel.hpp"
 #include "HeartRate/HeartRateDetector.hpp"
 #include "EyeTracking/EyeTrackingDetector.hpp"
+#include "EyeTracking/GazeCalibrationModel.hpp"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/videoio.hpp"
 
@@ -41,8 +42,6 @@ public:
     [[nodiscard]] auto getSpeech() const -> const std::string&;
 
     [[nodiscard]] auto getHeartRate() const -> HeartRateResult;
-
-    [[nodiscard]] auto getHeartRate() const -> int;
 
     std::unique_ptr<EmotionDetector> emotionDetector_;
     std::unique_ptr<EyeTrackingDetector> eyeTrackingDetector_;
