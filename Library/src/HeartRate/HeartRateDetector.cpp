@@ -1,6 +1,5 @@
 #include "HeartRate/HeartRateDetector.hpp"
 
-<<<<<<< HEAD
 #include "HeartRate/UFeelHeartRateStatus.hpp"
 #include "cpr/api.h"
 #include "cpr/cprtypes.h"
@@ -38,39 +37,4 @@ auto HeartRateSensorDetector::process() -> HeartRateResult
     }
 
     return result;
-=======
-#include <string>
-#include <regex>
-#include <cpr/cpr.h>
-#include <fstream>
-
-HeartRateSensorDetector::HeartRateSensorDetector() {}
-
-HeartRateSensorDetector::~HeartRateSensorDetector() = default;
-
-auto HeartRateSensorDetector::process(
-) const -> int
-{
-    cpr::Response r = cpr::Get(cpr::Url{"http://localhost:8000"});
-
-    if (r.status_code == 200)
-    {
-        try 
-        {
-            std::regex bpm_regex(R"(\"bpm\"\s*:\s*(\d+))");
-            std::smatch match;
-
-            if (std::regex_search(r.text, match, bpm_regex)) 
-            {
-                return std::stoi(match[1].str());
-            }
-        }
-        catch (const std::exception& e) 
-        {
-            return -1; 
-        }
-    }
-    
-    return -1;
->>>>>>> e88a471 (feat: add heartbeat in cpp library)
 }

@@ -1,7 +1,6 @@
 #ifndef HEARTRATE_HEARTRATEDETECTOR_HPP
 #define HEARTRATE_HEARTRATEDETECTOR_HPP
 
-<<<<<<< HEAD
 #include "UFeelHeartRateStatus.hpp"
 
 #include <cstdint>
@@ -31,25 +30,6 @@ public:
 private:
 
     std::uint32_t bpm_{};
-=======
-class HeartRateSensorDetector
-{
-    public:
-
-        explicit HeartRateSensorDetector();
-
-        ~HeartRateSensorDetector();
-
-        HeartRateSensorDetector(const HeartRateSensorDetector&) = delete;
-        auto operator=(const HeartRateSensorDetector&) -> HeartRateSensorDetector& = delete;
-        HeartRateSensorDetector(HeartRateSensorDetector&&) = delete;
-        auto operator=(HeartRateSensorDetector&&) -> HeartRateSensorDetector& = delete;
-
-        //void toggle(bool state);
-
-        [[nodiscard]]
-        auto process() const -> int;
->>>>>>> e88a471 (feat: add heartbeat in cpp library)
 };
 
 #endif // HEARTRATE_HEARTRATEDETECTOR_HPP

@@ -73,11 +73,7 @@ public partial class MainWindow : Window
                 Dictionary<string, float> emotions;
                 Dictionary<string, bool> directions;
                 string speech;
-<<<<<<< HEAD
                 HeartRateResultData heartrate;
-=======
-                int heartrate;
->>>>>>> e88a471 (feat: add heartbeat in cpp library)
 
                 await processorGate.WaitAsync(token);
 
@@ -90,13 +86,9 @@ public partial class MainWindow : Window
                         emotions = new();
                         directions = new();
                         speech = string.Empty;
-<<<<<<< HEAD
                         heartrate = new HeartRateResultData(
                             HeartRateStatus.RequestFailed,
                             0);
-=======
-                        heartrate = -1;
->>>>>>> e88a471 (feat: add heartbeat in cpp library)
                     }
                     else
                     {
@@ -152,11 +144,7 @@ public partial class MainWindow : Window
                     SpeechText.Text = string.IsNullOrWhiteSpace(speech)
                         ? "No speech detected"
                         : speech;
-<<<<<<< HEAD
                     HeartRate.Text = FormatHeartRate(heartrate);
-=======
-                    HeartRate.Text = heartrate.ToString();
->>>>>>> e88a471 (feat: add heartbeat in cpp library)
                 });
 
                 await Task.Delay(33, token);

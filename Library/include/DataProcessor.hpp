@@ -45,11 +45,6 @@ public:
     [[nodiscard]] auto getHeartRate() const -> HeartRateResult;
 
     [[nodiscard]] auto getHeartRate() const -> int;
-<<<<<<< HEAD
-=======
-
-    void toggleSpeechToText(bool state);
->>>>>>> e88a471 (feat: add heartbeat in cpp library)
 
 protected:
 
@@ -59,11 +54,7 @@ protected:
     std::map<std::string, float> emotions_;
     GazeResult gaze_;
     std::string speech_;
-<<<<<<< HEAD
     HeartRateResult heartrate_{};
-=======
-    int heartrate_;
->>>>>>> e88a471 (feat: add heartbeat in cpp library)
 
     std::unique_ptr<EyeTrackingDetector> eyeTrackingDetector_;
 private:
