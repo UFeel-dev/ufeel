@@ -1,6 +1,6 @@
 #include "DataProcessor.hpp"
 #include "EyeTracking/EyeTrackingDetector.hpp"
-#include "opencv2/core.hpp"
+#include "opencv2/core/hal/interface.h"
 #include "opencv2/core/mat.hpp"
 #include "ufeel.h"
 
@@ -10,6 +10,7 @@
 #include <cstring>
 #include <exception>
 #include <iostream>
+#include <string.h>
 #include <string>
 
 extern "C" {
@@ -286,6 +287,36 @@ __attribute__((visibility("default"))) auto ufeel_get_calibration_progress(
     progress->target_count = result.targetCount;
     progress->samples_for_current_target = result.samplesForCurrentTarget;
     progress->required_samples_per_target = result.requiredSamplesPerTarget;
+    return UFEEL_STATUS_OK;
+}
+
+__attribute__((visibility("default"))) auto ufeel_get_calibration_diagnostics(void* processor, UFeelCalibrationDiagnostics* diagnostics) -> int32_t
+{
+    if (processor == nullptr || diagnostics == nullptr)
+    {
+        return UFEEL_STATUS_INVALID_ARGUMENT;
+    }
+
+    *diagnostics = {};
+    auto const result = static_cast<DataProcessor*>(processor)->getEyeTrackingCalibrationDiagnostics();
+    diagnostics->failure_reason = static_cast<int32_t>(result.failureReason);
+    diagnostics->input_target_count = result.inputTargetCount;
+    diagnostics->valid_target_count = result.validTargetCount;
+    diagnostics->targets_with_enough_raw_samples = result.targetsWithEnoughRawSamples;
+    diagnostics->targets_with_enough_retained_samples = result.targetsWithEnoughRetainedSamples;
+    diagnostics->minimum_retained_samples = result.minimumRetainedSamples;
+    diagnostics->maximum_retained_samples = result.maximumRetainedSamples;
+    diagnostics->horizontal_span = result.horizontalSpan;
+    diagnostics->vertical_span = result.verticalSpan;
+    diagnostics->mean_cross_validation_error = result.meanCrossValidationError;
+    diagnostics->maximum_cross_validation_error = result.maximumCrossValidationError;
+    diagnostics->cross_validation_targets_evaluated = result.crossValidationTargetsEvaluated;
+    diagnostics->regression_failures = result.regressionFailures;
+    diagnostics->invalid_target_count = result.invalidTargetCount;
+    diagnostics->targets_with_insufficient_raw_samples = result.targetsWithInsufficientRawSamples;
+    diagnostics->targets_with_insufficient_retained_samples = result.targetsWithInsufficientRetainedSamples;
+    diagnostics->mean_error_exceeded = result.meanErrorExceeded ? 1 : 0;
+    diagnostics->maximum_error_exceeded = result.maximumErrorExceeded ? 1 : 0;
     return UFEEL_STATUS_OK;
 }
 

@@ -1,3 +1,4 @@
+
 using System.Runtime.InteropServices;
 
 public sealed class UFeelProcessor : IDisposable
@@ -24,8 +25,7 @@ public sealed class UFeelProcessor : IDisposable
             speechModelPath);
 
         if (processor == IntPtr.Zero)
-            throw new InvalidOperationException(
-                "ufeel_create failed.");
+            throw new InvalidOperationException("ufeel_create failed.");
     }
 
     public bool Update()
@@ -35,8 +35,7 @@ public sealed class UFeelProcessor : IDisposable
 
     public FrameData? GetFrame()
     {
-        IntPtr frame =
-            UFeelNative.ufeel_get_frame(processor);
+        IntPtr frame = UFeelNative.ufeel_get_frame(processor);
 
         if (frame == IntPtr.Zero)
             return null;
@@ -44,22 +43,14 @@ public sealed class UFeelProcessor : IDisposable
         try
         {
             var nativeFrame =
-                Marshal.PtrToStructure<UFeelNative.UFeelFrame>(
-                    frame);
+                Marshal.PtrToStructure<UFeelNative.UFeelFrame>(frame);
 
-            int byteCount =
-                checked((int)(
-                    nativeFrame.stride *
-                    nativeFrame.height));
+            int byteCount = checked((int)(
+                nativeFrame.stride * nativeFrame.height));
 
-            byte[] data =
-                new byte[byteCount];
+            byte[] data = new byte[byteCount];
 
-            Marshal.Copy(
-                nativeFrame.data,
-                data,
-                0,
-                byteCount);
+            Marshal.Copy(nativeFrame.data, data, 0, byteCount);
 
             return new FrameData(
                 data,
@@ -76,35 +67,27 @@ public sealed class UFeelProcessor : IDisposable
     public Dictionary<string, float> GetEmotions()
     {
         IntPtr emotions =
-            UFeelNative.ufeel_get_emotions(
-                processor,
-                out uint size);
+            UFeelNative.ufeel_get_emotions(processor, out uint size);
 
-        var result =
-            new Dictionary<string, float>();
+        var result = new Dictionary<string, float>();
 
         if (emotions == IntPtr.Zero)
             return result;
 
         try
         {
-            int structSize =
-                Marshal.SizeOf<UFeelNative.UFeelPair>();
+            int structSize = Marshal.SizeOf<UFeelNative.UFeelPair>();
 
             for (uint i = 0; i < size; i++)
             {
-                IntPtr item =
-                    IntPtr.Add(
-                        emotions,
-                        checked(
-                            (int)(i * (uint)structSize)));
+                IntPtr item = IntPtr.Add(
+                    emotions,
+                    checked((int)(i * (uint)structSize)));
 
                 var pair =
-                    Marshal.PtrToStructure<
-                        UFeelNative.UFeelPair>(item);
+                    Marshal.PtrToStructure<UFeelNative.UFeelPair>(item);
 
-                string? key =
-                    Marshal.PtrToStringAnsi(pair.key);
+                string? key = Marshal.PtrToStringAnsi(pair.key);
 
                 if (!string.IsNullOrEmpty(key))
                     result[key] = pair.value;
@@ -114,9 +97,7 @@ public sealed class UFeelProcessor : IDisposable
         }
         finally
         {
-            UFeelNative.ufeel_free_emotions(
-                emotions,
-                size);
+            UFeelNative.ufeel_free_emotions(emotions, size);
         }
     }
 
@@ -127,14 +108,17 @@ public sealed class UFeelProcessor : IDisposable
             out UFeelNative.UFeelGazeEx gaze);
 
         if (status == (int)UFeelNative.UFeelStatus.NoGaze)
+        {
             return new GazeData(
                 0.0F,
                 0.0F,
                 0.0F,
                 UFeelNative.GazeDirection.None,
                 (UFeelNative.GazeStatus)gaze.status);
+        }
 
         EnsureStatus(status, "get gaze");
+
         return new GazeData(
             gaze.x,
             gaze.y,
@@ -182,11 +166,41 @@ public sealed class UFeelProcessor : IDisposable
     public bool FinishCalibration()
     {
         int status = UFeelNative.ufeel_finish_calibration(processor);
+
         if (status == (int)UFeelNative.UFeelStatus.CalibrationFailed)
             return false;
 
         EnsureStatus(status, "finish calibration");
         return true;
+    }
+
+    public CalibrationDiagnostics GetCalibrationDiagnostics()
+    {
+        EnsureStatus(
+            UFeelNative.ufeel_get_calibration_diagnostics(
+                processor,
+                out UFeelNative.UFeelCalibrationDiagnostics diagnostics),
+            "get calibration diagnostics");
+
+        return new CalibrationDiagnostics(
+            (CalibrationFailureReason)diagnostics.FailureReason,
+            diagnostics.InputTargetCount,
+            diagnostics.ValidTargetCount,
+            diagnostics.TargetsWithEnoughRawSamples,
+            diagnostics.TargetsWithEnoughRetainedSamples,
+            diagnostics.MinimumRetainedSamples,
+            diagnostics.MaximumRetainedSamples,
+            diagnostics.HorizontalSpan,
+            diagnostics.VerticalSpan,
+            diagnostics.MeanCrossValidationError,
+            diagnostics.MaximumCrossValidationError,
+            diagnostics.CrossValidationTargetsEvaluated,
+            diagnostics.RegressionFailures,
+            diagnostics.InvalidTargetCount,
+            diagnostics.TargetsWithInsufficientRawSamples,
+            diagnostics.TargetsWithInsufficientRetainedSamples,
+            diagnostics.MeanErrorExceeded != 0,
+            diagnostics.MaximumErrorExceeded != 0);
     }
 
     public void CancelCalibration()
@@ -203,6 +217,7 @@ public sealed class UFeelProcessor : IDisposable
                 processor,
                 out UFeelNative.UFeelCalibrationProgress progress),
             "get calibration progress");
+
         return new CalibrationProgress(
             progress.targets_with_enough_samples,
             progress.target_count,
@@ -212,7 +227,9 @@ public sealed class UFeelProcessor : IDisposable
 
     public bool SaveCalibrationProfile(string path)
     {
-        int status = UFeelNative.ufeel_save_calibration_profile(processor, path);
+        int status =
+            UFeelNative.ufeel_save_calibration_profile(processor, path);
+
         if (status == (int)UFeelNative.UFeelStatus.ProfileFailed)
             return false;
 
@@ -222,7 +239,9 @@ public sealed class UFeelProcessor : IDisposable
 
     public bool LoadCalibrationProfile(string path)
     {
-        int status = UFeelNative.ufeel_load_calibration_profile(processor, path);
+        int status =
+            UFeelNative.ufeel_load_calibration_profile(processor, path);
+
         if (status == (int)UFeelNative.UFeelStatus.ProfileFailed)
             return false;
 
@@ -239,16 +258,14 @@ public sealed class UFeelProcessor : IDisposable
 
     public string GetSpeech()
     {
-        IntPtr speech =
-            UFeelNative.ufeel_get_speech(processor);
+        IntPtr speech = UFeelNative.ufeel_get_speech(processor);
 
         if (speech == IntPtr.Zero)
             return string.Empty;
 
         try
         {
-            return Marshal.PtrToStringAnsi(speech)
-                ?? string.Empty;
+            return Marshal.PtrToStringAnsi(speech) ?? string.Empty;
         }
         finally
         {
@@ -275,7 +292,8 @@ public sealed class UFeelProcessor : IDisposable
             UFeelNative.UFeelStatus.InvalidArgument => "invalid argument",
             UFeelNative.UFeelStatus.InvalidState => "invalid operation state",
             UFeelNative.UFeelStatus.CalibrationFailed => "calibration failed",
-            UFeelNative.UFeelStatus.ProfileFailed => "eye-tracking profile is invalid or inaccessible",
+            UFeelNative.UFeelStatus.ProfileFailed =>
+                "eye-tracking profile is invalid or inaccessible",
             UFeelNative.UFeelStatus.NoGaze => "gaze is unavailable",
             _ => $"unknown native status ({status})"
         };
@@ -284,6 +302,41 @@ public sealed class UFeelProcessor : IDisposable
             $"Unable to {operation}: {reason}.");
     }
 }
+
+public enum CalibrationFailureReason
+{
+    None = 0,
+    NotCalibrating = 1,
+    TooFewValidTargets = 2,
+    InsufficientSamples = 3,
+    InsufficientHorizontalCoverage = 4,
+    InsufficientVerticalCoverage = 5,
+    InsufficientSpatialGridCoverage = 6,
+    RegressionFailed = 7,
+    CrossValidationMeanErrorExceeded = 8,
+    CrossValidationMaxErrorExceeded = 9,
+    InvalidCrossValidationResult = 10
+}
+
+public sealed record CalibrationDiagnostics(
+    CalibrationFailureReason FailureReason,
+    ulong InputTargetCount,
+    ulong ValidTargetCount,
+    ulong TargetsWithEnoughRawSamples,
+    ulong TargetsWithEnoughRetainedSamples,
+    ulong MinimumRetainedSamples,
+    ulong MaximumRetainedSamples,
+    double HorizontalSpan,
+    double VerticalSpan,
+    double MeanCrossValidationError,
+    double MaximumCrossValidationError,
+    ulong CrossValidationTargetsEvaluated,
+    ulong RegressionFailures,
+    ulong InvalidTargetCount,
+    ulong TargetsWithInsufficientRawSamples,
+    ulong TargetsWithInsufficientRetainedSamples,
+    bool MeanErrorExceeded,
+    bool MaximumErrorExceeded);
 
 public sealed record GazeData(
     float X,

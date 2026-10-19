@@ -60,6 +60,35 @@ typedef struct UFeelCalibrationProgress
     uint32_t required_samples_per_target;
 } UFeelCalibrationProgress;
 
+typedef struct UFeelCalibrationDiagnostics
+{
+    int32_t failure_reason;
+
+    uint64_t input_target_count;
+    uint64_t valid_target_count;
+    uint64_t targets_with_enough_raw_samples;
+    uint64_t targets_with_enough_retained_samples;
+
+    uint64_t minimum_retained_samples;
+    uint64_t maximum_retained_samples;
+
+    double horizontal_span;
+    double vertical_span;
+
+    double mean_cross_validation_error;
+    double maximum_cross_validation_error;
+
+    uint64_t cross_validation_targets_evaluated;
+
+    uint64_t regression_failures;
+    uint64_t invalid_target_count;
+    uint64_t targets_with_insufficient_raw_samples;
+    uint64_t targets_with_insufficient_retained_samples;
+
+    int32_t mean_error_exceeded;
+    int32_t maximum_error_exceeded;
+} UFeelCalibrationDiagnostics;
+
 /* Return values for calibration, gaze, and profile calls. */
 typedef enum UFeelStatus
 {
@@ -118,6 +147,8 @@ int32_t ufeel_get_gaze_ex(void* processor, UFeelGazeEx* gaze);
 int32_t ufeel_get_gaze_result(void* processor, UFeelGazeResult* gaze);
 /* Progress counts valid, non-blink samples for the current and completed targets. */
 int32_t ufeel_get_calibration_progress(void* processor, UFeelCalibrationProgress* progress);
+int32_t // TODO: fix formatting to avoid that kind of format
+ufeel_get_calibration_diagnostics(void* processor, UFeelCalibrationDiagnostics* diagnostics);
 /* Profile paths are caller-owned writable/readable paths, separate from installed model assets. */
 int32_t ufeel_save_calibration_profile(void* processor, const char* profile_path);
 int32_t ufeel_load_calibration_profile(void* processor, const char* profile_path);

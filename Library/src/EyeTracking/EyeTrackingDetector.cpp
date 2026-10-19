@@ -11,10 +11,12 @@
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
+#include <iterator>
 #include <numeric>
 #include <opencv2/core/saturate.hpp>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace
 {
@@ -30,7 +32,8 @@ constexpr int FACE_LANDMARK_COUNT = 468;
 constexpr std::array<int, 8> EYE_FRAME_LANDMARKS = {33, 133, 159, 145, 263, 362, 386, 374};
 constexpr std::array<int, 9> FACE_FEATURE_LANDMARKS = {4, 10, 151, 9, 152, 234, 454, 58, 288};
 static_assert(
-    GAZE_FEATURE_COUNT == 4 + EYE_FRAME_LANDMARKS.size() * 3 + FACE_FEATURE_LANDMARKS.size() * 3 + 5
+    GAZE_FEATURE_COUNT ==
+    4 + (EYE_FRAME_LANDMARKS.size() * 3) + (FACE_FEATURE_LANDMARKS.size() * 3) + 5
 );
 static_assert(std::ranges::all_of(EYE_FRAME_LANDMARKS, [](int index) {
     return index >= 0 && index < FACE_LANDMARK_COUNT;
@@ -86,6 +89,8 @@ using Vector3 = std::array<double, 3>;
     );
     double const relativeY =
         (pupilOffset - upperOffset).dot(verticalAxis) / (height * orthogonalHeight);
+    // double const relativeY =
+    //     (pupilOffset - upperOffset).dot(verticalAxis) / height;
     cv::Point2d const result(pupilOffset.dot(horizontalAxis) / width, relativeY);
     if (!std::isfinite(result.x) || !std::isfinite(result.y))
     {
@@ -131,7 +136,7 @@ using Vector3 = std::array<double, 3>;
     const Vector3& left, const Vector3& right
 ) -> double
 {
-    return left[0] * right[0] + left[1] * right[1] + left[2] * right[2];
+    return (left[0] * right[0]) + (left[1] * right[1]) + (left[2] * right[2]);
 }
 
 [[nodiscard]] auto cross(
@@ -139,9 +144,9 @@ using Vector3 = std::array<double, 3>;
 ) -> Vector3
 {
     return {
-        left[1] * right[2] - left[2] * right[1],
-        left[2] * right[0] - left[0] * right[2],
-        left[0] * right[1] - left[1] * right[0]};
+        (left[1] * right[2]) - (left[2] * right[1]),
+        (left[2] * right[0]) - (left[0] * right[2]),
+        (left[0] * right[1]) - (left[1] * right[0])};
 }
 
 [[nodiscard]] auto normalized(
@@ -184,7 +189,9 @@ using Vector3 = std::array<double, 3>;
     );
     double const irisQuality = std::clamp(1.0 - maximumIrisOffset, 0.35, 1.0);
     double const opennessQuality = std::clamp(std::min(leftEar, rightEar) / 0.25, 0.45, 1.0);
-    return static_cast<float>(0.45 * scaleQuality + 0.35 * irisQuality + 0.20 * opennessQuality);
+    return static_cast<float>(
+        (0.45 * scaleQuality) + (0.35 * irisQuality) + (0.20 * opennessQuality)
+    );
 }
 
 } // namespace
@@ -313,6 +320,7 @@ void EyeTrackingDetector::beginCalibration()
     calibrationTargetSetAt_.reset();
     eyeAspectHistory_.clear();
     calibrationActive_ = true;
+    lastCalibrationDiagnostics_ = {};
 }
 
 auto EyeTrackingDetector::setCalibrationTarget(
@@ -357,13 +365,17 @@ auto EyeTrackingDetector::finishCalibration() -> bool
 {
     if (!calibrationActive_)
     {
+        lastCalibrationDiagnostics_ = {};
+        lastCalibrationDiagnostics_.failureReason = CalibrationFailureReason::TooFewValidTargets;
         return false;
     }
 
     calibrationActive_ = false;
     calibrationTargetIndex_.reset();
     calibrationTargetSetAt_.reset();
-    auto fittedModel = GazeCalibrationModel::fit(calibrationTargets_);
+
+    auto fittedModel = GazeCalibrationModel::fit(calibrationTargets_, &lastCalibrationDiagnostics_);
+
     if (!fittedModel)
     {
         return false;
@@ -372,6 +384,7 @@ auto EyeTrackingDetector::finishCalibration() -> bool
     calibrationModel_ = *fittedModel;
     gazeEstimator_.reset();
     calibrationTargets_.clear();
+
     return true;
 }
 
@@ -478,12 +491,13 @@ auto EyeTrackingDetector::extractFeatures(
         return std::nullopt;
     }
 
-    Vector3 const eyeAxis = subtract(rightOuter, leftOuter);
+    Vector3 const eyeAxis =
+        subtract(rightOuter, leftOuter); // ! we might be swapping left and right here, TODO: check
     double const eyeSpan = std::sqrt(dot(eyeAxis, eyeAxis));
     auto const leftOuter2d = irisLandmarker_.getFaceLandmarkAt(33);
     auto const rightOuter2d = irisLandmarker_.getFaceLandmarkAt(263);
     double const imageEyeSpan = cv::norm(rightOuter2d - leftOuter2d);
-    double const minimumFrameDimension = static_cast<double>(std::min(frame.cols, frame.rows));
+    auto const minimumFrameDimension = static_cast<double>(std::min(frame.cols, frame.rows));
     if (!std::isfinite(eyeSpan) || eyeSpan < 2.0 || imageEyeSpan < minimumFrameDimension * 0.025)
     {
         status = GazeStatus::LowQuality;
@@ -610,6 +624,11 @@ auto EyeTrackingDetector::calibrationProgress() const -> CalibrationProgress
         );
     }
     return progress;
+}
+
+auto EyeTrackingDetector::calibrationDiagnostics() const -> const CalibrationDiagnostics&
+{
+    return lastCalibrationDiagnostics_;
 }
 
 auto EyeTrackingDetector::saveCalibrationProfile(

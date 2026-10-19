@@ -2,6 +2,7 @@
 
 #include "Emotions/EmotionDetector.hpp"
 #include "EyeTracking/EyeTrackingDetector.hpp"
+#include "EyeTracking/GazeCalibrationModel.hpp"
 #include "SpeechToText/SpeechToTextDetector.hpp"
 
 #include <filesystem>
@@ -96,6 +97,11 @@ void DataProcessor::cancelEyeTrackingCalibration()
 auto DataProcessor::getEyeTrackingCalibrationProgress() const -> CalibrationProgress
 {
     return eyeTrackingDetector_->calibrationProgress();
+}
+
+auto DataProcessor::getEyeTrackingCalibrationDiagnostics() const -> CalibrationDiagnostics
+{
+    return eyeTrackingDetector_->calibrationDiagnostics();
 }
 
 auto DataProcessor::saveEyeTrackingCalibrationProfile(
