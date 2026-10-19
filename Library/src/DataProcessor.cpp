@@ -2,8 +2,8 @@
 
 #include "Emotions/EmotionDetector.hpp"
 #include "EyeTracking/EyeTrackingDetector.hpp"
-#include "SpeechToText/SpeechToTextDetector.hpp"
 #include "HeartRate/HeartRateDetector.hpp"
+#include "SpeechToText/SpeechToTextDetector.hpp"
 
 #include <iostream>
 #include <map>

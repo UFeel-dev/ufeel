@@ -43,7 +43,6 @@ class DataProcessor
 
         void toggleSpeechToText(bool state);
 
-
     protected:
 
         cv::VideoCapture cap_;

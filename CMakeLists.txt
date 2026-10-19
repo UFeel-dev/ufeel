@@ -47,6 +47,7 @@ set(TFLITE_DIR ${THIRDPARTY_DIR}/tensorflowlite)
 set(VOSK_DIR ${THIRDPARTY_DIR}/vosk)
 set(PORTAUDIO_DIR ${THIRDPARTY_DIR}/portaudio)
 set(CPR_DIR ${THIRDPARTY_DIR}/cpr)
+set(JSON_DIR ${THIRDPARTY_DIR}/json)
 
 if(NOT IS_DIRECTORY ${MODELS_DIR})
     message(FATAL_ERROR "Models directory not found: ${MODELS_DIR}")
@@ -129,6 +130,7 @@ target_include_directories(ufeel_detection_library
         ${VOSK_DIR}/include
         ${PORTAUDIO_DIR}/include
         ${CPR_DIR}/include
+        ${JSON_DIR}/include
 )
 
 target_link_libraries(ufeel_detection_library

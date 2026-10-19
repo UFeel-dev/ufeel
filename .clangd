@@ -1,3 +1,16 @@
 Diagnostics:
   UnusedIncludes: Strict
   MissingIncludes: Strict
+
+CompileFlags:
+  CompilationDatabase: "build"
+  Add: 
+    - "-resource-dir=/usr/lib/llvm-22/lib/clang/22"
+    - "-I/usr/lib/llvm-22/lib/clang/22/include"
+    - "-ILibrary/include"
+    - "-I3rdparty/opencv/include/opencv4"
+    - "-I3rdparty/libtorch/include"
+    - "-I3rdparty/tensorflowlite/include"
+    - "-I3rdparty/vosk/include"
+    - "-I3rdparty/cpr/include"
+    - "-I3rdparty/json/include"
