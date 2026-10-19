@@ -23,7 +23,9 @@ public partial class MainWindow : Window
     private readonly Task processTask;
     private Task? calibrationTask;
     private CancellationTokenSource? calibrationCancellation;
-    private GazeData lastGaze = new(
+    private GazeResultData lastGaze = new(
+        0.0F,
+        0.0F,
         0.0F,
         0.0F,
         0.0F,
@@ -118,7 +120,7 @@ public partial class MainWindow : Window
             {
                 bool updated;
                 Dictionary<string, float> emotions;
-                GazeData gaze;
+                GazeResultData gaze;
                 string speech;
                 HeartRateResultData heartrate;
 
@@ -132,6 +134,8 @@ public partial class MainWindow : Window
                     {
                         emotions = new();
                         gaze = new(
+                            0.0F,
+                            0.0F,
                             0.0F,
                             0.0F,
                             0.0F,
@@ -150,7 +154,7 @@ public partial class MainWindow : Window
                             bitmap = FrameBitmapFactory.Create(frame);
 
                         emotions = processor.GetEmotions();
-                        gaze = processor.GetGaze();
+                        gaze = processor.GetGazeResult();
                         speech = speechEnabled
                             ? processor.GetSpeechToText()
                             : string.Empty;
@@ -170,7 +174,7 @@ public partial class MainWindow : Window
                             return;
 
                         DirectionsText.Text = FormatDirections(gaze);
-                        GazeText.Text = FormatGaze(gaze);
+                        GazeText.Text = FormatGaze(gaze: gaze);
                         lastGaze = gaze;
                         GazeOverlay.IsVisible = false;
                     });
@@ -253,7 +257,7 @@ public partial class MainWindow : Window
                 .Select(pair => $"{pair.Key}: {pair.Value:F3}"));
     }
 
-    private static string FormatDirections(GazeData gaze)
+    private static string FormatDirections(GazeResultData gaze)
     {
         if (!gaze.IsValid)
         {
@@ -287,22 +291,31 @@ public partial class MainWindow : Window
             : string.Join(", ", directions);
     }
 
-    private static string FormatGaze(GazeData gaze)
+    private static string FormatGaze(GazeResultData gaze)
     {
         return gaze.IsValid
-            ? $"Normalized client-area position: ({gaze.X:F3}, {gaze.Y:F3}) | confidence {gaze.Confidence:P0}"
+            ? $"Recorded: ({gaze.RecordedX:F3}, {gaze.RecordedY:F3})" +
+            Environment.NewLine +
+            $"Estimated: ({gaze.EstimatedX:F3}, {gaze.EstimatedY:F3})" +
+            Environment.NewLine +
+            $"Confidence: {gaze.Confidence:P0}"
             : "Screen position unavailable";
     }
 
-    private void UpdateGazeMarker(GazeData gaze)
+    private void UpdateGazeMarker(GazeResultData gaze)
     {
         double width = GazeCanvas.Bounds.Width;
         double height = GazeCanvas.Bounds.Height;
         if (width <= 0 || height <= 0)
             return;
 
-        Canvas.SetLeft(GazeMarker, gaze.X * width - GazeMarker.Width / 2);
-        Canvas.SetTop(GazeMarker, gaze.Y * height - GazeMarker.Height / 2);
+        Canvas.SetLeft(
+            GazeMarker,
+            gaze.EstimatedX * width - GazeMarker.Width / 2);
+
+        Canvas.SetTop(
+            GazeMarker,
+            gaze.EstimatedY * height - GazeMarker.Height / 2);
     }
 
     private static string FormatHeartRate(HeartRateResultData heartrate)
