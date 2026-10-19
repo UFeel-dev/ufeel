@@ -11,16 +11,16 @@ extern "C" {
 
 typedef struct UFeelFrame
 {
-        uint8_t* data;
-        uint32_t width;
-        uint32_t height;
-        uint32_t stride;
+    uint8_t* data;
+    uint32_t width;
+    uint32_t height;
+    uint32_t stride;
 } UFeelFrame;
 
 typedef struct UFeelPair
 {
-        const char* key;
-        float value;
+    const char* key;
+    float value;
 } UFeelPair;
 
 typedef struct UFeelBoolPair
@@ -45,27 +45,39 @@ typedef struct
 
 typedef struct UFeelGaze
 {
-        float x;
-        float y;
-        uint32_t directions;
-        uint32_t valid;
+    float x;
+    float y;
+    uint32_t directions;
+    uint32_t valid;
 } UFeelGaze;
 
 typedef struct UFeelGazeEx
 {
-        float x;
-        float y;
-        float confidence;
-        uint32_t directions;
-        uint32_t status;
-} UFeelGazeEx;
+    float x;
+    float y;
+    float confidence;
+    uint32_t directions;
+    uint32_t status;
+} UFeelGazeEx; // TODO: improve naming for UFeelGaze, UFeelGazeEx and UFeelGazeResult (currently
+               // hard to tell what does what)
+
+typedef struct UFeelGazeResult
+{
+    float recorded_x;
+    float recorded_y;
+    float estimated_x;
+    float estimated_y;
+    float confidence;
+    uint32_t directions;
+    uint32_t status;
+} UFeelGazeResult;
 
 typedef struct UFeelCalibrationProgress
 {
-        uint32_t targets_with_enough_samples;
-        uint32_t target_count;
-        uint32_t samples_for_current_target;
-        uint32_t required_samples_per_target;
+    uint32_t targets_with_enough_samples;
+    uint32_t target_count;
+    uint32_t samples_for_current_target;
+    uint32_t required_samples_per_target;
 } UFeelCalibrationProgress;
 
 /* Return values for calibration, gaze, and profile calls. */
@@ -123,6 +135,7 @@ int32_t ufeel_cancel_calibration(void* processor);
 int32_t ufeel_get_gaze(void* processor, UFeelGaze* gaze);
 /* Extended result: confidence and a UFeelGazeStatus are written even when no gaze is available. */
 int32_t ufeel_get_gaze_ex(void* processor, UFeelGazeEx* gaze);
+int32_t ufeel_get_gaze_result(void* processor, UFeelGazeResult* gaze);
 /* Progress counts valid, non-blink samples for the current and completed targets. */
 int32_t ufeel_get_calibration_progress(void* processor, UFeelCalibrationProgress* progress);
 /* Profile paths are caller-owned writable/readable paths, separate from installed model assets. */

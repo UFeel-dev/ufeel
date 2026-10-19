@@ -9,35 +9,35 @@
 
 class SpeechRecognizer
 {
-    public:
+        public:
 
-        explicit SpeechRecognizer(const std::string& modelPath);
+    explicit SpeechRecognizer(const std::string& modelPath);
 
-        ~SpeechRecognizer();
+    ~SpeechRecognizer();
 
-        SpeechRecognizer(const SpeechRecognizer&) = delete;
-        auto operator=(const SpeechRecognizer&) -> SpeechRecognizer& = delete;
+    SpeechRecognizer(const SpeechRecognizer&) = delete;
+    auto operator=(const SpeechRecognizer&) -> SpeechRecognizer& = delete;
 
-        SpeechRecognizer(SpeechRecognizer&&) = delete;
-        auto operator=(SpeechRecognizer&&) -> SpeechRecognizer& = delete;
+    SpeechRecognizer(SpeechRecognizer&&) = delete;
+    auto operator=(SpeechRecognizer&&) -> SpeechRecognizer& = delete;
 
-        auto process(const int16_t* samples, std::size_t sampleCount) -> std::string;
+    auto process(const int16_t* samples, std::size_t sampleCount) -> std::string;
 
-        auto finalize() -> std::string;
-        void reset();
+    auto finalize() -> std::string;
+    void reset();
 
-    private:
+        private:
 
-        static constexpr double sampleRate = 16000.0;
+    static constexpr double sampleRate = 16000.0;
 
-        VoskModel* model_ = nullptr;
-        VoskRecognizer* recognizer_ = nullptr;
+    VoskModel* model_ = nullptr;
+    VoskRecognizer* recognizer_ = nullptr;
 
-        static auto extractText(const char* json, const char* key) -> std::string;
+    static auto extractText(const char* json, const char* key) -> std::string;
 
-        static auto extractFinalText(const char* json) -> std::string;
+    static auto extractFinalText(const char* json) -> std::string;
 
-        static auto extractPartialText(const char* json) -> std::string;
+    static auto extractPartialText(const char* json) -> std::string;
 };
 
 #endif // SPEECHTOTEXT_SPEECHRECOGNIZER_HPP

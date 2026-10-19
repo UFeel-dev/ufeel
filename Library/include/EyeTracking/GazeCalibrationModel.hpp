@@ -18,37 +18,37 @@ using GazeFeatureVector = std::array<double, GAZE_FEATURE_COUNT>;
 
 struct GazeCalibrationTarget
 {
-        cv::Point2f target{};
-        std::vector<GazeFeatureVector> samples;
+    cv::Point2f target{};
+    std::vector<GazeFeatureVector> samples;
 };
 
 class GazeCalibrationModel
 {
-    public:
+        public:
 
-        [[nodiscard]] static auto fit(const std::vector<GazeCalibrationTarget>& targets)
-            -> std::optional<GazeCalibrationModel>;
-        [[nodiscard]] auto predict(const GazeFeatureVector& features) const
-            -> std::optional<cv::Point2f>;
-        [[nodiscard]] auto isValid() const -> bool;
-        [[nodiscard]] auto confidence() const -> float;
-        [[nodiscard]] auto save(const std::string& path) const -> bool;
-        [[nodiscard]] auto load(const std::string& path) -> bool;
+    [[nodiscard]] static auto fit(const std::vector<GazeCalibrationTarget>& targets)
+        -> std::optional<GazeCalibrationModel>;
+    [[nodiscard]] auto predict(const GazeFeatureVector& features) const
+        -> std::optional<cv::Point2f>;
+    [[nodiscard]] auto isValid() const -> bool;
+    [[nodiscard]] auto confidence() const -> float;
+    [[nodiscard]] auto save(const std::string& path) const -> bool;
+    [[nodiscard]] auto load(const std::string& path) -> bool;
 
-    private:
+        private:
 
-        using Coefficients = std::array<std::array<double, GAZE_FEATURE_COUNT + 1>, 2>;
+    using Coefficients = std::array<std::array<double, GAZE_FEATURE_COUNT + 1>, 2>;
 
-        [[nodiscard]] static auto fitRegression(const std::vector<GazeCalibrationTarget>& targets)
-            -> std::optional<GazeCalibrationModel>;
-        [[nodiscard]] auto
-        predictCoordinate(const GazeFeatureVector& features, int coordinate) const -> double;
+    [[nodiscard]] static auto fitRegression(const std::vector<GazeCalibrationTarget>& targets)
+        -> std::optional<GazeCalibrationModel>;
+    [[nodiscard]] auto predictCoordinate(const GazeFeatureVector& features, int coordinate) const
+        -> double;
 
-        GazeFeatureVector means_{};
-        GazeFeatureVector scales_{};
-        Coefficients coefficients_{};
-        double crossValidationError_ = 0.0;
-        bool valid_ = false;
+    GazeFeatureVector means_{};
+    GazeFeatureVector scales_{};
+    Coefficients coefficients_{};
+    double crossValidationError_ = 0.0;
+    bool valid_ = false;
 };
 
 #endif // EYETRACKING_GAZECALIBRATIONMODEL_HPP

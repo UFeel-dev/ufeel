@@ -123,5 +123,9 @@ nunit-*.xml
 # Packaging
 package
 
+# IDE
+
+.vscode
+
 # Coverage
 *.profraw

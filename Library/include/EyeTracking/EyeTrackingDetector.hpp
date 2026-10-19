@@ -2,6 +2,7 @@
 #define EYETRACKING_EYETRACKINGDETECTOR_HPP
 
 #include "EyeTracking/GazeCalibrationModel.hpp"
+#include "EyeTracking/GazeKalmanFilter.hpp"
 #include "EyeTracking/IrisDetection/IrisLandmark.hpp"
 #include "opencv2/core/types.hpp"
 
@@ -34,19 +35,21 @@ enum class GazeStatus : std::uint8_t
 
 struct GazeResult
 {
-        float x = 0.0F;
-        float y = 0.0F;
-        float confidence = 0.0F;
-        std::uint32_t directions = 0;
-        GazeStatus status = GazeStatus::NotCalibrated;
+    float x = 0;
+    float y = 0;
+    float recordedX = 0;
+    float recordedY = 0;
+    float confidence = 0;
+    uint32_t directions = 0;
+    GazeStatus status = GazeStatus::NotCalibrated;
 };
 
 struct CalibrationProgress
 {
-        std::uint32_t targetsWithEnoughSamples = 0;
-        std::uint32_t targetCount = 0;
-        std::uint32_t samplesForCurrentTarget = 0;
-        std::uint32_t requiredSamplesPerTarget = 0;
+    std::uint32_t targetsWithEnoughSamples = 0;
+    std::uint32_t targetCount = 0;
+    std::uint32_t samplesForCurrentTarget = 0;
+    std::uint32_t requiredSamplesPerTarget = 0;
 };
 
 enum GazeDirectionFlags : std::uint8_t
@@ -60,44 +63,43 @@ enum GazeDirectionFlags : std::uint8_t
 
 class EyeTrackingDetector
 {
-    public:
+        public:
 
-        explicit EyeTrackingDetector(const std::string& modelDirectory);
-        ~EyeTrackingDetector();
+    explicit EyeTrackingDetector(const std::string& modelDirectory);
+    ~EyeTrackingDetector();
 
-        EyeTrackingDetector(const EyeTrackingDetector&) = delete;
-        auto operator=(const EyeTrackingDetector&) -> EyeTrackingDetector& = delete;
-        EyeTrackingDetector(EyeTrackingDetector&&) = delete;
-        auto operator=(EyeTrackingDetector&&) -> EyeTrackingDetector& = delete;
+    EyeTrackingDetector(const EyeTrackingDetector&) = delete;
+    auto operator=(const EyeTrackingDetector&) -> EyeTrackingDetector& = delete;
+    EyeTrackingDetector(EyeTrackingDetector&&) = delete;
+    auto operator=(EyeTrackingDetector&&) -> EyeTrackingDetector& = delete;
 
-        auto process(const cv::Mat& frame) -> GazeResult;
-        void toggleEyeTrackingDetection(bool state);
-        void close();
-        void beginCalibration();
-        [[nodiscard]] auto setCalibrationTarget(float x, float y) -> bool;
-        [[nodiscard]] auto finishCalibration() -> bool;
-        void cancelCalibration();
-        [[nodiscard]] auto calibrationProgress() const -> CalibrationProgress;
-        [[nodiscard]] auto saveCalibrationProfile(const std::string& path) const -> bool;
-        [[nodiscard]] auto loadCalibrationProfile(const std::string& path) -> bool;
+    auto process(const cv::Mat& frame) -> GazeResult;
+    void toggleEyeTrackingDetection(bool state);
+    void close();
+    void beginCalibration();
+    [[nodiscard]] auto setCalibrationTarget(float x, float y) -> bool;
+    [[nodiscard]] auto finishCalibration() -> bool;
+    void cancelCalibration();
+    [[nodiscard]] auto calibrationProgress() const -> CalibrationProgress;
+    [[nodiscard]] auto saveCalibrationProfile(const std::string& path) const -> bool;
+    [[nodiscard]] auto loadCalibrationProfile(const std::string& path) -> bool;
 
-    private:
+        private:
 
-        [[nodiscard]] auto extractFeatures(const cv::Mat& frame, GazeStatus& status, float& quality)
-            -> std::optional<GazeFeatureVector>;
+    [[nodiscard]] auto extractFeatures(const cv::Mat& frame, GazeStatus& status, float& quality)
+        -> std::optional<GazeFeatureVector>;
 
-        bool processEnable_ = true;
-        bool calibrationActive_ = false;
-        std::optional<std::size_t> calibrationTargetIndex_;
-        std::optional<std::chrono::steady_clock::time_point> calibrationTargetSetAt_;
-        std::vector<GazeCalibrationTarget> calibrationTargets_;
-        std::deque<double> eyeAspectHistory_;
-        GazeCalibrationModel calibrationModel_;
-        std::optional<cv::Point2f> smoothedGaze_;
-        std::optional<std::chrono::steady_clock::time_point> lastGazeTime_;
-        GazeResult result_;
+    bool processEnable_ = true;
+    bool calibrationActive_ = false;
+    std::optional<std::size_t> calibrationTargetIndex_;
+    std::optional<std::chrono::steady_clock::time_point> calibrationTargetSetAt_;
+    std::vector<GazeCalibrationTarget> calibrationTargets_;
+    std::deque<double> eyeAspectHistory_;
+    GazeCalibrationModel calibrationModel_;
+    GazeKalmanFilter gazeEstimator_;
+    GazeResult result_;
 
-        my::IrisLandmark irisLandmarker_;
+    my::IrisLandmark irisLandmarker_;
 };
 
 #endif // EYETRACKING_EYETRACKINGDETECTOR_HPP
