@@ -423,7 +423,6 @@ public sealed class UFeelProcessor : IDisposable
         GC.SuppressFinalize(this);
     }
 
-<<<<<<< HEAD
         if (handle != IntPtr.Zero)
         {
             UFeelNative.ufeel_destroy(handle);
@@ -482,25 +481,6 @@ public sealed class EyeTrackingCalibrationProgress
         TargetCount = targetCount;
         SamplesForCurrentTarget = samplesForCurrentTarget;
         RequiredSamplesPerTarget = requiredSamplesPerTarget;
-=======
-    private static void EnsureStatus(int status, string operation)
-    {
-        if (status == (int)UFeelNative.UFeelStatus.Ok)
-            return;
-
-        string reason = (UFeelNative.UFeelStatus)status switch
-        {
-            UFeelNative.UFeelStatus.InvalidArgument => "invalid argument",
-            UFeelNative.UFeelStatus.InvalidState => "invalid operation state",
-            UFeelNative.UFeelStatus.CalibrationFailed => "calibration failed",
-            UFeelNative.UFeelStatus.ProfileFailed => "eye-tracking profile is invalid or inaccessible",
-            UFeelNative.UFeelStatus.NoGaze => "gaze is unavailable",
-            _ => $"unknown native status ({status})"
-        };
-
-        throw new InvalidOperationException(
-            $"Unable to {operation}: {reason}.");
->>>>>>> 8bef267 (feat: new eye tracking logic, calibration, demo)
     }
 }
 
