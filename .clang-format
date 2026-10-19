@@ -34,7 +34,7 @@ NamespaceIndentation: None
 WrapNamespaceBodyWithEmptyLines: Always
 
 AccessModifierOffset: 4
-IndentAccessModifiers: true
+# IndentAccessModifiers: true
 EmptyLineBeforeAccessModifier: Always
 EmptyLineAfterAccessModifier: Always
 

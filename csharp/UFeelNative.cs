@@ -40,6 +40,18 @@ public static class UFeelNative
     }
 
     [StructLayout(LayoutKind.Sequential)]
+    public struct UFeelGazeResult
+    {
+        public float recorded_x;
+        public float recorded_y;
+        public float estimated_x;
+        public float estimated_y;
+        public float confidence;
+        public uint directions;
+        public uint status;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
     public struct UFeelCalibrationProgress
     {
         public uint targets_with_enough_samples;
@@ -139,6 +151,11 @@ public static class UFeelNative
     public static extern int ufeel_get_gaze_ex(
         IntPtr processor,
         out UFeelGazeEx gaze);
+
+    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
+    public static extern int ufeel_get_gaze_result(
+        IntPtr processor,
+        out UFeelGazeResult gaze);
 
     [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
     public static extern int ufeel_get_calibration_progress(

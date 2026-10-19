@@ -143,6 +143,28 @@ public sealed class UFeelProcessor : IDisposable
             (UFeelNative.GazeStatus)gaze.status);
     }
 
+    public GazeResultData GetGazeResult()
+    {
+        int status = UFeelNative.ufeel_get_gaze_result(
+            processor,
+            out UFeelNative.UFeelGazeResult gaze);
+
+        var result = new GazeResultData(
+            gaze.recorded_x,
+            gaze.recorded_y,
+            gaze.estimated_x,
+            gaze.estimated_y,
+            gaze.confidence,
+            (UFeelNative.GazeDirection)gaze.directions,
+            (UFeelNative.GazeStatus)gaze.status);
+
+        if (status == (int)UFeelNative.UFeelStatus.NoGaze)
+            return result;
+
+        EnsureStatus(status, "get gaze result");
+        return result;
+    }
+
     public void BeginCalibration()
     {
         EnsureStatus(
@@ -266,6 +288,18 @@ public sealed class UFeelProcessor : IDisposable
 public sealed record GazeData(
     float X,
     float Y,
+    float Confidence,
+    UFeelNative.GazeDirection Directions,
+    UFeelNative.GazeStatus Status)
+{
+    public bool IsValid => Status == UFeelNative.GazeStatus.Valid;
+}
+
+public sealed record GazeResultData(
+    float RecordedX,
+    float RecordedY,
+    float EstimatedX,
+    float EstimatedY,
     float Confidence,
     UFeelNative.GazeDirection Directions,
     UFeelNative.GazeStatus Status)

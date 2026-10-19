@@ -243,6 +243,34 @@ __attribute__((visibility("default"))) auto ufeel_get_gaze_ex(
     return UFEEL_STATUS_OK;
 }
 
+__attribute__((visibility("default"))) auto ufeel_get_gaze_result(
+    void* processor, UFeelGazeResult* gaze
+) -> int32_t
+{
+    if (processor == nullptr || gaze == nullptr)
+    {
+        return UFEEL_STATUS_INVALID_ARGUMENT;
+    }
+
+    *gaze = {};
+    auto const result = static_cast<DataProcessor*>(processor)->getGaze();
+    gaze->status = static_cast<uint32_t>(result.status);
+
+    if (result.status != GazeStatus::Valid)
+    {
+        return UFEEL_STATUS_NO_GAZE;
+    }
+
+    gaze->recorded_x = result.recordedX;
+    gaze->recorded_y = result.recordedY;
+    gaze->estimated_x = result.x;
+    gaze->estimated_y = result.y;
+    gaze->confidence = result.confidence;
+    gaze->directions = result.directions;
+
+    return UFEEL_STATUS_OK;
+}
+
 __attribute__((visibility("default"))) auto ufeel_get_calibration_progress(
     void* processor, UFeelCalibrationProgress* progress
 ) -> int32_t

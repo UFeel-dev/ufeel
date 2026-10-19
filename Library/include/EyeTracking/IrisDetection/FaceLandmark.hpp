@@ -18,52 +18,52 @@ This class is non-copyable.
 */
 class FaceLandmark : public my::FaceDetection
 {
-    public:
+        public:
 
-        /*
-        Users MUST provide the FOLDER contain BOTH the face_detection_short.tflite
-        and face_landmark.tflite,
-        */
-        explicit FaceLandmark(const std::string& modelPath);
+    /*
+    Users MUST provide the FOLDER contain BOTH the face_detection_short.tflite
+    and face_landmark.tflite,
+    */
+    explicit FaceLandmark(const std::string& modelPath);
 
-        using my::FaceDetection::loadBytesToInput;
-        using my::FaceDetection::loadImageToInput;
-        using my::FaceDetection::loadOutput;
+    using my::FaceDetection::loadBytesToInput;
+    using my::FaceDetection::loadImageToInput;
+    using my::FaceDetection::loadOutput;
 
-        /*
-        Override function from ModelLoader
-        */
-        void runInference() override;
+    /*
+    Override function from ModelLoader
+    */
+    void runInference() override;
 
-        /*
-        Get a landmark from output (index must be in range 0-467)
-        The position is relative to the input image at InputTensor(0)
-        */
-        [[nodiscard]] virtual auto getFaceLandmarkAt(int index) const -> cv::Point;
+    /*
+    Get a landmark from output (index must be in range 0-467)
+    The position is relative to the input image at InputTensor(0)
+    */
+    [[nodiscard]] virtual auto getFaceLandmarkAt(int index) const -> cv::Point;
 
-        /*
-        Get a face landmark in image-space x/y and image-scaled model-space depth.
-        */
-        [[nodiscard]] auto getFaceLandmark3DAt(int index) const -> cv::Point3f;
+    /*
+    Get a face landmark in image-space x/y and image-scaled model-space depth.
+    */
+    [[nodiscard]] auto getFaceLandmark3DAt(int index) const -> cv::Point3f;
 
-        /*
-        Get all landmarks from output.
-        The positions is relative to the input image at InputTensor(0)
-        */
-        [[nodiscard]] virtual auto getAllFaceLandmarks() const -> std::vector<cv::Point>;
+    /*
+    Get all landmarks from output.
+    The positions is relative to the input image at InputTensor(0)
+    */
+    [[nodiscard]] virtual auto getAllFaceLandmarks() const -> std::vector<cv::Point>;
 
-        /*
-        Get all landmarks from output, which is a vector of length 468 * 3 * 4 (although the first
-        468 * 3 are enough). (Note: index does not matter, it always load from OutputTensor(0)) Each
-        landmark is represented by x, y, z(depth), which are raw outputs from Mediapipe Face
-        Landmark model. If you want to get relative position to input image, use
-        getAllFaceLandmarks() or getFaceLandmarkAt()
-        */
-        [[nodiscard]] auto loadOutput(int index) const -> std::vector<float> override;
+    /*
+    Get all landmarks from output, which is a vector of length 468 * 3 * 4 (although the first
+    468 * 3 are enough). (Note: index does not matter, it always load from OutputTensor(0)) Each
+    landmark is represented by x, y, z(depth), which are raw outputs from Mediapipe Face
+    Landmark model. If you want to get relative position to input image, use
+    getAllFaceLandmarks() or getFaceLandmarkAt()
+    */
+    [[nodiscard]] auto loadOutput(int index) const -> std::vector<float> override;
 
-    private:
+        private:
 
-        my::ModelLoader m_landmarkModel;
+    my::ModelLoader m_landmarkModel;
 };
 
 } // namespace my

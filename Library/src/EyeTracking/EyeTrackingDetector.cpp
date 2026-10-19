@@ -205,8 +205,7 @@ void EyeTrackingDetector::toggleEyeTrackingDetection(
     processEnable_ = state;
     if (!state)
     {
-        smoothedGaze_.reset();
-        lastGazeTime_.reset();
+        gazeEstimator_.reset();
         eyeAspectHistory_.clear();
     }
     std::cout << "[EyeTrackingDetector] eye tracking detection " << (state ? "enabled" : "disabled")
@@ -272,26 +271,13 @@ auto EyeTrackingDetector::process(
     cv::Point2f const rawGaze(
         std::clamp(prediction->x, 0.0F, 1.0F), std::clamp(prediction->y, 0.0F, 1.0F)
     );
-    auto const now = std::chrono::steady_clock::now();
-    double const secondsSincePrevious =
-        lastGazeTime_ ? std::chrono::duration<double>(now - *lastGazeTime_).count()
-                      : std::numeric_limits<double>::infinity();
-    if (!smoothedGaze_ || secondsSincePrevious > 0.5)
-    {
-        smoothedGaze_ = rawGaze;
-    }
-    else
-    {
-        double const timeConstant =
-            0.10 / std::clamp(static_cast<double>(featureQuality), 0.35, 1.0);
-        double const alpha = 1.0 - std::exp(-secondsSincePrevious / timeConstant);
-        smoothedGaze_->x += static_cast<float>(alpha * (rawGaze.x - smoothedGaze_->x));
-        smoothedGaze_->y += static_cast<float>(alpha * (rawGaze.y - smoothedGaze_->y));
-    }
-    lastGazeTime_ = now;
 
-    result_.x = smoothedGaze_->x;
-    result_.y = smoothedGaze_->y;
+    cv::Point2f const estimatedGaze = gazeEstimator_.update(rawGaze, featureQuality);
+
+    result_.recordedX = rawGaze.x;
+    result_.recordedY = rawGaze.y;
+    result_.x = estimatedGaze.x;
+    result_.y = estimatedGaze.y;
     result_.confidence = featureQuality * calibrationModel_.confidence();
     result_.status = GazeStatus::Valid;
 
@@ -384,8 +370,7 @@ auto EyeTrackingDetector::finishCalibration() -> bool
     }
 
     calibrationModel_ = *fittedModel;
-    smoothedGaze_.reset();
-    lastGazeTime_.reset();
+    gazeEstimator_.reset();
     calibrationTargets_.clear();
     return true;
 }
@@ -646,8 +631,7 @@ auto EyeTrackingDetector::loadCalibrationProfile(
     calibrationTargets_.clear();
     calibrationTargetIndex_.reset();
     calibrationTargetSetAt_.reset();
-    smoothedGaze_.reset();
-    lastGazeTime_.reset();
+    gazeEstimator_.reset();
     return true;
 }
 
