@@ -52,6 +52,8 @@ void ufeel_toggle_speech(void* processor, uint8_t state);
 char* ufeel_get_speech(void* processor);
 void ufeel_free_speech(char* speech);
 
+int ufeel_get_heartrate(void* processor);
+
 #ifdef __cplusplus
 }
 #endif

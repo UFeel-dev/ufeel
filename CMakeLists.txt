@@ -46,6 +46,8 @@ set(LIBTORCH_DIR ${THIRDPARTY_DIR}/libtorch)
 set(TFLITE_DIR ${THIRDPARTY_DIR}/tensorflowlite)
 set(VOSK_DIR ${THIRDPARTY_DIR}/vosk)
 set(PORTAUDIO_DIR ${THIRDPARTY_DIR}/portaudio)
+set(CPR_DIR ${THIRDPARTY_DIR}/cpr)
+set(JSON_DIR ${THIRDPARTY_DIR}/json)
 
 if(NOT IS_DIRECTORY ${MODELS_DIR})
     message(FATAL_ERROR "Models directory not found: ${MODELS_DIR}")
@@ -114,6 +116,8 @@ add_library(ufeel_detection_library STATIC
     ${LIBRARY_DIR}/src/SpeechToText/AudioCapture.cpp
     ${LIBRARY_DIR}/src/SpeechToText/SpeechRecognizer.cpp
     ${LIBRARY_DIR}/src/SpeechToText/SpeechToTextDetector.cpp
+
+    ${LIBRARY_DIR}/src/HeartRate/HeartRateDetector.cpp
 )
 
 target_include_directories(ufeel_detection_library
@@ -125,6 +129,8 @@ target_include_directories(ufeel_detection_library
         ${TFLITE_DIR}/include
         ${VOSK_DIR}/include
         ${PORTAUDIO_DIR}/include
+        ${CPR_DIR}/include
+        ${JSON_DIR}/include
 )
 
 target_link_libraries(ufeel_detection_library
@@ -137,6 +143,7 @@ target_link_libraries(ufeel_detection_library
         ${VOSK_KALDI_LIBRARIES}
         "-Wl,--end-group"
         ${PORTAUDIO_DIR}/lib/libportaudio.so
+        ${CPR_DIR}/lib/libcpr.so
 )
 
 target_compile_options(ufeel_detection_library
@@ -164,7 +171,7 @@ target_link_libraries(ufeel_wrapper
 
 set_target_properties(ufeel_wrapper PROPERTIES
     BUILD_RPATH
-        "${OPENCV_DIR}/lib;${LIBTORCH_DIR}/lib;${PORTAUDIO_DIR}/lib"
+        "${OPENCV_DIR}/lib;${LIBTORCH_DIR}/lib;${PORTAUDIO_DIR}/lib;${CPR_DIR}/lib"
     INSTALL_RPATH
         "$ORIGIN/dependencies"
 )
@@ -207,6 +214,13 @@ install(
     FILES
         ${PORTAUDIO_DIR}/lib/libportaudio.so.2.0.0
     DESTINATION dependencies
+)
+
+install(
+    FILES
+        ${CPR_DIR}/lib/libcpr.so.1.15.1
+    DESTINATION dependencies
+    RENAME libcpr.so.1
 )
 
 configure_file(
