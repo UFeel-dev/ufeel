@@ -14,8 +14,6 @@ class HeartRateSensorDetector
         HeartRateSensorDetector(HeartRateSensorDetector&&) = delete;
         auto operator=(HeartRateSensorDetector&&) -> HeartRateSensorDetector& = delete;
 
-        //void toggle(bool state);
-
         [[nodiscard]]
         auto process() const -> int;
 };
