@@ -10,15 +10,9 @@ public sealed class UFeelProcessor : IDisposable
     private bool disposed;
 
     public UFeelProcessor(
-<<<<<<< HEAD
         string modelDirectory,
         string speechModelPath,
         string? nativeLibraryPath = null)
-=======
-        string libraryPath,
-        string modelDirectory,
-        string speechModelPath)
->>>>>>> 6f7e253 (feat: new eye tracking logic, calibration, demo)
     {
         ValidatePath(modelDirectory, nameof(modelDirectory));
         ValidatePath(speechModelPath, nameof(speechModelPath));
@@ -26,13 +20,7 @@ public sealed class UFeelProcessor : IDisposable
         if (!string.IsNullOrWhiteSpace(nativeLibraryPath))
             UFeelNative.ConfigureLibrary(nativeLibraryPath);
 
-<<<<<<< HEAD
         handle = UFeelNative.ufeel_create(modelDirectory, speechModelPath);
-=======
-        processor = UFeelNative.ufeel_create(
-            modelDirectory,
-            speechModelPath);
->>>>>>> 6f7e253 (feat: new eye tracking logic, calibration, demo)
 
         if (handle == IntPtr.Zero)
             throw new InvalidOperationException(
@@ -516,7 +504,6 @@ public sealed class EyeTrackingCalibrationProgress
     }
 }
 
-<<<<<<< HEAD
 public sealed class FrameData
 {
     public byte[] Data { get; }
@@ -644,7 +631,6 @@ public sealed class EyeTrackingCalibrationDiagnostics
         TargetsWithInsufficientRetainedSamples = targetsWithInsufficientRetainedSamples;
     }
 }
-<<<<<<< HEAD
 
 public sealed record HeartRateResultData(
     HeartRateStatus Status,
@@ -652,28 +638,3 @@ public sealed record HeartRateResultData(
 {
     public bool IsValid => Status == HeartRateStatus.Valid;
 }
-=======
-=======
-public sealed record GazeData(
-    float X,
-    float Y,
-    float Confidence,
-    UFeelNative.GazeDirection Directions,
-    UFeelNative.GazeStatus Status)
-{
-    public bool IsValid => Status == UFeelNative.GazeStatus.Valid;
-}
-
-public sealed record CalibrationProgress(
-    uint TargetsWithEnoughSamples,
-    uint TargetCount,
-    uint SamplesForCurrentTarget,
-    uint RequiredSamplesPerTarget);
-
-public sealed record FrameData(
-    byte[] Data,
-    int Width,
-    int Height,
-    int Stride);
->>>>>>> 6f7e253 (feat: new eye tracking logic, calibration, demo)
->>>>>>> 8bef267 (feat: new eye tracking logic, calibration, demo)
