@@ -3,6 +3,7 @@
 
 #include "HeartRate/HeartRateDetector.hpp"
 #include "EyeTracking/EyeTrackingDetector.hpp"
+#include "EyeTracking/GazeCalibrationModel.hpp"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/videoio.hpp"
 
@@ -45,6 +46,7 @@ class DataProcessor
     [[nodiscard]] auto finishEyeTrackingCalibration() -> bool;
     void cancelEyeTrackingCalibration();
     [[nodiscard]] auto getEyeTrackingCalibrationProgress() const -> CalibrationProgress;
+    [[nodiscard]] auto getEyeTrackingCalibrationDiagnostics() const -> CalibrationDiagnostics;
     [[nodiscard]] auto saveEyeTrackingCalibrationProfile(const std::string& path) const -> bool;
     [[nodiscard]] auto loadEyeTrackingCalibrationProfile(const std::string& path) -> bool;
 

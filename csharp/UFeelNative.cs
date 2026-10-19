@@ -68,6 +68,36 @@ public static class UFeelNative
         public uint required_samples_per_target;
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct UFeelCalibrationDiagnostics
+    {
+        public int FailureReason;
+
+        public ulong InputTargetCount;
+        public ulong ValidTargetCount;
+        public ulong TargetsWithEnoughRawSamples;
+        public ulong TargetsWithEnoughRetainedSamples;
+
+        public ulong MinimumRetainedSamples;
+        public ulong MaximumRetainedSamples;
+
+        public double HorizontalSpan;
+        public double VerticalSpan;
+
+        public double MeanCrossValidationError;
+        public double MaximumCrossValidationError;
+
+        public ulong CrossValidationTargetsEvaluated;
+
+        public ulong RegressionFailures;
+        public ulong InvalidTargetCount;
+        public ulong TargetsWithInsufficientRawSamples;
+        public ulong TargetsWithInsufficientRetainedSamples;
+
+        public int MeanErrorExceeded;
+        public int MaximumErrorExceeded;
+    }
+
     public enum UFeelStatus
     {
         Ok = 0,
@@ -176,6 +206,11 @@ public static class UFeelNative
     public static extern int ufeel_get_calibration_progress(
         IntPtr processor,
         out UFeelCalibrationProgress progress);
+
+    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern int ufeel_get_calibration_diagnostics(
+        IntPtr processor,
+        out UFeelCalibrationDiagnostics diagnostics);
 
     [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
     public static extern int ufeel_save_calibration_profile(

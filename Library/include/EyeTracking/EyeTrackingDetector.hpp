@@ -4,7 +4,6 @@
 #include "EyeTracking/GazeCalibrationModel.hpp"
 #include "EyeTracking/GazeKalmanFilter.hpp"
 #include "EyeTracking/IrisDetection/IrisLandmark.hpp"
-#include "opencv2/core/types.hpp"
 
 #include <chrono>
 #include <cstddef>
@@ -81,6 +80,7 @@ class EyeTrackingDetector
     [[nodiscard]] auto finishCalibration() -> bool;
     void cancelCalibration();
     [[nodiscard]] auto calibrationProgress() const -> CalibrationProgress;
+    [[nodiscard]] auto calibrationDiagnostics() const -> const CalibrationDiagnostics&;
     [[nodiscard]] auto saveCalibrationProfile(const std::string& path) const -> bool;
     [[nodiscard]] auto loadCalibrationProfile(const std::string& path) -> bool;
 
@@ -98,6 +98,8 @@ class EyeTrackingDetector
     GazeCalibrationModel calibrationModel_;
     GazeKalmanFilter gazeEstimator_;
     GazeResult result_;
+
+    CalibrationDiagnostics lastCalibrationDiagnostics_{};
 
     my::IrisLandmark irisLandmarker_;
 };

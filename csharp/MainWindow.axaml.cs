@@ -1,4 +1,3 @@
-
 using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls;
@@ -26,6 +25,14 @@ public partial class MainWindow : Window
         0.0F,
         UFeelNative.GazeDirection.None,
         UFeelNative.GazeStatus.NotCalibrated);
+
+    private const double GazeSmoothingTimeConstant = 0.08;
+    private const double GazeResetGapSeconds = 0.5;
+
+    private double? smoothedGazeX;
+    private double? smoothedGazeY;
+    private long? lastGazeTimestamp;
+
     private readonly string calibrationProfilePath;
     private float calibrationTargetX;
     private float calibrationTargetY;
@@ -127,7 +134,7 @@ public partial class MainWindow : Window
 
                     if (!updated)
                     {
-                        emotions = new();
+                        emotions = [];
                         gaze = new(
                             0.0F,
                             0.0F,
@@ -136,6 +143,9 @@ public partial class MainWindow : Window
                             0.0F,
                             UFeelNative.GazeDirection.None,
                             UFeelNative.GazeStatus.FrameUnavailable);
+                        smoothedGazeX = null;
+                        smoothedGazeY = null;
+                        lastGazeTimestamp = null;
                         speech = string.Empty;
                         heartrate = 0;
                     }
@@ -147,7 +157,7 @@ public partial class MainWindow : Window
                             bitmap = FrameBitmapFactory.Create(frame);
 
                         emotions = processor.GetEmotions();
-                        gaze = processor.GetGazeResult();
+                        gaze = SmoothGaze(processor.GetGazeResult());
                         speech = speechEnabled
                             ? processor.GetSpeech()
                             : string.Empty;
@@ -295,6 +305,48 @@ public partial class MainWindow : Window
             : "Screen position unavailable";
     }
 
+    private GazeResultData SmoothGaze(GazeResultData gaze)
+    {
+        if (!gaze.IsValid)
+        {
+            smoothedGazeX = null;
+            smoothedGazeY = null;
+            lastGazeTimestamp = null;
+            return gaze;
+        }
+
+        long timestamp = Stopwatch.GetTimestamp();
+
+        double dt = lastGazeTimestamp is null
+            ? 0.0
+            : (timestamp - lastGazeTimestamp.Value) /
+                (double)Stopwatch.Frequency;
+
+        lastGazeTimestamp = timestamp;
+
+        if (smoothedGazeX is null ||
+            smoothedGazeY is null ||
+            dt <= 0.0 ||
+            dt > GazeResetGapSeconds)
+        {
+            smoothedGazeX = gaze.EstimatedX;
+            smoothedGazeY = gaze.EstimatedY;
+            return gaze;
+        }
+
+        double alpha =
+            1.0 - Math.Exp(-dt / GazeSmoothingTimeConstant);
+
+        smoothedGazeX += alpha * (gaze.EstimatedX - smoothedGazeX.Value);
+        smoothedGazeY += alpha * (gaze.EstimatedY - smoothedGazeY.Value);
+
+        return gaze with
+        {
+            EstimatedX = (float)smoothedGazeX.Value,
+            EstimatedY = (float)smoothedGazeY.Value
+        };
+    }
+
     private void UpdateGazeMarker(GazeResultData gaze)
     {
         double width = GazeCanvas.Bounds.Width;
@@ -375,6 +427,8 @@ public partial class MainWindow : Window
 
     private async Task RunCalibrationAsync(CancellationToken token)
     {
+        CalibrationDiagnosticsText.Text = "No calibration diagnostics yet.";
+
         bool calibrationStarted = false;
 
         try
@@ -458,32 +512,42 @@ public partial class MainWindow : Window
             }
 
             await processorGate.WaitAsync(token);
+
             bool calibrated;
             bool profileSaved = false;
-            CalibrationProgress? failureProgress = null;
+            CalibrationDiagnostics? diagnostics = null;
+
             try
             {
                 calibrated = processor.FinishCalibration();
                 calibrationStarted = false;
+
                 if (calibrated)
+                {
                     profileSaved = SaveCalibrationProfile();
+                    CalibrationDiagnosticsText.Text =
+                        "Calibration completed successfully.";
+                }
                 else
-                    failureProgress = processor.GetCalibrationProgress();
+                {
+                    diagnostics = processor.GetCalibrationDiagnostics();
+
+                    string report = FormatCalibrationFailure(diagnostics);
+                    CalibrationDiagnosticsText.Text = report;
+                    StatusText.Text = report;
+                }
             }
             finally
             {
                 processorGate.Release();
             }
 
-            StatusText.Text = calibrated
-                ? profileSaved
+            if (calibrated)
+            {
+                StatusText.Text = profileSaved
                     ? "Eye tracking calibrated and profile saved"
-                    : "Eye tracking calibrated, but the profile could not be saved"
-                : failureProgress is not null &&
-                    failureProgress.TargetsWithEnoughSamples < targets.Length
-                    ? $"Calibration incomplete: only {failureProgress.TargetsWithEnoughSamples}/" +
-                        $"{targets.Length} targets had enough usable frames"
-                    : "Calibration quality check failed, keep your face steady and use widely spaced targets";
+                    : "Eye tracking calibrated, but the profile could not be saved";
+            }
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
@@ -582,6 +646,102 @@ public partial class MainWindow : Window
 
         Canvas.SetLeft(CalibrationMarker, x * width - CalibrationMarker.Width / 2);
         Canvas.SetTop(CalibrationMarker, y * height - CalibrationMarker.Height / 2);
+    }
+
+    private static string FormatCalibrationFailure(
+        CalibrationDiagnostics diagnostics)
+    {
+        string reason = diagnostics.FailureReason switch
+        {
+            CalibrationFailureReason.NotCalibrating =>
+                "Calibration was not active. Start a new calibration.",
+
+            CalibrationFailureReason.TooFewValidTargets =>
+                "Not enough valid calibration targets were collected.",
+
+            CalibrationFailureReason.InsufficientSamples =>
+                "There were not enough usable samples. Keep your head steady and look directly at each target.",
+
+            CalibrationFailureReason.InsufficientHorizontalCoverage =>
+                "The calibration targets did not cover enough of the screen horizontally.",
+
+            CalibrationFailureReason.InsufficientVerticalCoverage =>
+                "The calibration targets did not cover enough of the screen vertically.",
+
+            CalibrationFailureReason.InsufficientSpatialGridCoverage =>
+                "The targets were not distributed sufficiently across the screen.",
+
+            CalibrationFailureReason.RegressionFailed =>
+                "The calibration model could not be fitted. Repeat calibration.",
+
+            CalibrationFailureReason.CrossValidationMeanErrorExceeded =>
+                "Average calibration error was too high. Repeat calibration while looking steadily at each target.",
+
+            CalibrationFailureReason.CrossValidationMaxErrorExceeded =>
+                "At least one target had excessive prediction error. Repeat calibration and focus on each target.",
+
+            CalibrationFailureReason.InvalidCrossValidationResult =>
+                "Calibration validation produced an invalid result. Repeat calibration.",
+
+            _ =>
+                "Calibration failed without a specific failure reason."
+        };
+
+        var details = new List<string>
+        {
+            $"Failure: {reason}",
+            $"Valid targets: {diagnostics.ValidTargetCount}/{diagnostics.InputTargetCount}",
+            $"Targets with enough raw samples: {diagnostics.TargetsWithEnoughRawSamples}",
+            $"Targets with enough retained samples: {diagnostics.TargetsWithEnoughRetainedSamples}"
+        };
+
+        if (diagnostics.InvalidTargetCount > 0)
+            details.Add($"Invalid targets: {diagnostics.InvalidTargetCount}");
+
+        if (diagnostics.TargetsWithInsufficientRawSamples > 0)
+        {
+            details.Add(
+                $"Targets with insufficient raw samples: {diagnostics.TargetsWithInsufficientRawSamples}");
+        }
+
+        if (diagnostics.TargetsWithInsufficientRetainedSamples > 0)
+        {
+            details.Add(
+                $"Targets with insufficient retained samples: {diagnostics.TargetsWithInsufficientRetainedSamples}");
+        }
+
+        if (diagnostics.MinimumRetainedSamples > 0 ||
+            diagnostics.MaximumRetainedSamples > 0)
+        {
+            details.Add(
+                $"Retained samples per target: {diagnostics.MinimumRetainedSamples}–{diagnostics.MaximumRetainedSamples}");
+        }
+
+        details.Add(
+            $"Horizontal span: {diagnostics.HorizontalSpan:F3}; vertical span: {diagnostics.VerticalSpan:F3}");
+
+        if (diagnostics.CrossValidationTargetsEvaluated > 0)
+        {
+            details.Add(
+                $"Cross-validation targets evaluated: {diagnostics.CrossValidationTargetsEvaluated}");
+
+            details.Add(
+                $"Mean cross-validation error: {diagnostics.MeanCrossValidationError:F3}");
+
+            details.Add(
+                $"Maximum cross-validation error: {diagnostics.MaximumCrossValidationError:F3}");
+        }
+
+        if (diagnostics.RegressionFailures > 0)
+            details.Add($"Regression failures: {diagnostics.RegressionFailures}");
+
+        if (diagnostics.MeanErrorExceeded)
+            details.Add("The mean-error threshold was exceeded.");
+
+        if (diagnostics.MaximumErrorExceeded)
+            details.Add("The maximum-error threshold was exceeded.");
+
+        return string.Join(Environment.NewLine, details);
     }
 
     private void MainWindow_OnKeyDown(object? sender, KeyEventArgs e)

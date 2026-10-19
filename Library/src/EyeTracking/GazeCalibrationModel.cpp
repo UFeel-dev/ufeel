@@ -10,10 +10,15 @@
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <ios>
 #include <numeric>
+#include <opencv2/core/base.hpp>
+#include <opencv2/core/hal/interface.h>
+#include <opencv2/core/types.hpp>
 #include <optional>
 #include <string>
 #include <system_error>
+#include <utility>
 #include <vector>
 
 namespace
@@ -105,25 +110,118 @@ template <typename Values>
 
 } // namespace
 
+auto calibrationFailureReasonToString(
+    CalibrationFailureReason reason
+) -> const char*
+{
+    switch (reason)
+    {
+    case CalibrationFailureReason::None:
+        return "No failure";
+
+    case CalibrationFailureReason::NotCalibrating:
+        return "Calibration was not active";
+
+    case CalibrationFailureReason::TooFewValidTargets:
+        return "Too few valid calibration targets";
+
+    case CalibrationFailureReason::InsufficientSamples:
+        return "Insufficient usable samples for one or more targets";
+
+    case CalibrationFailureReason::InsufficientHorizontalCoverage:
+        return "Calibration targets do not cover enough horizontal space";
+
+    case CalibrationFailureReason::InsufficientVerticalCoverage:
+        return "Calibration targets do not cover enough vertical space";
+
+    case CalibrationFailureReason::InsufficientSpatialGridCoverage:
+        return "Calibration targets do not cover all required spatial regions";
+
+    case CalibrationFailureReason::RegressionFailed:
+        return "Regression model fitting failed";
+
+    case CalibrationFailureReason::CrossValidationMeanErrorExceeded:
+        return "Mean cross-validation error exceeded the threshold";
+
+    case CalibrationFailureReason::CrossValidationMaxErrorExceeded:
+        return "Maximum cross-validation error exceeded the threshold";
+
+    case CalibrationFailureReason::InvalidCrossValidationResult:
+        return "Cross-validation produced an invalid result";
+    }
+
+    return "Unknown calibration failure";
+}
+
 auto GazeCalibrationModel::fit(
-    const std::vector<GazeCalibrationTarget>& targets
+    const std::vector<GazeCalibrationTarget>& targets, CalibrationDiagnostics* diagnostics
 ) -> std::optional<GazeCalibrationModel>
 {
+    CalibrationDiagnostics localDiagnostics{};
+    auto& report = diagnostics != nullptr ? *diagnostics : localDiagnostics;
+
+    report = {};
+    report.inputTargetCount = targets.size();
+
     std::vector<GazeCalibrationTarget> validTargets;
     validTargets.reserve(targets.size());
+
+    report.minimumRetainedSamples = GAZE_MAXIMUM_SAMPLES_PER_TARGET;
+
     for (auto const& target : targets)
     {
         if (!std::isfinite(target.target.x) || !std::isfinite(target.target.y) ||
             target.target.x < 0.0F || target.target.x > 1.0F || target.target.y < 0.0F ||
-            target.target.y > 1.0F || target.samples.size() < GAZE_MINIMUM_SAMPLES_PER_TARGET ||
-            robustSamples(target).size() < MINIMUM_RETAINED_SAMPLES_PER_TARGET)
+            target.target.y > 1.0F)
+        {
+            ++report.invalidTargetCount;
+            continue;
+        }
+
+        bool const enoughRawSamples = target.samples.size() >= GAZE_MINIMUM_SAMPLES_PER_TARGET;
+
+        if (enoughRawSamples)
+        {
+            ++report.targetsWithEnoughRawSamples;
+        }
+        else
+        {
+            ++report.targetsWithInsufficientRawSamples;
+        }
+
+        auto retained = robustSamples(target);
+
+        if (retained.size() < MINIMUM_RETAINED_SAMPLES_PER_TARGET)
+        {
+            ++report.targetsWithInsufficientRetainedSamples;
+            continue;
+        }
+
+        ++report.targetsWithEnoughRetainedSamples;
+        report.minimumRetainedSamples = std::min(report.minimumRetainedSamples, retained.size());
+        report.maximumRetainedSamples = std::max(report.maximumRetainedSamples, retained.size());
+
+        if (!enoughRawSamples)
         {
             continue;
         }
+
         validTargets.push_back(target);
     }
+
+    if (report.targetsWithEnoughRetainedSamples == 0)
+    {
+        report.minimumRetainedSamples = 0;
+    }
+
+    report.validTargetCount = validTargets.size();
+
     if (validTargets.size() < GAZE_MINIMUM_CALIBRATION_TARGETS)
     {
+        report.failureReason = report.targetsWithInsufficientRawSamples > 0 ||
+                                       report.targetsWithInsufficientRetainedSamples > 0
+                                   ? CalibrationFailureReason::InsufficientSamples
+                                   : CalibrationFailureReason::TooFewValidTargets;
         return std::nullopt;
     }
 
@@ -131,42 +229,62 @@ auto GazeCalibrationModel::fit(
         std::ranges::minmax_element(validTargets, {}, [](GazeCalibrationTarget const& target) {
             return target.target.x;
         });
+
     auto const [minimumY, maximumY] =
         std::ranges::minmax_element(validTargets, {}, [](GazeCalibrationTarget const& target) {
             return target.target.y;
         });
-    if (maximumX->target.x - minimumX->target.x < 0.3F ||
-        maximumY->target.y - minimumY->target.y < 0.3F)
+
+    report.horizontalSpan = static_cast<double>(maximumX->target.x - minimumX->target.x);
+
+    report.verticalSpan = static_cast<double>(maximumY->target.y - minimumY->target.y);
+
+    if (report.horizontalSpan < 0.3)
     {
+        report.failureReason = CalibrationFailureReason::InsufficientHorizontalCoverage;
         return std::nullopt;
     }
+
+    if (report.verticalSpan < 0.3)
+    {
+        report.failureReason = CalibrationFailureReason::InsufficientVerticalCoverage;
+        return std::nullopt;
+    }
+
     std::array<std::size_t, SPATIAL_GRID_BAND_COUNT> horizontalBands{};
     std::array<std::size_t, SPATIAL_GRID_BAND_COUNT> verticalBands{};
+
     for (auto const& target : validTargets)
     {
         auto const horizontalBand = std::min(
             static_cast<std::size_t>(target.target.x * SPATIAL_GRID_BAND_COUNT),
             SPATIAL_GRID_BAND_COUNT - 1
         );
+
         auto const verticalBand = std::min(
             static_cast<std::size_t>(target.target.y * SPATIAL_GRID_BAND_COUNT),
             SPATIAL_GRID_BAND_COUNT - 1
         );
+
         ++horizontalBands[horizontalBand];
         ++verticalBands[verticalBand];
     }
+
     if (std::ranges::any_of(horizontalBands, [](std::size_t count) { return count < 2; }) ||
         std::ranges::any_of(verticalBands, [](std::size_t count) { return count < 2; }))
     {
+        report.failureReason = CalibrationFailureReason::InsufficientSpatialGridCoverage;
         return std::nullopt;
     }
 
     std::vector<double> targetErrors;
     targetErrors.reserve(validTargets.size());
+
     for (std::size_t heldOut = 0; heldOut < validTargets.size(); ++heldOut)
     {
         std::vector<GazeCalibrationTarget> trainingTargets;
         trainingTargets.reserve(validTargets.size() - 1);
+
         for (std::size_t index = 0; index < validTargets.size(); ++index)
         {
             if (index != heldOut)
@@ -174,52 +292,107 @@ auto GazeCalibrationModel::fit(
                 trainingTargets.push_back(validTargets[index]);
             }
         }
+
         auto trainingModel = fitRegression(trainingTargets);
-        auto heldOutSamples = robustSamples(validTargets[heldOut]);
-        if (!trainingModel || heldOutSamples.empty())
+
+        if (!trainingModel)
         {
+            ++report.regressionFailures;
+            report.failureReason = CalibrationFailureReason::RegressionFailed;
+            return std::nullopt;
+        }
+
+        auto heldOutSamples = robustSamples(validTargets[heldOut]);
+
+        if (heldOutSamples.size() < MINIMUM_RETAINED_SAMPLES_PER_TARGET)
+        {
+            report.failureReason = CalibrationFailureReason::InsufficientSamples;
             return std::nullopt;
         }
 
         GazeFeatureVector medianFeatures{};
+
         for (std::size_t feature = 0; feature < GAZE_FEATURE_COUNT; ++feature)
         {
             std::vector<double> values;
             values.reserve(heldOutSamples.size());
+
             for (auto const& sample : heldOutSamples)
             {
                 values.push_back(sample[feature]);
             }
+
             medianFeatures[feature] = median(values);
         }
+
         auto const prediction = trainingModel->predict(medianFeatures);
+
         if (!prediction)
         {
+            report.failureReason = CalibrationFailureReason::RegressionFailed;
             return std::nullopt;
         }
-        targetErrors.push_back(
-            std::hypot(
-                static_cast<double>(prediction->x - validTargets[heldOut].target.x),
-                static_cast<double>(prediction->y - validTargets[heldOut].target.y)
-            )
+
+        double const error = std::hypot(
+            static_cast<double>(prediction->x - validTargets[heldOut].target.x),
+            static_cast<double>(prediction->y - validTargets[heldOut].target.y)
         );
+
+        if (!std::isfinite(error))
+        {
+            report.failureReason = CalibrationFailureReason::InvalidCrossValidationResult;
+            return std::nullopt;
+        }
+
+        targetErrors.push_back(error);
+        report.crossValidationTargetsEvaluated = targetErrors.size();
     }
 
-    double const meanError = std::accumulate(targetErrors.begin(), targetErrors.end(), 0.0) /
-                             static_cast<double>(targetErrors.size());
-    double const maximumError = *std::ranges::max_element(targetErrors);
-    if (!std::isfinite(meanError) || meanError > MAXIMUM_MEAN_CALIBRATION_ERROR ||
-        maximumError > MAXIMUM_TARGET_CALIBRATION_ERROR)
+    if (targetErrors.empty())
     {
+        report.failureReason = CalibrationFailureReason::InvalidCrossValidationResult;
+        return std::nullopt;
+    }
+
+    report.meanCrossValidationError =
+        std::accumulate(targetErrors.begin(), targetErrors.end(), 0.0) /
+        static_cast<double>(targetErrors.size());
+
+    report.maximumCrossValidationError = *std::ranges::max_element(targetErrors);
+
+    if (!std::isfinite(report.meanCrossValidationError) ||
+        !std::isfinite(report.maximumCrossValidationError))
+    {
+        report.failureReason = CalibrationFailureReason::InvalidCrossValidationResult;
+        return std::nullopt;
+    }
+
+    report.meanErrorExceeded = report.meanCrossValidationError > MAXIMUM_MEAN_CALIBRATION_ERROR;
+
+    report.maximumErrorExceeded =
+        report.maximumCrossValidationError > MAXIMUM_TARGET_CALIBRATION_ERROR;
+
+    if (report.meanErrorExceeded || report.maximumErrorExceeded)
+    {
+        report.failureReason = report.meanErrorExceeded
+                                   ? CalibrationFailureReason::CrossValidationMeanErrorExceeded
+                                   : CalibrationFailureReason::CrossValidationMaxErrorExceeded;
+
         return std::nullopt;
     }
 
     auto model = fitRegression(validTargets);
+
     if (!model)
     {
+        ++report.regressionFailures;
+        report.failureReason = CalibrationFailureReason::RegressionFailed;
         return std::nullopt;
     }
-    model->crossValidationError_ = meanError;
+
+    model->crossValidationError_ = report.meanCrossValidationError;
+    report.failureReason = CalibrationFailureReason::None;
+
     return model;
 }
 
