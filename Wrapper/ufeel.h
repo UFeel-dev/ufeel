@@ -40,10 +40,10 @@ typedef struct
 
 typedef struct UFeelGaze
 {
-        float x;
-        float y;
-        uint32_t directions;
-        uint32_t valid;
+    float x;
+    float y;
+    uint32_t directions;
+    uint32_t valid;
 } UFeelGaze;
 
 typedef enum
