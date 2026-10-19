@@ -592,7 +592,8 @@ public sealed class UFeelProcessor : IDisposable
             UFeelNative.UFeelStatus.InvalidArgument => "invalid argument",
             UFeelNative.UFeelStatus.InvalidState => "invalid operation state",
             UFeelNative.UFeelStatus.CalibrationFailed => "calibration failed",
-            UFeelNative.UFeelStatus.ProfileFailed => "eye-tracking profile is invalid or inaccessible",
+            UFeelNative.UFeelStatus.ProfileFailed =>
+                "eye-tracking profile is invalid or inaccessible",
             UFeelNative.UFeelStatus.NoGaze => "gaze is unavailable",
             _ => $"unknown native status ({status})"
         };

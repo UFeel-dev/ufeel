@@ -31,6 +31,14 @@ public partial class MainWindow : Window
         0.0F,
         UFeelNative.GazeDirection.None,
         UFeelNative.GazeStatus.NotCalibrated);
+
+    private const double GazeSmoothingTimeConstant = 0.08;
+    private const double GazeResetGapSeconds = 0.5;
+
+    private double? smoothedGazeX;
+    private double? smoothedGazeY;
+    private long? lastGazeTimestamp;
+
     private readonly string calibrationProfilePath;
     private float calibrationTargetX;
     private float calibrationTargetY;
@@ -132,7 +140,7 @@ public partial class MainWindow : Window
 
                     if (!updated)
                     {
-                        emotions = new();
+                        emotions = [];
                         gaze = new(
                             0.0F,
                             0.0F,
@@ -141,6 +149,9 @@ public partial class MainWindow : Window
                             0.0F,
                             UFeelNative.GazeDirection.None,
                             UFeelNative.GazeStatus.FrameUnavailable);
+                        smoothedGazeX = null;
+                        smoothedGazeY = null;
+                        lastGazeTimestamp = null;
                         speech = string.Empty;
                         heartrate = new HeartRateResultData(
                             HeartRateStatus.RequestFailed,
@@ -154,7 +165,7 @@ public partial class MainWindow : Window
                             bitmap = FrameBitmapFactory.Create(frame);
 
                         emotions = processor.GetEmotions();
-                        gaze = processor.GetGazeResult();
+                        gaze = SmoothGaze(processor.GetGazeResult());
                         speech = speechEnabled
                             ? processor.GetSpeechToText()
                             : string.Empty;
@@ -302,6 +313,48 @@ public partial class MainWindow : Window
             : "Screen position unavailable";
     }
 
+    private GazeResultData SmoothGaze(GazeResultData gaze)
+    {
+        if (!gaze.IsValid)
+        {
+            smoothedGazeX = null;
+            smoothedGazeY = null;
+            lastGazeTimestamp = null;
+            return gaze;
+        }
+
+        long timestamp = Stopwatch.GetTimestamp();
+
+        double dt = lastGazeTimestamp is null
+            ? 0.0
+            : (timestamp - lastGazeTimestamp.Value) /
+                (double)Stopwatch.Frequency;
+
+        lastGazeTimestamp = timestamp;
+
+        if (smoothedGazeX is null ||
+            smoothedGazeY is null ||
+            dt <= 0.0 ||
+            dt > GazeResetGapSeconds)
+        {
+            smoothedGazeX = gaze.EstimatedX;
+            smoothedGazeY = gaze.EstimatedY;
+            return gaze;
+        }
+
+        double alpha =
+            1.0 - Math.Exp(-dt / GazeSmoothingTimeConstant);
+
+        smoothedGazeX += alpha * (gaze.EstimatedX - smoothedGazeX.Value);
+        smoothedGazeY += alpha * (gaze.EstimatedY - smoothedGazeY.Value);
+
+        return gaze with
+        {
+            EstimatedX = (float)smoothedGazeX.Value,
+            EstimatedY = (float)smoothedGazeY.Value
+        };
+    }
+
     private void UpdateGazeMarker(GazeResultData gaze)
     {
         double width = GazeCanvas.Bounds.Width;
@@ -398,6 +451,8 @@ public partial class MainWindow : Window
 
     private async Task RunCalibrationAsync(CancellationToken token)
     {
+        CalibrationDiagnosticsText.Text = "No calibration diagnostics yet.";
+
         bool calibrationStarted = false;
 
         try
@@ -481,32 +536,42 @@ public partial class MainWindow : Window
             }
 
             await processorGate.WaitAsync(token);
+
             bool calibrated;
             bool profileSaved = false;
-            CalibrationProgress? failureProgress = null;
+            CalibrationDiagnostics? diagnostics = null;
+
             try
             {
                 calibrated = processor.FinishCalibration();
                 calibrationStarted = false;
+
                 if (calibrated)
+                {
                     profileSaved = SaveCalibrationProfile();
+                    CalibrationDiagnosticsText.Text =
+                        "Calibration completed successfully.";
+                }
                 else
-                    failureProgress = processor.GetCalibrationProgress();
+                {
+                    diagnostics = processor.GetCalibrationDiagnostics();
+
+                    string report = FormatCalibrationFailure(diagnostics);
+                    CalibrationDiagnosticsText.Text = report;
+                    StatusText.Text = report;
+                }
             }
             finally
             {
                 processorGate.Release();
             }
 
-            StatusText.Text = calibrated
-                ? profileSaved
+            if (calibrated)
+            {
+                StatusText.Text = profileSaved
                     ? "Eye tracking calibrated and profile saved"
-                    : "Eye tracking calibrated, but the profile could not be saved"
-                : failureProgress is not null &&
-                    failureProgress.TargetsWithEnoughSamples < targets.Length
-                    ? $"Calibration incomplete: only {failureProgress.TargetsWithEnoughSamples}/" +
-                        $"{targets.Length} targets had enough usable frames"
-                    : "Calibration quality check failed, keep your face steady and use widely spaced targets";
+                    : "Eye tracking calibrated, but the profile could not be saved";
+            }
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
