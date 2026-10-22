@@ -319,6 +319,7 @@ void EyeTrackingDetector::beginCalibration()
     calibrationTargetIndex_.reset();
     calibrationTargetSetAt_.reset();
     eyeAspectHistory_.clear();
+    gazeEstimator_.reset();
     calibrationActive_ = true;
     lastCalibrationDiagnostics_ = {};
 }
@@ -366,7 +367,7 @@ auto EyeTrackingDetector::finishCalibration() -> bool
     if (!calibrationActive_)
     {
         lastCalibrationDiagnostics_ = {};
-        lastCalibrationDiagnostics_.failureReason = CalibrationFailureReason::TooFewValidTargets;
+        lastCalibrationDiagnostics_.failureReason = CalibrationFailureReason::NotCalibrating;
         return false;
     }
 
@@ -376,15 +377,15 @@ auto EyeTrackingDetector::finishCalibration() -> bool
 
     auto fittedModel = GazeCalibrationModel::fit(calibrationTargets_, &lastCalibrationDiagnostics_);
 
+    calibrationTargets_.clear();
+    gazeEstimator_.reset();
+
     if (!fittedModel)
     {
         return false;
     }
 
     calibrationModel_ = *fittedModel;
-    gazeEstimator_.reset();
-    calibrationTargets_.clear();
-
     return true;
 }
 
@@ -394,6 +395,9 @@ void EyeTrackingDetector::cancelCalibration()
     calibrationTargetIndex_.reset();
     calibrationTargetSetAt_.reset();
     calibrationTargets_.clear();
+    eyeAspectHistory_.clear();
+    gazeEstimator_.reset();
+    lastCalibrationDiagnostics_ = {};
 }
 
 auto EyeTrackingDetector::extractFeatures(
@@ -642,15 +646,22 @@ auto EyeTrackingDetector::loadCalibrationProfile(
     const std::string& path
 ) -> bool
 {
-    if (!calibrationModel_.load(path))
+    GazeCalibrationModel loadedModel;
+
+    if (!loadedModel.load(path))
     {
         return false;
     }
+
+    calibrationModel_ = loadedModel;
     calibrationActive_ = false;
     calibrationTargets_.clear();
     calibrationTargetIndex_.reset();
     calibrationTargetSetAt_.reset();
+    eyeAspectHistory_.clear();
     gazeEstimator_.reset();
+    lastCalibrationDiagnostics_ = {};
+
     return true;
 }
 
