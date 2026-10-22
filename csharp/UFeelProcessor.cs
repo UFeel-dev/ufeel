@@ -1,4 +1,3 @@
-
 using System.Runtime.InteropServices;
 
 namespace UFeel;
@@ -277,7 +276,7 @@ public sealed class UFeelProcessor : IDisposable
         }
         finally
         {
-            UFeelNative.ufeel_free_speech(speech);
+            UFeelNative.ufeel_free_string(pointer);
         }
     }
 
@@ -342,6 +341,51 @@ public sealed class UFeelProcessor : IDisposable
         return (int)bpm;
     }
 
+    private IntPtr Handle
+    {
+        get
+        {
+            ObjectDisposedException.ThrowIf(
+                disposed || handle == IntPtr.Zero, this);
+
+            return handle;
+        }
+    }
+
+    private static void ValidatePath(string path, string parameterName)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            throw new ArgumentException(
+                "A non-empty path is required.", parameterName);
+    }
+
+    private static void ThrowIfFailed(
+        UFeelNative.Status status, string operation)
+    {
+        if (status == UFeelNative.Status.Ok)
+            return;
+
+        string message = status switch
+        {
+            UFeelNative.Status.NoGaze =>
+                "A valid gaze estimate is not available.",
+            UFeelNative.Status.InvalidArgument =>
+                "One or more arguments are invalid.",
+            UFeelNative.Status.InvalidState =>
+                "The processor is not in a state that permits this operation.",
+            UFeelNative.Status.EyeTrackingCalibrationFailed =>
+                "Eye-tracking calibration failed.",
+            UFeelNative.Status.EyeTrackingProfileFailed =>
+                "The eye-tracking calibration profile operation failed.",
+            UFeelNative.Status.InternalError =>
+                "An internal native-library error occurred.",
+            _ => "An unknown native-library error occurred."
+        };
+
+        throw new InvalidOperationException(
+            $"Failed to {operation}: {message} (status {(int)status}).");
+    }
+
     public void Dispose()
     {
         if (disposed)
@@ -357,25 +401,56 @@ public sealed class UFeelProcessor : IDisposable
 
         GC.SuppressFinalize(this);
     }
+}
 
-    private static void EnsureStatus(int status, string operation)
+public sealed class FrameData
+{
+    public byte[] Data { get; }
+    public int Width { get; }
+    public int Height { get; }
+    public int Channels { get; }
+    public int Stride { get; }
+
+    public FrameData(
+        byte[] data, int width, int height, int channels, int stride)
     {
-        if (status == (int)UFeelNative.UFeelStatus.Ok)
-            return;
+        Data = data;
+        Width = width;
+        Height = height;
+        Channels = channels;
+        Stride = stride;
+    }
+}
 
-        string reason = (UFeelNative.UFeelStatus)status switch
-        {
-            UFeelNative.UFeelStatus.InvalidArgument => "invalid argument",
-            UFeelNative.UFeelStatus.InvalidState => "invalid operation state",
-            UFeelNative.UFeelStatus.CalibrationFailed => "calibration failed",
-            UFeelNative.UFeelStatus.ProfileFailed =>
-                "eye-tracking profile is invalid or inaccessible",
-            UFeelNative.UFeelStatus.NoGaze => "gaze is unavailable",
-            _ => $"unknown native status ({status})"
-        };
+public sealed record GazeResultData(
+    GazeStatus Status,
+    float EstimatedX,
+    float EstimatedY,
+    float RecordedX,
+    float RecordedY,
+    float Confidence,
+    GazeDirection Directions)
+{
+    public bool IsValid => Status == GazeStatus.Valid;
+}
 
-        throw new InvalidOperationException(
-            $"Unable to {operation}: {reason}.");
+public sealed class EyeTrackingCalibrationProgress
+{
+    public int TargetsWithEnoughSamples { get; }
+    public int TargetCount { get; }
+    public int SamplesForCurrentTarget { get; }
+    public int RequiredSamplesPerTarget { get; }
+
+    public EyeTrackingCalibrationProgress(
+        int targetsWithEnoughSamples,
+        int targetCount,
+        int samplesForCurrentTarget,
+        int requiredSamplesPerTarget)
+    {
+        TargetsWithEnoughSamples = targetsWithEnoughSamples;
+        TargetCount = targetCount;
+        SamplesForCurrentTarget = samplesForCurrentTarget;
+        RequiredSamplesPerTarget = requiredSamplesPerTarget;
     }
 }
 
