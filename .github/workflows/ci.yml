@@ -61,7 +61,6 @@ jobs:
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
             -DCLANG_TIDY_AS_ERRORS=OFF
 
-
       - name: Build Docker image
         run: |
           docker build -t ufeeldocker:latest ./docker
@@ -83,20 +82,27 @@ jobs:
             -v "$GITHUB_WORKSPACE:/mnt" \
             -w /mnt \
             ufeeldocker:latest \
-            bash -lc './build.sh lint' \
-            > clang-tidy.log 2>&1
+            bash -lc '
+              find Library Wrapper -type f -name "*.cpp" -print0 |
+              while IFS= read -r -d "" file; do
+                echo "::group::Clang-Tidy: $file"
+                ./build.sh lint "$file"
+                echo "::endgroup::"
+              done
+            ' > clang-tidy.log 2>&1
 
           lint_status=$?
           cat clang-tidy.log
 
-          grep -E '^/mnt/(Library|Wrapper)/.*:[0-9]+:[0-9]+: (warning|error):' clang-tidy.log |
           while IFS= read -r line; do
-            if [[ "$line" =~ ^/mnt/([^:]+):([0-9]+):([0-9]+):\ (warning|error):\ (.*)$ ]]; then
-              file="${BASH_REMATCH[1]}"
+            if [[ "$line" =~ ^/mnt/(Library|Wrapper)/.*:([0-9]+):([0-9]+):\ (warning|error):\ (.*)$ ]]; then
+              file="${line%%:*}"
+              file="${file#/mnt/}"
               number="${BASH_REMATCH[2]}"
               column="${BASH_REMATCH[3]}"
               level="${BASH_REMATCH[4]}"
               message="${BASH_REMATCH[5]}"
+
               message="${message//%/%25}"
               message="${message//$'\r'/%0D}"
               message="${message//$'\n'/%0A}"
@@ -109,7 +115,6 @@ jobs:
                 echo "::warning file=$file,line=$number,col=$column::$message"
               fi
             fi
-          done
+          done < clang-tidy.log
 
           exit "$lint_status"
-          
