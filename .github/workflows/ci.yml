@@ -94,6 +94,31 @@ jobs:
                 echo "::endgroup::"
               done
             '
+      - name: Publish Clang-Tidy warnings
+        if: always()
+        shell: bash
+        run: |
+          if [ ! -f clang-tidy.log ]; then
+            exit 0
+          fi
+
+          while IFS= read -r line; do
+            if [[ "$line" =~ ^/mnt/(Library|Wrapper)/.*:[0-9]+:[0-9]+:\ warning: ]]; then
+              diagnostic="${line#/mnt/}"
+              file="${diagnostic%%:*}"
+              rest="${diagnostic#*:}"
+              number="${rest%%:*}"
+              rest="${rest#*:}"
+              column="${rest%%:*}"
+              message="${rest#*: warning: }"
+
+              message="${message//%/%25}"
+              message="${message//$'\r'/%0D}"
+              message="${message//$'\n'/%0A}"
+
+              echo "::warning file=$file,line=$number,col=$column::$message"
+            fi
+          done < clang-tidy.log
 
 
 
