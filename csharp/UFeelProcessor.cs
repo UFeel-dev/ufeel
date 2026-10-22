@@ -582,24 +582,64 @@ public sealed class UFeelProcessor : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    private static void EnsureStatus(int status, string operation)
-    {
-        if (status == (int)UFeelNative.UFeelStatus.Ok)
-            return;
-
-        string reason = (UFeelNative.UFeelStatus)status switch
+        if (handle != IntPtr.Zero)
         {
-            UFeelNative.UFeelStatus.InvalidArgument => "invalid argument",
-            UFeelNative.UFeelStatus.InvalidState => "invalid operation state",
-            UFeelNative.UFeelStatus.CalibrationFailed => "calibration failed",
-            UFeelNative.UFeelStatus.ProfileFailed =>
-                "eye-tracking profile is invalid or inaccessible",
-            UFeelNative.UFeelStatus.NoGaze => "gaze is unavailable",
-            _ => $"unknown native status ({status})"
-        };
+            UFeelNative.ufeel_destroy(handle);
+            handle = IntPtr.Zero;
+        }
 
-        throw new InvalidOperationException(
-            $"Unable to {operation}: {reason}.");
+        GC.SuppressFinalize(this);
+    }
+}
+
+public sealed class FrameData
+{
+    public byte[] Data { get; }
+    public int Width { get; }
+    public int Height { get; }
+    public int Channels { get; }
+    public int Stride { get; }
+
+    public FrameData(
+        byte[] data, int width, int height, int channels, int stride)
+    {
+        Data = data;
+        Width = width;
+        Height = height;
+        Channels = channels;
+        Stride = stride;
+    }
+}
+
+public sealed record GazeResultData(
+    GazeStatus Status,
+    float EstimatedX,
+    float EstimatedY,
+    float RecordedX,
+    float RecordedY,
+    float Confidence,
+    GazeDirection Directions)
+{
+    public bool IsValid => Status == GazeStatus.Valid;
+}
+
+public sealed class EyeTrackingCalibrationProgress
+{
+    public int TargetsWithEnoughSamples { get; }
+    public int TargetCount { get; }
+    public int SamplesForCurrentTarget { get; }
+    public int RequiredSamplesPerTarget { get; }
+
+    public EyeTrackingCalibrationProgress(
+        int targetsWithEnoughSamples,
+        int targetCount,
+        int samplesForCurrentTarget,
+        int requiredSamplesPerTarget)
+    {
+        TargetsWithEnoughSamples = targetsWithEnoughSamples;
+        TargetCount = targetCount;
+        SamplesForCurrentTarget = samplesForCurrentTarget;
+        RequiredSamplesPerTarget = requiredSamplesPerTarget;
     }
 }
 
