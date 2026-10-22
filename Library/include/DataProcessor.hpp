@@ -15,7 +15,7 @@ class SpeechToTextDetector;
 
 class DataProcessor
 {
-        public:
+public:
 
     DataProcessor(const std::string& modelDirectory, const std::string& speechModelPath);
 
@@ -50,7 +50,7 @@ class DataProcessor
 
     // auto processHeartRateSensor() -> int;
 
-        protected:
+protected:
 
     cv::VideoCapture cap_;
     cv::Mat frame_;
@@ -64,7 +64,7 @@ class DataProcessor
     std::unique_ptr<SpeechToTextDetector> speechToTextDetector_;
     // std::unique_ptr<HeartRateSensorDetector> heartRateSensorDetector_;
 
-        private:
+private:
 };
 
 #endif // DATAPROCESSOR_HPP

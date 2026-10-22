@@ -52,14 +52,14 @@ A helper class converts the output from Mediapipe Face Detection to Face box.
 */
 class DetectionPostProcess
 {
-        public:
+public:
 
     DetectionPostProcess();
     [[nodiscard]] auto getHighestScoreDetection(
         const std::vector<float>& rawBoxes, const std::vector<float>& scores
     ) const -> Detection;
 
-        private:
+private:
 
     [[nodiscard]] auto decodeBox(const std::vector<float>& rawBoxes, int index) const -> cv::Rect2f;
 

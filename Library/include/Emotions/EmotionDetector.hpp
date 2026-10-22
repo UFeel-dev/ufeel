@@ -19,7 +19,7 @@ class FaceDetectorYN;
 
 class EmotionDetector
 {
-        public:
+public:
 
     explicit EmotionDetector(const std::filesystem::path& modelDirectory);
     ~EmotionDetector();
@@ -34,7 +34,7 @@ class EmotionDetector
     auto process(const cv::Mat& image) -> std::map<std::string, float>;
     void close();
 
-        private:
+private:
 
     static auto preProcess(const cv::Mat& face) -> cv::Mat;
     auto processFace(const cv::Mat& face) -> std::vector<float>;

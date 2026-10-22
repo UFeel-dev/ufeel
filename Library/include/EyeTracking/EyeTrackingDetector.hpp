@@ -62,7 +62,7 @@ enum GazeDirectionFlags : std::uint8_t
 
 class EyeTrackingDetector
 {
-        public:
+public:
 
     explicit EyeTrackingDetector(const std::string& modelDirectory);
     ~EyeTrackingDetector();
@@ -84,7 +84,7 @@ class EyeTrackingDetector
     [[nodiscard]] auto saveCalibrationProfile(const std::string& path) const -> bool;
     [[nodiscard]] auto loadCalibrationProfile(const std::string& path) -> bool;
 
-        private:
+private:
 
     [[nodiscard]] auto extractFeatures(const cv::Mat& frame, GazeStatus& status, float& quality)
         -> std::optional<GazeFeatureVector>;

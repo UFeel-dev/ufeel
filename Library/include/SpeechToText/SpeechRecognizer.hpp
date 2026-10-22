@@ -9,7 +9,7 @@
 
 class SpeechRecognizer
 {
-        public:
+public:
 
     explicit SpeechRecognizer(const std::string& modelPath);
 
@@ -26,7 +26,7 @@ class SpeechRecognizer
     auto finalize() -> std::string;
     void reset();
 
-        private:
+private:
 
     static constexpr double sampleRate = 16000.0;
 

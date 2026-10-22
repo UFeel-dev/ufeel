@@ -13,7 +13,7 @@
 
 class SpeechToTextDetector
 {
-        public:
+public:
 
     explicit SpeechToTextDetector(const std::string& modelPath);
 
@@ -30,7 +30,7 @@ class SpeechToTextDetector
     [[nodiscard]]
     auto process() const -> std::string;
 
-        private:
+private:
 
     AudioCapture audioCapture_;
     SpeechRecognizer recognizer_;

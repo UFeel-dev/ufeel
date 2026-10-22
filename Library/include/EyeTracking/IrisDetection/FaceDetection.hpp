@@ -18,7 +18,7 @@ This class is non-copyable.
 */
 class FaceDetection : public my::ModelLoader
 {
-        public:
+public:
 
     /*
     Users MUST provide the FOLDER contain face_detection_short.tflite, NOT THE FILE itself.
@@ -67,7 +67,7 @@ class FaceDetection : public my::ModelLoader
     */
     [[nodiscard]] auto cropFrame(const cv::Rect& roi) const -> cv::Mat;
 
-        private:
+private:
 
     /*
     Convert Detection box back to original size

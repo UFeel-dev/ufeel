@@ -58,27 +58,33 @@ using Vector3 = std::array<double, 3>;
     }
 
     auto const pupil = irisLandmarks[0];
+
     cv::Point2d const horizontal(
         static_cast<double>(corner2.x - corner1.x), static_cast<double>(corner2.y - corner1.y)
     );
     cv::Point2d const vertical(
         static_cast<double>(lowerLid.x - upperLid.x), static_cast<double>(lowerLid.y - upperLid.y)
     );
+
     double const width = cv::norm(horizontal);
     double const height = cv::norm(vertical);
-    if (width < 2.0 || height < 2.0)
+
+    if (!std::isfinite(width) || !std::isfinite(height) || width < 2.0 || height < 2.0)
     {
         return std::nullopt;
     }
 
     cv::Point2d const horizontalAxis = horizontal * (1.0 / width);
     cv::Point2d verticalAxis = vertical * (1.0 / height);
+
     verticalAxis -= horizontalAxis * verticalAxis.dot(horizontalAxis);
+
     double const orthogonalHeight = cv::norm(verticalAxis);
-    if (orthogonalHeight < 1.0e-6)
+    if (!std::isfinite(orthogonalHeight) || orthogonalHeight < 1.0e-6)
     {
         return std::nullopt;
     }
+
     verticalAxis *= 1.0 / orthogonalHeight;
 
     cv::Point2d const pupilOffset(
@@ -87,15 +93,17 @@ using Vector3 = std::array<double, 3>;
     cv::Point2d const upperOffset(
         static_cast<double>(upperLid.x - corner1.x), static_cast<double>(upperLid.y - corner1.y)
     );
-    double const relativeY =
-        (pupilOffset - upperOffset).dot(verticalAxis) / (height * orthogonalHeight);
-    // double const relativeY =
-    //     (pupilOffset - upperOffset).dot(verticalAxis) / height;
-    cv::Point2d const result(pupilOffset.dot(horizontalAxis) / width, relativeY);
+
+    double const relativeX = pupilOffset.dot(horizontalAxis) / width;
+    double const relativeY = (pupilOffset - upperOffset).dot(verticalAxis) / height;
+
+    cv::Point2d const result(relativeX, relativeY);
+
     if (!std::isfinite(result.x) || !std::isfinite(result.y))
     {
         return std::nullopt;
     }
+
     return result;
 }
 
@@ -240,6 +248,14 @@ auto EyeTrackingDetector::process(
     auto features = extractFeatures(frame, featureStatus, featureQuality);
     if (!features)
     {
+        gazeEstimator_.reset();
+
+        if (featureStatus == GazeStatus::FaceUnavailable ||
+            featureStatus == GazeStatus::FrameUnavailable)
+        {
+            eyeAspectHistory_.clear();
+        }
+
         result_.status = featureStatus;
         return result_;
     }

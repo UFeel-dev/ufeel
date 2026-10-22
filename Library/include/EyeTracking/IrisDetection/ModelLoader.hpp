@@ -44,7 +44,7 @@ This class is non-copyable.
 */
 class ModelLoader
 {
-        public:
+public:
 
     /*
     Constructor from a .tflite file
@@ -159,7 +159,7 @@ class ModelLoader
         return loadOutput(0);
     }
 
-        private:
+private:
 
     /*
     Constructor helper functions
