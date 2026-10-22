@@ -26,6 +26,14 @@ namespace UFeel
         Center = 1 << 4
     }
 
+    public enum HeartRateStatus
+    {
+        JsonParseError = 0,
+        JsonParseOutOfRange = 1,
+        RequestFailed = 2,
+        Valid = 3,
+    }
+
     internal static class UFeelNative
     {
         private const string LibraryName = "ufeel_wrapper";
@@ -99,6 +107,13 @@ namespace UFeel
             public int InvalidTargetCount;
             public int TargetsWithInsufficientRawSamples;
             public int TargetsWithInsufficientRetainedSamples;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct NativeHeartRateResult
+        {
+            public int status;
+            public uint bpm;
         }
 
         internal enum Status
@@ -249,5 +264,10 @@ namespace UFeel
 
         [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
         internal static extern void ufeel_free_string(IntPtr value);
+
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int ufeel_get_heartrate(
+            IntPtr processor,
+            out NativeHeartRateResult result);
     }
 }
