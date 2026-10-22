@@ -463,7 +463,124 @@ public sealed class UFeelProcessor : IDisposable
             $"Failed to {operation}: {message} (status {(int)status}).");
     }
 
-    public void Dispose()
+    public int GetHeartRate()
+    {
+        IntPtr bpm =
+            UFeelNative.ufeel_get_heartrate(processor);
+
+        return (int)bpm;
+    }
+
+    private IntPtr Handle
+    {
+        get
+        {
+            ObjectDisposedException.ThrowIf(
+                disposed || handle == IntPtr.Zero, this);
+
+            return handle;
+        }
+    }
+
+    private static void ValidatePath(string path, string parameterName)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            throw new ArgumentException(
+                "A non-empty path is required.", parameterName);
+    }
+
+    private static void ThrowIfFailed(
+        UFeelNative.Status status, string operation)
+    {
+        if (status == UFeelNative.Status.Ok)
+            return;
+
+        string message = status switch
+        {
+            UFeelNative.Status.NoGaze =>
+                "A valid gaze estimate is not available.",
+            UFeelNative.Status.InvalidArgument =>
+                "One or more arguments are invalid.",
+            UFeelNative.Status.InvalidState =>
+                "The processor is not in a state that permits this operation.",
+            UFeelNative.Status.EyeTrackingCalibrationFailed =>
+                "Eye-tracking calibration failed.",
+            UFeelNative.Status.EyeTrackingProfileFailed =>
+                "The eye-tracking calibration profile operation failed.",
+            UFeelNative.Status.InternalError =>
+                "An internal native-library error occurred.",
+            _ => "An unknown native-library error occurred."
+        };
+
+        throw new InvalidOperationException(
+            $"Failed to {operation}: {message} (status {(int)status}).");
+    }
+
+    public int GetHeartRate()
+    {
+        UFeelNative.Status status =
+            (UFeelNative.Status)UFeelNative.ufeel_get_heartrate(
+                Handle, out UFeelNative.NativeHeartRateResult result);
+
+        if (status != UFeelNative.Status.Ok &&
+            status != UFeelNative.Status.NoHeartRate)
+        {
+            ThrowIfFailed(status, "retrieve the heartrate value");
+        }
+
+        return new HeartRateResultData(
+            (HeartRateStatus)result.Status,
+            result.Bpm);
+    }
+
+    private IntPtr Handle
+    {
+        get
+        {
+            ObjectDisposedException.ThrowIf(
+                disposed || handle == IntPtr.Zero, this);
+
+            return handle;
+        }
+    }
+
+    private static void ValidatePath(string path, string parameterName)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            throw new ArgumentException(
+                "A non-empty path is required.", parameterName);
+    }
+
+    private static void ThrowIfFailed(
+        UFeelNative.Status status, string operation)
+    {
+        if (status == UFeelNative.Status.Ok)
+            return;
+
+        string message = status switch
+        {
+            UFeelNative.Status.NoGaze =>
+                "A valid gaze estimate is not available.",
+            UFeelNative.Status.NoHeartRate =>
+                "A valid heartrate is not available.",
+            UFeelNative.Status.InvalidArgument =>
+                "One or more arguments are invalid.",
+            UFeelNative.Status.InvalidState =>
+                "The processor is not in a state that permits this operation.",
+            UFeelNative.Status.EyeTrackingCalibrationFailed =>
+                "Eye-tracking calibration failed.",
+            UFeelNative.Status.EyeTrackingProfileFailed =>
+                "The eye-tracking calibration profile operation failed.",
+            UFeelNative.Status.InternalError =>
+                "An internal native-library error occurred.",
+            _ => "An unknown native-library error occurred."
+        };
+
+        throw new InvalidOperationException(
+            $"Failed to {operation}: {message} (status {(int)status}).");
+    }
+
+    private IntPtr Handle
     {
         if (disposed)
             return;
@@ -479,7 +596,6 @@ public sealed class UFeelProcessor : IDisposable
         GC.SuppressFinalize(this);
     }
 
-<<<<<<< HEAD
     private static void ValidatePath(string path, string parameterName)
     {
         if (string.IsNullOrWhiteSpace(path))
@@ -767,25 +883,6 @@ public sealed class EyeTrackingCalibrationProgress
         }
 
         GC.SuppressFinalize(this);
-=======
-    private static void EnsureStatus(int status, string operation)
-    {
-        if (status == (int)UFeelNative.UFeelStatus.Ok)
-            return;
-
-        string reason = (UFeelNative.UFeelStatus)status switch
-        {
-            UFeelNative.UFeelStatus.InvalidArgument => "invalid argument",
-            UFeelNative.UFeelStatus.InvalidState => "invalid operation state",
-            UFeelNative.UFeelStatus.CalibrationFailed => "calibration failed",
-            UFeelNative.UFeelStatus.ProfileFailed => "eye-tracking profile is invalid or inaccessible",
-            UFeelNative.UFeelStatus.NoGaze => "gaze is unavailable",
-            _ => $"unknown native status ({status})"
-        };
-
-        throw new InvalidOperationException(
-            $"Unable to {operation}: {reason}.");
->>>>>>> eeb68d2 (feat: new eye tracking logic, calibration, demo)
     }
 }
 
