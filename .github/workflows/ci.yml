@@ -93,7 +93,8 @@ jobs:
                 ./build.sh lint "$file" || true
                 echo "::endgroup::"
               done
-            '
+            ' 2>&1 | tee clang-tidy.log
+
       - name: Publish Clang-Tidy warnings
         if: always()
         shell: bash
