@@ -45,7 +45,7 @@ public:
 
     [[nodiscard]] auto getHeartRate() const -> int;
 
-        protected:
+protected:
 
     cv::VideoCapture cap_;
     cv::Mat frame_;
