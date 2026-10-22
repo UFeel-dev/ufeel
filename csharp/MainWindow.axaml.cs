@@ -5,6 +5,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
+using UFeel;
 
 namespace UFeelTest;
 
@@ -18,13 +19,13 @@ public partial class MainWindow : Window
     private Task? calibrationTask;
     private CancellationTokenSource? calibrationCancellation;
     private GazeResultData lastGaze = new(
+        GazeStatus.NotCalibrated,
         0.0F,
         0.0F,
         0.0F,
         0.0F,
         0.0F,
-        UFeelNative.GazeDirection.None,
-        UFeelNative.GazeStatus.NotCalibrated);
+        GazeDirection.None);
 
     private const double GazeSmoothingTimeConstant = 0.08;
     private const double GazeResetGapSeconds = 0.5;
@@ -82,15 +83,15 @@ public partial class MainWindow : Window
             "gaze-profile-v3.txt");
 
         processor = new UFeelProcessor(
-            libraryPath,
             modelDirectory,
-            speechModelPath);
+            speechModelPath,
+            libraryPath);
 
         if (File.Exists(calibrationProfilePath))
         {
             try
             {
-                StatusText.Text = processor.LoadCalibrationProfile(calibrationProfilePath)
+                StatusText.Text = processor.LoadEyeTrackingCalibrationProfile(calibrationProfilePath)
                     ? "Loaded saved eye-tracking calibration"
                     : "Saved eye-tracking calibration is invalid, recalibrate to replace it";
             }
@@ -135,13 +136,13 @@ public partial class MainWindow : Window
                     {
                         emotions = [];
                         gaze = new(
+                            GazeStatus.FrameUnavailable,
                             0.0F,
                             0.0F,
                             0.0F,
                             0.0F,
                             0.0F,
-                            UFeelNative.GazeDirection.None,
-                            UFeelNative.GazeStatus.FrameUnavailable);
+                            GazeDirection.None);
                         smoothedGazeX = null;
                         smoothedGazeY = null;
                         lastGazeTimestamp = null;
@@ -155,9 +156,9 @@ public partial class MainWindow : Window
                             bitmap = FrameBitmapFactory.Create(frame);
 
                         emotions = processor.GetEmotions();
-                        gaze = SmoothGaze(processor.GetGazeResult());
+                        gaze = SmoothGaze(processor.GetGaze());
                         speech = speechEnabled
-                            ? processor.GetSpeech()
+                            ? processor.GetSpeechToText()
                             : string.Empty;
                     }
                 }
@@ -262,27 +263,27 @@ public partial class MainWindow : Window
         {
             return gaze.Status switch
             {
-                UFeelNative.GazeStatus.NotCalibrated => "Not calibrated",
-                UFeelNative.GazeStatus.FaceUnavailable => "Face not detected",
-                UFeelNative.GazeStatus.Blinking => "Blink detected",
-                UFeelNative.GazeStatus.LowQuality => "Eye landmarks are low quality",
-                UFeelNative.GazeStatus.Calibrating => "Calibration in progress",
-                UFeelNative.GazeStatus.Disabled => "Eye tracking is disabled",
-                UFeelNative.GazeStatus.FrameUnavailable => "Camera frame unavailable",
+                GazeStatus.NotCalibrated => "Not calibrated",
+                GazeStatus.FaceUnavailable => "Face not detected",
+                GazeStatus.Blinking => "Blink detected",
+                GazeStatus.LowQuality => "Eye landmarks are low quality",
+                GazeStatus.Calibrating => "Calibration in progress",
+                GazeStatus.Disabled => "Eye tracking is disabled",
+                GazeStatus.FrameUnavailable => "Camera frame unavailable",
                 _ => "Gaze unavailable"
             };
         }
 
         var directions = new List<string>();
-        if (gaze.Directions.HasFlag(UFeelNative.GazeDirection.Left))
+        if (gaze.Directions.HasFlag(GazeDirection.Left))
             directions.Add("left");
-        if (gaze.Directions.HasFlag(UFeelNative.GazeDirection.Right))
+        if (gaze.Directions.HasFlag(GazeDirection.Right))
             directions.Add("right");
-        if (gaze.Directions.HasFlag(UFeelNative.GazeDirection.Up))
+        if (gaze.Directions.HasFlag(GazeDirection.Up))
             directions.Add("up");
-        if (gaze.Directions.HasFlag(UFeelNative.GazeDirection.Down))
+        if (gaze.Directions.HasFlag(GazeDirection.Down))
             directions.Add("down");
-        if (gaze.Directions.HasFlag(UFeelNative.GazeDirection.Center))
+        if (gaze.Directions.HasFlag(GazeDirection.Center))
             directions.Add("center");
 
         return directions.Count == 0
@@ -371,7 +372,7 @@ public partial class MainWindow : Window
 
             try
             {
-                processor.SetSpeechEnabled(requestedState);
+                processor.SetSpeechToTextEnabled(requestedState);
                 speechEnabled = requestedState;
             }
             finally
@@ -432,7 +433,7 @@ public partial class MainWindow : Window
             await processorGate.WaitAsync(token);
             try
             {
-                processor.BeginCalibration();
+                processor.BeginEyeTrackingCalibration();
                 calibrationStarted = true;
             }
             finally
@@ -469,7 +470,7 @@ public partial class MainWindow : Window
                 await processorGate.WaitAsync(token);
                 try
                 {
-                    processor.SetCalibrationTarget(target.X, target.Y);
+                    processor.SetEyeTrackingCalibrationTarget(target.X, target.Y);
                 }
                 finally
                 {
@@ -477,13 +478,13 @@ public partial class MainWindow : Window
                 }
 
                 Stopwatch targetTimer = Stopwatch.StartNew();
-                CalibrationProgress progress;
+                EyeTrackingCalibrationProgress progress;
                 do
                 {
                     await processorGate.WaitAsync(token);
                     try
                     {
-                        progress = processor.GetCalibrationProgress();
+                        progress = processor.GetEyeTrackingCalibrationProgress();
                     }
                     finally
                     {
@@ -511,22 +512,22 @@ public partial class MainWindow : Window
 
             bool calibrated;
             bool profileSaved = false;
-            CalibrationDiagnostics? diagnostics = null;
+            EyeTrackingCalibrationDiagnostics? diagnostics = null;
 
             try
             {
-                calibrated = processor.FinishCalibration();
+                calibrated = processor.FinishEyeTrackingCalibration();
                 calibrationStarted = false;
 
                 if (calibrated)
                 {
-                    profileSaved = SaveCalibrationProfile();
+                    profileSaved = SaveEyeTrackingCalibrationProfile();
                     CalibrationDiagnosticsText.Text =
                         "Calibration completed successfully.";
                 }
                 else
                 {
-                    diagnostics = processor.GetCalibrationDiagnostics();
+                    diagnostics = processor.GetEyeTrackingCalibrationDiagnostics();
 
                     string report = FormatCalibrationFailure(diagnostics);
                     CalibrationDiagnosticsText.Text = report;
@@ -566,7 +567,7 @@ public partial class MainWindow : Window
                         await processorGate.WaitAsync();
                         try
                         {
-                            processor.CancelCalibration();
+                            processor.CancelEyeTrackingCalibration();
                         }
                         finally
                         {
@@ -601,7 +602,7 @@ public partial class MainWindow : Window
         {
             token.ThrowIfCancellationRequested();
 
-            if (lastGaze.Status == UFeelNative.GazeStatus.Calibrating)
+            if (lastGaze.Status == GazeStatus.Calibrating)
             {
                 readyTimer ??= Stopwatch.StartNew();
                 CalibrationInstruction.Text =
@@ -622,15 +623,17 @@ public partial class MainWindow : Window
         }
     }
 
-    private bool SaveCalibrationProfile()
+    private bool SaveEyeTrackingCalibrationProfile()
     {
         string? profileDirectory = Path.GetDirectoryName(calibrationProfilePath);
+
         if (string.IsNullOrWhiteSpace(profileDirectory))
             throw new InvalidOperationException(
                 "Cannot determine the eye-tracking profile directory.");
 
         Directory.CreateDirectory(profileDirectory);
-        return processor.SaveCalibrationProfile(calibrationProfilePath);
+
+        return processor.SaveEyeTrackingCalibrationProfile(calibrationProfilePath);
     }
 
     private void UpdateCalibrationMarker(float x, float y)
@@ -645,7 +648,7 @@ public partial class MainWindow : Window
     }
 
     private static string FormatCalibrationFailure(
-        CalibrationDiagnostics diagnostics)
+        EyeTrackingCalibrationDiagnostics diagnostics)
     {
         string reason = diagnostics.FailureReason switch
         {
@@ -765,7 +768,7 @@ public partial class MainWindow : Window
 
             try
             {
-                processor.SetSpeechEnabled(false);
+                processor.SetSpeechToTextEnabled(false);
                 processor.Dispose();
             }
             finally
