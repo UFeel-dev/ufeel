@@ -72,7 +72,7 @@ struct CalibrationDiagnostics
 
 class GazeCalibrationModel
 {
-        public:
+public:
 
     [[nodiscard]] static auto
     fit(const std::vector<GazeCalibrationTarget>& targets,
@@ -86,7 +86,7 @@ class GazeCalibrationModel
     [[nodiscard]] auto save(const std::string& path) const -> bool;
     [[nodiscard]] auto load(const std::string& path) -> bool;
 
-        private:
+private:
 
     using Coefficients = std::array<std::array<double, GAZE_FEATURE_COUNT + 1>, 2>;
 

@@ -28,7 +28,7 @@ This class is non-copyable.
 */
 class IrisLandmark : public my::FaceLandmark
 {
-        public:
+public:
 
     /*
     Users MUST provide the FOLDER contain ALL the face_detection_short.tflite,
@@ -88,7 +88,7 @@ class IrisLandmark : public my::FaceLandmark
     */
     [[nodiscard]] auto getEyeRoi(bool isLeftEye) const -> cv::Rect;
 
-        private:
+private:
 
     /*
     Calculate Eye Roi from the first and last EyeLower2 landmark

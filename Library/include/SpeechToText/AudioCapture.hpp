@@ -10,7 +10,7 @@
 
 class AudioCapture
 {
-        public:
+public:
 
     static constexpr double sampleRate = 16000.0;
     static constexpr std::uint64_t framesPerBuffer = 1600;
@@ -31,7 +31,7 @@ class AudioCapture
 
     auto read(std::vector<int16_t>& buffer) -> bool;
 
-        private:
+private:
 
     using AudioBuffer = std::array<int16_t, framesPerBuffer>;
 

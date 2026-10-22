@@ -18,7 +18,7 @@ This class is non-copyable.
 */
 class FaceLandmark : public my::FaceDetection
 {
-        public:
+public:
 
     /*
     Users MUST provide the FOLDER contain BOTH the face_detection_short.tflite
@@ -61,7 +61,7 @@ class FaceLandmark : public my::FaceDetection
     */
     [[nodiscard]] auto loadOutput(int index) const -> std::vector<float> override;
 
-        private:
+private:
 
     my::ModelLoader m_landmarkModel;
 };

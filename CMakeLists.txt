@@ -113,6 +113,7 @@ add_library(ufeel_detection_library STATIC
     ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/ModelLoader.cpp
     ${LIBRARY_DIR}/src/EyeTracking/GazeCalibrationModel.cpp
     ${LIBRARY_DIR}/src/EyeTracking/EyeTrackingDetector.cpp
+    ${LIBRARY_DIR}/src/EyeTracking/GazeKalmanFilter.cpp
 
     ${LIBRARY_DIR}/src/SpeechToText/AudioCapture.cpp
     ${LIBRARY_DIR}/src/SpeechToText/SpeechRecognizer.cpp
