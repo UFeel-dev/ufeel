@@ -2,15 +2,9 @@ name: CI
 
 on:
   push:
-    branches-ignore:
-      - main
-      - release
 
   pull_request:
-    branches-ignore:
-      - main
-      - release
-
+   
 jobs:
   build-and-analysis:
     name: Build and Static Analysis
@@ -80,69 +74,42 @@ jobs:
             ufeeldocker:latest \
             bash -lc "./build.sh configure && ./build.sh build"
 
-      # - name: Run Clang-Tidy
-      #   run: |
-      #     docker run --rm \
-      #       -v "$GITHUB_WORKSPACE:/mnt" \
-      #       -w /mnt \
-      #       ufeeldocker:latest \
-      #       bash -lc '
-      #         find Library Wrapper -type f -name "*.cpp" -print0 |
-      #         while IFS= read -r -d "" file; do
-      #           echo "::group::Clang-Tidy: $file"
-      #           ./build.sh lint "$file" || true
-      #           echo "::endgroup::"
-      #         done
-      #       ' 2>&1 | tee clang-tidy.log
-
-      # - name: Publish Clang-Tidy warnings
-      #   if: always()
-      #   shell: bash
-      #   run: |
-      #     if [ ! -f clang-tidy.log ]; then
-      #       exit 0
-      #     fi
-
-      #     while IFS= read -r line; do
-      #       if [[ "$line" =~ ^/mnt/(Library|Wrapper)/.*:[0-9]+:[0-9]+:\ warning: ]]; then
-      #         diagnostic="${line#/mnt/}"
-      #         file="${diagnostic%%:*}"
-      #         rest="${diagnostic#*:}"
-      #         number="${rest%%:*}"
-      #         rest="${rest#*:}"
-      #         column="${rest%%:*}"
-      #         message="${rest#*: warning: }"
-
-      #         message="${message//%/%25}"
-      #         message="${message//$'\r'/%0D}"
-      #         message="${message//$'\n'/%0A}"
-
-      #         echo "::warning file=$file,line=$number,col=$column::$message"
-      #       fi
-      #     done < clang-tidy.log
-
-      - name: Verify compilation database
+      - name: Run Clang-Tidy in Docker
+        shell: bash
         run: |
-          ls -l build/compile_commands.json
-          grep -c '"file"' build/compile_commands.json
+          set +e
 
-      - name: Run cpp-linter
-        uses: cpp-linter/cpp-linter-action@v2
-        id: linter
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          version: '22'
-          style: file
-          tidy-checks: ''
-          extensions: 'cpp'
-          files-changed-only: false
-          database: 'build'
-          step-summary: true
-          verbosity: debug
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/mnt" \
+            -w /mnt \
+            ufeeldocker:latest \
+            bash -lc './build.sh lint' \
+            > clang-tidy.log 2>&1
 
+          lint_status=$?
+          cat clang-tidy.log
 
+          grep -E '^/mnt/(Library|Wrapper)/.*:[0-9]+:[0-9]+: (warning|error):' clang-tidy.log |
+          while IFS= read -r line; do
+            if [[ "$line" =~ ^/mnt/([^:]+):([0-9]+):([0-9]+):\ (warning|error):\ (.*)$ ]]; then
+              file="${BASH_REMATCH[1]}"
+              number="${BASH_REMATCH[2]}"
+              column="${BASH_REMATCH[3]}"
+              level="${BASH_REMATCH[4]}"
+              message="${BASH_REMATCH[5]}"
+              message="${message//%/%25}"
+              message="${message//$'\r'/%0D}"
+              message="${message//$'\n'/%0A}"
+              file="${file//%/%25}"
+              file="${file//,/%2C}"
 
-      # - name: Fail on lint errors
-      #   if: steps.linter.outputs.checks-failed > 0
-        # run: exit 1
+              if [[ "$level" == "error" ]]; then
+                echo "::error file=$file,line=$number,col=$column::$message"
+              else
+                echo "::warning file=$file,line=$number,col=$column::$message"
+              fi
+            fi
+          done
+
+          exit "$lint_status"
+          
