@@ -61,9 +61,17 @@ jobs:
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
             -DCLANG_TIDY_AS_ERRORS=OFF
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
       - name: Build Docker image
-        run: |
-          docker build -t ufeeldocker:latest ./docker
+        uses: docker/build-push-action@v7
+        with:
+           context: ./docker
+           load: true
+           tags: ufeeldocker:latest
+           cache-from: type=gha
+           cache-to: type=gha,mode=max 
 
       - name: Build project in Docker
         run: |
@@ -96,8 +104,7 @@ jobs:
 
           while IFS= read -r line; do
             if [[ "$line" =~ ^/mnt/(Library|Wrapper)/.*:([0-9]+):([0-9]+):\ (warning|error):\ (.*)$ ]]; then
-              file="${line%%:*}"
-              file="${file#/mnt/}"
+              file="${BASH_REMATCH[1]}"
               number="${BASH_REMATCH[2]}"
               column="${BASH_REMATCH[3]}"
               level="${BASH_REMATCH[4]}"
@@ -106,13 +113,14 @@ jobs:
               message="${message//%/%25}"
               message="${message//$'\r'/%0D}"
               message="${message//$'\n'/%0A}"
+
               file="${file//%/%25}"
               file="${file//,/%2C}"
 
               if [[ "$level" == "error" ]]; then
-                echo "::error file=$file,line=$number,col=$column::$message"
+                echo "::error file=$file,line=$number,col=$column,title=Clang-Tidy::$message"
               else
-                echo "::warning file=$file,line=$number,col=$column::$message"
+                echo "::warning file=$file,line=$number,col=$column,title=Clang-Tidy::$message"
               fi
             fi
           done < clang-tidy.log
