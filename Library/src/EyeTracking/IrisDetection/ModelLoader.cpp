@@ -1,4 +1,3 @@
-
 #include "EyeTracking/IrisDetection/ModelLoader.hpp"
 
 #include "opencv2/imgproc.hpp"

@@ -1,193 +1,207 @@
-
 using System.Runtime.InteropServices;
+
+namespace UFeel;
 
 public sealed class UFeelProcessor : IDisposable
 {
-    private IntPtr processor;
+    private IntPtr handle;
+    private bool disposed;
 
     public UFeelProcessor(
-        string libraryPath,
         string modelDirectory,
-        string speechModelPath)
+        string speechModelPath,
+        string? nativeLibraryPath = null)
     {
-        NativeLibrary.SetDllImportResolver(
-            typeof(UFeelNative).Assembly,
-            (libraryName, assembly, searchPath) =>
-            {
-                if (libraryName != "ufeel_wrapper")
-                    return IntPtr.Zero;
+        ValidatePath(modelDirectory, nameof(modelDirectory));
+        ValidatePath(speechModelPath, nameof(speechModelPath));
 
-                return NativeLibrary.Load(libraryPath);
-            });
+        if (!string.IsNullOrWhiteSpace(nativeLibraryPath))
+            UFeelNative.ConfigureLibrary(nativeLibraryPath);
 
-        processor = UFeelNative.ufeel_create(
-            modelDirectory,
-            speechModelPath);
+        handle = UFeelNative.ufeel_create(modelDirectory, speechModelPath);
 
-        if (processor == IntPtr.Zero)
-            throw new InvalidOperationException("ufeel_create failed.");
+        if (handle == IntPtr.Zero)
+            throw new InvalidOperationException(
+                "Failed to create the native UFeel processor.");
     }
 
-    public bool Update()
-    {
-        return UFeelNative.ufeel_update(processor) != 0;
-    }
+    public bool Update() =>
+        UFeelNative.ufeel_update(Handle) != 0;
 
     public FrameData? GetFrame()
     {
-        IntPtr frame = UFeelNative.ufeel_get_frame(processor);
-
-        if (frame == IntPtr.Zero)
+        IntPtr pointer = UFeelNative.ufeel_get_frame(Handle);
+        if (pointer == IntPtr.Zero)
             return null;
 
         try
         {
-            var nativeFrame =
-                Marshal.PtrToStructure<UFeelNative.UFeelFrame>(frame);
+            UFeelNative.NativeFrame frame =
+                Marshal.PtrToStructure<UFeelNative.NativeFrame>(pointer);
 
-            int byteCount = checked((int)(
-                nativeFrame.stride * nativeFrame.height));
+            if (frame.Data == IntPtr.Zero ||
+                frame.Width <= 0 ||
+                frame.Height <= 0 ||
+                frame.Channels <= 0 ||
+                frame.Stride <= 0)
+            {
+                return null;
+            }
 
+            int byteCount = checked(frame.Stride * frame.Height);
             byte[] data = new byte[byteCount];
-
-            Marshal.Copy(nativeFrame.data, data, 0, byteCount);
+            Marshal.Copy(frame.Data, data, 0, byteCount);
 
             return new FrameData(
                 data,
-                (int)nativeFrame.width,
-                (int)nativeFrame.height,
-                (int)nativeFrame.stride);
+                frame.Width,
+                frame.Height,
+                frame.Channels,
+                frame.Stride);
         }
         finally
         {
-            UFeelNative.ufeel_free_frame(frame);
+            UFeelNative.ufeel_free_frame(pointer);
         }
     }
 
     public Dictionary<string, float> GetEmotions()
     {
-        IntPtr emotions =
-            UFeelNative.ufeel_get_emotions(processor, out uint size);
+        IntPtr pointer = UFeelNative.ufeel_get_emotions(
+            Handle, out int count);
 
-        var result = new Dictionary<string, float>();
+        if (pointer == IntPtr.Zero || count <= 0)
+        {
+            if (pointer != IntPtr.Zero)
+                UFeelNative.ufeel_free_emotions(pointer, count);
 
-        if (emotions == IntPtr.Zero)
-            return result;
+            return new Dictionary<string, float>();
+        }
 
         try
         {
-            int structSize = Marshal.SizeOf<UFeelNative.UFeelPair>();
+            var emotions = new Dictionary<string, float>(count);
+            int itemSize = Marshal.SizeOf<UFeelNative.NativeEmotion>();
 
-            for (uint i = 0; i < size; i++)
+            for (int i = 0; i < count; i++)
             {
-                IntPtr item = IntPtr.Add(
-                    emotions,
-                    checked((int)(i * (uint)structSize)));
+                IntPtr itemPointer = IntPtr.Add(
+                    pointer, checked(i * itemSize));
 
-                var pair =
-                    Marshal.PtrToStructure<UFeelNative.UFeelPair>(item);
+                UFeelNative.NativeEmotion item =
+                    Marshal.PtrToStructure<UFeelNative.NativeEmotion>(
+                        itemPointer);
 
-                string? key = Marshal.PtrToStringAnsi(pair.key);
+                string name =
+                    Marshal.PtrToStringUTF8(item.Name) ?? string.Empty;
 
-                if (!string.IsNullOrEmpty(key))
-                    result[key] = pair.value;
+                emotions[name] = item.Value;
             }
 
-            return result;
+            return emotions;
         }
         finally
         {
-            UFeelNative.ufeel_free_emotions(emotions, size);
+            UFeelNative.ufeel_free_emotions(pointer, count);
         }
     }
 
-    public GazeData GetGaze()
+    public GazeResultData GetGaze()
     {
-        int status = UFeelNative.ufeel_get_gaze_ex(
-            processor,
-            out UFeelNative.UFeelGazeEx gaze);
+        UFeelNative.Status status =
+            (UFeelNative.Status)UFeelNative.ufeel_get_gaze_result(
+                Handle, out UFeelNative.NativeGazeResult result);
 
-        if (status == (int)UFeelNative.UFeelStatus.NoGaze)
+        if (status != UFeelNative.Status.Ok &&
+            status != UFeelNative.Status.NoGaze)
         {
-            return new GazeData(
-                0.0F,
-                0.0F,
-                0.0F,
-                UFeelNative.GazeDirection.None,
-                (UFeelNative.GazeStatus)gaze.status);
+            ThrowIfFailed(status, "retrieve the gaze estimate");
         }
 
-        EnsureStatus(status, "get gaze");
-
-        return new GazeData(
-            gaze.x,
-            gaze.y,
-            gaze.confidence,
-            (UFeelNative.GazeDirection)gaze.directions,
-            (UFeelNative.GazeStatus)gaze.status);
+        return new GazeResultData(
+            (GazeStatus)result.Status,
+            result.X,
+            result.Y,
+            result.RecordedX,
+            result.RecordedY,
+            result.Confidence,
+            (GazeDirection)result.Directions);
     }
 
-    public GazeResultData GetGazeResult()
+    public void BeginEyeTrackingCalibration()
     {
-        int status = UFeelNative.ufeel_get_gaze_result(
-            processor,
-            out UFeelNative.UFeelGazeResult gaze);
-
-        var result = new GazeResultData(
-            gaze.recorded_x,
-            gaze.recorded_y,
-            gaze.estimated_x,
-            gaze.estimated_y,
-            gaze.confidence,
-            (UFeelNative.GazeDirection)gaze.directions,
-            (UFeelNative.GazeStatus)gaze.status);
-
-        if (status == (int)UFeelNative.UFeelStatus.NoGaze)
-            return result;
-
-        EnsureStatus(status, "get gaze result");
-        return result;
+        ThrowIfFailed(
+            (UFeelNative.Status)
+                UFeelNative.ufeel_begin_eye_tracking_calibration(Handle),
+            "begin eye-tracking calibration");
     }
 
-    public void BeginCalibration()
+    public void SetEyeTrackingCalibrationTarget(float screenX, float screenY)
     {
-        EnsureStatus(
-            UFeelNative.ufeel_begin_calibration(processor),
-            "begin calibration");
+        ThrowIfFailed(
+            (UFeelNative.Status)
+                UFeelNative.ufeel_set_eye_tracking_calibration_target(
+                    Handle, screenX, screenY),
+            "set the eye-tracking calibration target");
     }
 
-    public void SetCalibrationTarget(float x, float y)
+    public bool FinishEyeTrackingCalibration()
     {
-        EnsureStatus(
-            UFeelNative.ufeel_set_calibration_target(processor, x, y),
-            "set calibration target");
-    }
+        UFeelNative.Status status =
+            (UFeelNative.Status)
+                UFeelNative.ufeel_finish_eye_tracking_calibration(Handle);
 
-    public bool FinishCalibration()
-    {
-        int status = UFeelNative.ufeel_finish_calibration(processor);
+        if (status == UFeelNative.Status.Ok)
+            return true;
 
-        if (status == (int)UFeelNative.UFeelStatus.CalibrationFailed)
+        if (status == UFeelNative.Status.EyeTrackingCalibrationFailed)
             return false;
 
-        EnsureStatus(status, "finish calibration");
-        return true;
+        ThrowIfFailed(status, "finish eye-tracking calibration");
+        return false; // Unreachable; satisfies definite-return analysis.
     }
 
-    public CalibrationDiagnostics GetCalibrationDiagnostics()
+    public void CancelEyeTrackingCalibration()
     {
-        EnsureStatus(
-            UFeelNative.ufeel_get_calibration_diagnostics(
-                processor,
-                out UFeelNative.UFeelCalibrationDiagnostics diagnostics),
-            "get calibration diagnostics");
+        ThrowIfFailed(
+            (UFeelNative.Status)
+                UFeelNative.ufeel_cancel_eye_tracking_calibration(Handle),
+            "cancel eye-tracking calibration");
+    }
 
-        return new CalibrationDiagnostics(
+    public EyeTrackingCalibrationProgress
+        GetEyeTrackingCalibrationProgress()
+    {
+        ThrowIfFailed(
+            (UFeelNative.Status)
+                UFeelNative.ufeel_get_eye_tracking_calibration_progress(
+                    Handle,
+                    out UFeelNative.NativeEyeTrackingCalibrationProgress progress),
+            "retrieve eye-tracking calibration progress");
+
+        return new EyeTrackingCalibrationProgress(
+            progress.TargetsWithEnoughSamples,
+            progress.TargetCount,
+            progress.SamplesForCurrentTarget,
+            progress.RequiredSamplesPerTarget);
+    }
+
+    public EyeTrackingCalibrationDiagnostics
+        GetEyeTrackingCalibrationDiagnostics()
+    {
+        ThrowIfFailed(
+            (UFeelNative.Status)
+                UFeelNative.ufeel_get_eye_tracking_calibration_diagnostics(
+                    Handle,
+                    out UFeelNative.NativeEyeTrackingCalibrationDiagnostics diagnostics),
+            "retrieve eye-tracking calibration diagnostics");
+
+        return new EyeTrackingCalibrationDiagnostics(
             (CalibrationFailureReason)diagnostics.FailureReason,
             diagnostics.InputTargetCount,
-            diagnostics.ValidTargetCount,
             diagnostics.TargetsWithEnoughRawSamples,
             diagnostics.TargetsWithEnoughRetainedSamples,
+            diagnostics.ValidTargetCount,
             diagnostics.MinimumRetainedSamples,
             diagnostics.MaximumRetainedSamples,
             diagnostics.HorizontalSpan,
@@ -195,119 +209,195 @@ public sealed class UFeelProcessor : IDisposable
             diagnostics.MeanCrossValidationError,
             diagnostics.MaximumCrossValidationError,
             diagnostics.CrossValidationTargetsEvaluated,
+            diagnostics.MeanErrorExceeded != 0,
+            diagnostics.MaximumErrorExceeded != 0,
             diagnostics.RegressionFailures,
             diagnostics.InvalidTargetCount,
             diagnostics.TargetsWithInsufficientRawSamples,
-            diagnostics.TargetsWithInsufficientRetainedSamples,
-            diagnostics.MeanErrorExceeded != 0,
-            diagnostics.MaximumErrorExceeded != 0);
+            diagnostics.TargetsWithInsufficientRetainedSamples);
     }
 
-    public void CancelCalibration()
+    public bool SaveEyeTrackingCalibrationProfile(string path)
     {
-        EnsureStatus(
-            UFeelNative.ufeel_cancel_calibration(processor),
-            "cancel calibration");
-    }
+        ValidatePath(path, nameof(path));
 
-    public CalibrationProgress GetCalibrationProgress()
-    {
-        EnsureStatus(
-            UFeelNative.ufeel_get_calibration_progress(
-                processor,
-                out UFeelNative.UFeelCalibrationProgress progress),
-            "get calibration progress");
+        UFeelNative.Status status =
+            (UFeelNative.Status)
+                UFeelNative.ufeel_save_eye_tracking_calibration_profile(
+                    Handle, path);
 
-        return new CalibrationProgress(
-            progress.targets_with_enough_samples,
-            progress.target_count,
-            progress.samples_for_current_target,
-            progress.required_samples_per_target);
-    }
+        if (status == UFeelNative.Status.Ok)
+            return true;
 
-    public bool SaveCalibrationProfile(string path)
-    {
-        int status =
-            UFeelNative.ufeel_save_calibration_profile(processor, path);
-
-        if (status == (int)UFeelNative.UFeelStatus.ProfileFailed)
+        if (status == UFeelNative.Status.EyeTrackingProfileFailed)
             return false;
 
-        EnsureStatus(status, "save calibration profile");
-        return true;
+        ThrowIfFailed(status, "save the eye-tracking calibration profile");
+        return false;
     }
 
-    public bool LoadCalibrationProfile(string path)
+    public bool LoadEyeTrackingCalibrationProfile(string path)
     {
-        int status =
-            UFeelNative.ufeel_load_calibration_profile(processor, path);
+        ValidatePath(path, nameof(path));
 
-        if (status == (int)UFeelNative.UFeelStatus.ProfileFailed)
+        UFeelNative.Status status =
+            (UFeelNative.Status)
+                UFeelNative.ufeel_load_eye_tracking_calibration_profile(
+                    Handle, path);
+
+        if (status == UFeelNative.Status.Ok)
+            return true;
+
+        if (status == UFeelNative.Status.EyeTrackingProfileFailed)
             return false;
 
-        EnsureStatus(status, "load calibration profile");
-        return true;
+        ThrowIfFailed(status, "load the eye-tracking calibration profile");
+        return false;
     }
 
-    public void SetSpeechEnabled(bool enabled)
+    public void SetSpeechToTextEnabled(bool enabled)
     {
-        UFeelNative.ufeel_toggle_speech(
-            processor,
-            enabled ? (byte)1 : (byte)0);
+        ThrowIfFailed(
+            (UFeelNative.Status)
+                UFeelNative.ufeel_set_speech_to_text_enabled(
+                    Handle, enabled ? 1 : 0),
+            "change speech-to-text state");
     }
 
-    public string GetSpeech()
+    public string GetSpeechToText()
     {
-        IntPtr speech = UFeelNative.ufeel_get_speech(processor);
-
-        if (speech == IntPtr.Zero)
+        IntPtr pointer = UFeelNative.ufeel_get_speech_to_text(Handle);
+        if (pointer == IntPtr.Zero)
             return string.Empty;
 
         try
         {
-            return Marshal.PtrToStringAnsi(speech) ?? string.Empty;
+            return Marshal.PtrToStringUTF8(pointer) ?? string.Empty;
         }
         finally
         {
-            UFeelNative.ufeel_free_speech(speech);
+            UFeelNative.ufeel_free_string(pointer);
         }
     }
 
     public uint GetHeartRate()
     {
         int status =
-            UFeelNative.ufeel_get_heartrate(processor, out UFeelNative.NativeHeartRateResult result);
+            UFeelNative.ufeel_get_heartrate(Handle, out UFeelNative.NativeHeartRateResult result);
 
         return result.bpm;
     }
 
-    public void Dispose()
+    private IntPtr Handle
     {
-        if (processor == IntPtr.Zero)
-            return;
+        get
+        {
+            ObjectDisposedException.ThrowIf(
+                disposed || handle == IntPtr.Zero, this);
 
-        UFeelNative.ufeel_destroy(processor);
-        processor = IntPtr.Zero;
+            return handle;
+        }
     }
 
-    private static void EnsureStatus(int status, string operation)
+    private static void ValidatePath(string path, string parameterName)
     {
-        if (status == (int)UFeelNative.UFeelStatus.Ok)
+        if (string.IsNullOrWhiteSpace(path))
+            throw new ArgumentException(
+                "A non-empty path is required.", parameterName);
+    }
+
+    private static void ThrowIfFailed(
+        UFeelNative.Status status, string operation)
+    {
+        if (status == UFeelNative.Status.Ok)
             return;
 
-        string reason = (UFeelNative.UFeelStatus)status switch
+        string message = status switch
         {
-            UFeelNative.UFeelStatus.InvalidArgument => "invalid argument",
-            UFeelNative.UFeelStatus.InvalidState => "invalid operation state",
-            UFeelNative.UFeelStatus.CalibrationFailed => "calibration failed",
-            UFeelNative.UFeelStatus.ProfileFailed =>
-                "eye-tracking profile is invalid or inaccessible",
-            UFeelNative.UFeelStatus.NoGaze => "gaze is unavailable",
-            _ => $"unknown native status ({status})"
+            UFeelNative.Status.NoGaze =>
+                "A valid gaze estimate is not available.",
+            UFeelNative.Status.InvalidArgument =>
+                "One or more arguments are invalid.",
+            UFeelNative.Status.InvalidState =>
+                "The processor is not in a state that permits this operation.",
+            UFeelNative.Status.EyeTrackingCalibrationFailed =>
+                "Eye-tracking calibration failed.",
+            UFeelNative.Status.EyeTrackingProfileFailed =>
+                "The eye-tracking calibration profile operation failed.",
+            UFeelNative.Status.InternalError =>
+                "An internal native-library error occurred.",
+            _ => "An unknown native-library error occurred."
         };
 
         throw new InvalidOperationException(
-            $"Unable to {operation}: {reason}.");
+            $"Failed to {operation}: {message} (status {(int)status}).");
+    }
+
+    public void Dispose()
+    {
+        if (disposed)
+            return;
+
+        disposed = true;
+
+        if (handle != IntPtr.Zero)
+        {
+            UFeelNative.ufeel_destroy(handle);
+            handle = IntPtr.Zero;
+        }
+
+        GC.SuppressFinalize(this);
+    }
+}
+
+public sealed class FrameData
+{
+    public byte[] Data { get; }
+    public int Width { get; }
+    public int Height { get; }
+    public int Channels { get; }
+    public int Stride { get; }
+
+    public FrameData(
+        byte[] data, int width, int height, int channels, int stride)
+    {
+        Data = data;
+        Width = width;
+        Height = height;
+        Channels = channels;
+        Stride = stride;
+    }
+}
+
+public sealed record GazeResultData(
+    GazeStatus Status,
+    float EstimatedX,
+    float EstimatedY,
+    float RecordedX,
+    float RecordedY,
+    float Confidence,
+    GazeDirection Directions)
+{
+    public bool IsValid => Status == GazeStatus.Valid;
+}
+
+public sealed class EyeTrackingCalibrationProgress
+{
+    public int TargetsWithEnoughSamples { get; }
+    public int TargetCount { get; }
+    public int SamplesForCurrentTarget { get; }
+    public int RequiredSamplesPerTarget { get; }
+
+    public EyeTrackingCalibrationProgress(
+        int targetsWithEnoughSamples,
+        int targetCount,
+        int samplesForCurrentTarget,
+        int requiredSamplesPerTarget)
+    {
+        TargetsWithEnoughSamples = targetsWithEnoughSamples;
+        TargetCount = targetCount;
+        SamplesForCurrentTarget = samplesForCurrentTarget;
+        RequiredSamplesPerTarget = requiredSamplesPerTarget;
     }
 }
 
@@ -326,56 +416,64 @@ public enum CalibrationFailureReason
     InvalidCrossValidationResult = 10
 }
 
-public sealed record CalibrationDiagnostics(
-    CalibrationFailureReason FailureReason,
-    ulong InputTargetCount,
-    ulong ValidTargetCount,
-    ulong TargetsWithEnoughRawSamples,
-    ulong TargetsWithEnoughRetainedSamples,
-    ulong MinimumRetainedSamples,
-    ulong MaximumRetainedSamples,
-    double HorizontalSpan,
-    double VerticalSpan,
-    double MeanCrossValidationError,
-    double MaximumCrossValidationError,
-    ulong CrossValidationTargetsEvaluated,
-    ulong RegressionFailures,
-    ulong InvalidTargetCount,
-    ulong TargetsWithInsufficientRawSamples,
-    ulong TargetsWithInsufficientRetainedSamples,
-    bool MeanErrorExceeded,
-    bool MaximumErrorExceeded);
-
-public sealed record GazeData(
-    float X,
-    float Y,
-    float Confidence,
-    UFeelNative.GazeDirection Directions,
-    UFeelNative.GazeStatus Status)
+public sealed class EyeTrackingCalibrationDiagnostics
 {
-    public bool IsValid => Status == UFeelNative.GazeStatus.Valid;
+    public CalibrationFailureReason FailureReason { get; }
+    public int InputTargetCount { get; }
+    public int TargetsWithEnoughRawSamples { get; }
+    public int TargetsWithEnoughRetainedSamples { get; }
+    public int ValidTargetCount { get; }
+    public int MinimumRetainedSamples { get; }
+    public int MaximumRetainedSamples { get; }
+    public float HorizontalSpan { get; }
+    public float VerticalSpan { get; }
+    public float MeanCrossValidationError { get; }
+    public float MaximumCrossValidationError { get; }
+    public int CrossValidationTargetsEvaluated { get; }
+    public bool MeanErrorExceeded { get; }
+    public bool MaximumErrorExceeded { get; }
+    public int RegressionFailures { get; }
+    public int InvalidTargetCount { get; }
+    public int TargetsWithInsufficientRawSamples { get; }
+    public int TargetsWithInsufficientRetainedSamples { get; }
+
+    public EyeTrackingCalibrationDiagnostics(
+        CalibrationFailureReason failureReason,
+        int inputTargetCount,
+        int targetsWithEnoughRawSamples,
+        int targetsWithEnoughRetainedSamples,
+        int validTargetCount,
+        int minimumRetainedSamples,
+        int maximumRetainedSamples,
+        float horizontalSpan,
+        float verticalSpan,
+        float meanCrossValidationError,
+        float maximumCrossValidationError,
+        int crossValidationTargetsEvaluated,
+        bool meanErrorExceeded,
+        bool maximumErrorExceeded,
+        int regressionFailures,
+        int invalidTargetCount,
+        int targetsWithInsufficientRawSamples,
+        int targetsWithInsufficientRetainedSamples)
+    {
+        FailureReason = failureReason;
+        InputTargetCount = inputTargetCount;
+        TargetsWithEnoughRawSamples = targetsWithEnoughRawSamples;
+        TargetsWithEnoughRetainedSamples = targetsWithEnoughRetainedSamples;
+        ValidTargetCount = validTargetCount;
+        MinimumRetainedSamples = minimumRetainedSamples;
+        MaximumRetainedSamples = maximumRetainedSamples;
+        HorizontalSpan = horizontalSpan;
+        VerticalSpan = verticalSpan;
+        MeanCrossValidationError = meanCrossValidationError;
+        MaximumCrossValidationError = maximumCrossValidationError;
+        CrossValidationTargetsEvaluated = crossValidationTargetsEvaluated;
+        MeanErrorExceeded = meanErrorExceeded;
+        MaximumErrorExceeded = maximumErrorExceeded;
+        RegressionFailures = regressionFailures;
+        InvalidTargetCount = invalidTargetCount;
+        TargetsWithInsufficientRawSamples = targetsWithInsufficientRawSamples;
+        TargetsWithInsufficientRetainedSamples = targetsWithInsufficientRetainedSamples;
+    }
 }
-
-public sealed record GazeResultData(
-    float RecordedX,
-    float RecordedY,
-    float EstimatedX,
-    float EstimatedY,
-    float Confidence,
-    UFeelNative.GazeDirection Directions,
-    UFeelNative.GazeStatus Status)
-{
-    public bool IsValid => Status == UFeelNative.GazeStatus.Valid;
-}
-
-public sealed record CalibrationProgress(
-    uint TargetsWithEnoughSamples,
-    uint TargetCount,
-    uint SamplesForCurrentTarget,
-    uint RequiredSamplesPerTarget);
-
-public sealed record FrameData(
-    byte[] Data,
-    int Width,
-    int Height,
-    int Stride);

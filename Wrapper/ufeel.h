@@ -5,21 +5,36 @@
 
 #include <stdint.h>
 
+#if defined(_WIN32)
+#if defined(UFEEL_BUILDING_LIBRARY)
+#define UFEEL_API __declspec(dllexport)
+#else
+#define UFEEL_API __declspec(dllimport)
+#endif
+#else
+#define UFEEL_API __attribute__((visibility("default")))
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef struct UFeelFrame
+typedef struct UFeelProcessor UFeelProcessor;
+
+/** An image frame returned by the library. Release it with ufeel_free_frame(). */
+typedef struct
 {
     uint8_t* data;
-    uint32_t width;
-    uint32_t height;
-    uint32_t stride;
+    int32_t width;
+    int32_t height;
+    int32_t channels;
+    int32_t stride;
 } UFeelFrame;
 
-typedef struct UFeelPair
+/** One named emotion and its computed score. Release the array with ufeel_free_emotions(). */
+typedef struct
 {
-    const char* key;
+    char* name;
     float value;
 } UFeelPair;
 
@@ -55,129 +70,120 @@ typedef struct UFeelGazeEx
 {
     float x;
     float y;
+    float recordedX;
+    float recordedY;
     float confidence;
-    uint32_t directions;
-    uint32_t status;
-} UFeelGazeEx; // TODO: improve naming for UFeelGaze, UFeelGazeEx and UFeelGazeResult (currently
-               // hard to tell what does what)
-
-typedef struct UFeelGazeResult
-{
-    float recorded_x;
-    float recorded_y;
-    float estimated_x;
-    float estimated_y;
-    float confidence;
-    uint32_t directions;
-    uint32_t status;
+    int32_t directions;
 } UFeelGazeResult;
 
-typedef struct UFeelCalibrationProgress
-{
-    uint32_t targets_with_enough_samples;
-    uint32_t target_count;
-    uint32_t samples_for_current_target;
-    uint32_t required_samples_per_target;
-} UFeelCalibrationProgress;
-
-typedef struct UFeelCalibrationDiagnostics
-{
-    int32_t failure_reason;
-
-    uint64_t input_target_count;
-    uint64_t valid_target_count;
-    uint64_t targets_with_enough_raw_samples;
-    uint64_t targets_with_enough_retained_samples;
-
-    uint64_t minimum_retained_samples;
-    uint64_t maximum_retained_samples;
-
-    double horizontal_span;
-    double vertical_span;
-
-    double mean_cross_validation_error;
-    double maximum_cross_validation_error;
-
-    uint64_t cross_validation_targets_evaluated;
-
-    uint64_t regression_failures;
-    uint64_t invalid_target_count;
-    uint64_t targets_with_insufficient_raw_samples;
-    uint64_t targets_with_insufficient_retained_samples;
-
-    int32_t mean_error_exceeded;
-    int32_t maximum_error_exceeded;
-} UFeelCalibrationDiagnostics;
-
-/* Return values for calibration, gaze, and profile calls. */
-typedef enum UFeelStatus
+/** Status returned by functions that can fail. */
+typedef enum
 {
     UFEEL_STATUS_OK = 0,
     UFEEL_STATUS_NO_GAZE = 1,
     UFEEL_STATUS_INVALID_ARGUMENT = 2,
     UFEEL_STATUS_INVALID_STATE = 3,
-    UFEEL_STATUS_CALIBRATION_FAILED = 4,
-    UFEEL_STATUS_PROFILE_FAILED = 5
+    UFEEL_STATUS_EYE_TRACKING_CALIBRATION_FAILED = 4,
+    UFEEL_STATUS_EYE_TRACKING_PROFILE_FAILED = 5,
+    UFEEL_STATUS_INTERNAL_ERROR = 6
 } UFeelStatus;
 
-/* State of the latest gaze result. */
-typedef enum UFeelGazeStatus
+/** Progress of the active eye-tracking calibration session. */
+typedef struct
 {
-    UFEEL_GAZE_NOT_CALIBRATED = 0,
-    UFEEL_GAZE_FACE_UNAVAILABLE = 1,
-    UFEEL_GAZE_BLINKING = 2,
-    UFEEL_GAZE_LOW_QUALITY = 3,
-    UFEEL_GAZE_CALIBRATING = 4,
-    UFEEL_GAZE_VALID = 5,
-    UFEEL_GAZE_DISABLED = 6,
-    UFEEL_GAZE_FRAME_UNAVAILABLE = 7
-} UFeelGazeStatus;
+    int32_t targetsWithEnoughSamples;
+    int32_t targetCount;
+    int32_t samplesForCurrentTarget;
+    int32_t requiredSamplesPerTarget;
+} UFeelEyeTrackingCalibrationProgress;
 
-/* Gaze direction bit flags, multiple non-center flags may be set together. */
-enum UFeelGazeDirection
+/** Diagnostic measurements from the most recent eye-tracking calibration. */
+typedef struct
 {
-    UFEEL_GAZE_LEFT = 1U << 0U,
-    UFEEL_GAZE_RIGHT = 1U << 1U,
-    UFEEL_GAZE_UP = 1U << 2U,
-    UFEEL_GAZE_DOWN = 1U << 3U,
-    UFEEL_GAZE_CENTER = 1U << 4U
-};
+    int32_t failureReason;
+    int32_t inputTargetCount;
+    int32_t targetsWithEnoughRawSamples;
+    int32_t targetsWithEnoughRetainedSamples;
+    int32_t validTargetCount;
+    int32_t minimumRetainedSamples;
+    int32_t maximumRetainedSamples;
+    float horizontalSpan;
+    float verticalSpan;
+    float meanCrossValidationError;
+    float maximumCrossValidationError;
+    int32_t crossValidationTargetsEvaluated;
+    int32_t meanErrorExceeded;
+    int32_t maximumErrorExceeded;
+    int32_t regressionFailures;
+    int32_t invalidTargetCount;
+    int32_t targetsWithInsufficientRawSamples;
+    int32_t targetsWithInsufficientRetainedSamples;
+} UFeelEyeTrackingCalibrationDiagnostics;
 
-/* Both paths must refer to directories in the installed package. */
-void* ufeel_create(const char* model_directory, const char* speech_model_path);
-void ufeel_destroy(void* processor);
+/** Creates a processor. Returns NULL if initialization fails. */
+UFEEL_API UFeelProcessor*
+ufeel_create(const char* utf8ModelDirectory, const char* utf8SpeechModelPath);
 
-int32_t ufeel_update(void* processor);
+/** Destroys a processor created by ufeel_create(). Accepts NULL. */
+UFEEL_API void ufeel_destroy(UFeelProcessor* processor);
 
-UFeelFrame* ufeel_get_frame(void* processor);
-void ufeel_free_frame(UFeelFrame* frame);
+/** Processes the next input frame. Returns 1 when processing succeeds, otherwise 0. */
+UFEEL_API int32_t ufeel_update(UFeelProcessor* processor);
 
-UFeelPair* ufeel_get_emotions(void* processor, uint32_t* size);
+/** Returns a copy of the latest processed image, or NULL if no frame is available. */
+UFEEL_API UFeelFrame* ufeel_get_frame(UFeelProcessor* processor);
 
-void ufeel_free_emotions(UFeelPair* emotions, uint32_t size);
+/** Releases a frame returned by ufeel_get_frame(). Accepts NULL. */
+UFEEL_API void ufeel_free_frame(UFeelFrame* frame);
 
-/* Calibration target coordinates are normalized over the caller's client area. */
-int32_t ufeel_begin_calibration(void* processor);
-int32_t ufeel_set_calibration_target(void* processor, float x, float y);
-int32_t ufeel_finish_calibration(void* processor);
-int32_t ufeel_cancel_calibration(void* processor);
-int32_t ufeel_get_gaze(void* processor, UFeelGaze* gaze);
-/* Extended result: confidence and a UFeelGazeStatus are written even when no gaze is available. */
-int32_t ufeel_get_gaze_ex(void* processor, UFeelGazeEx* gaze);
-int32_t ufeel_get_gaze_result(void* processor, UFeelGazeResult* gaze);
-/* Progress counts valid, non-blink samples for the current and completed targets. */
-int32_t ufeel_get_calibration_progress(void* processor, UFeelCalibrationProgress* progress);
-int32_t // TODO: fix formatting to avoid that kind of format
-ufeel_get_calibration_diagnostics(void* processor, UFeelCalibrationDiagnostics* diagnostics);
-/* Profile paths are caller-owned writable/readable paths, separate from installed model assets. */
-int32_t ufeel_save_calibration_profile(void* processor, const char* profile_path);
-int32_t ufeel_load_calibration_profile(void* processor, const char* profile_path);
+/** Returns the current emotion scores. Set *count to zero if no scores are available. */
+UFEEL_API UFeelPair* ufeel_get_emotions(UFeelProcessor* processor, int32_t* count);
 
-/* Calls operating on the same processor instance must be serialized by the caller. */
-void ufeel_toggle_speech(void* processor, uint8_t state);
+/** Releases emotion results returned by ufeel_get_emotions(). Accepts NULL. */
+UFEEL_API void ufeel_free_emotions(UFeelPair* emotions, int32_t count);
 
-char* ufeel_get_speech(void* processor);
-void ufeel_free_speech(char* speech);
+/** Begins eye-tracking calibration. */
+UFEEL_API int32_t ufeel_begin_eye_tracking_calibration(UFeelProcessor* processor);
+
+/** Sets the screen coordinate currently being used as the eye-tracking calibration target. */
+UFEEL_API int32_t
+ufeel_set_eye_tracking_calibration_target(UFeelProcessor* processor, float screenX, float screenY);
+
+/** Fits and activates the eye-tracking calibration model. */
+UFEEL_API int32_t ufeel_finish_eye_tracking_calibration(UFeelProcessor* processor);
+
+/** Aborts eye-tracking calibration without activating the unfinished model. */
+UFEEL_API int32_t ufeel_cancel_eye_tracking_calibration(UFeelProcessor* processor);
+
+/** Retrieves the latest gaze estimate and its validity status. */
+UFEEL_API int32_t ufeel_get_gaze_result(UFeelProcessor* processor, UFeelGazeResult* result);
+
+/** Retrieves progress for the current eye-tracking calibration session. */
+UFEEL_API int32_t ufeel_get_eye_tracking_calibration_progress(
+    UFeelProcessor* processor, UFeelEyeTrackingCalibrationProgress* progress
+);
+
+/** Retrieves diagnostic measurements from eye-tracking calibration. */
+UFEEL_API int32_t ufeel_get_eye_tracking_calibration_diagnostics(
+    UFeelProcessor* processor, UFeelEyeTrackingCalibrationDiagnostics* diagnostics
+);
+
+/** Saves the active eye-tracking calibration profile to a UTF-8 file path. */
+UFEEL_API int32_t
+ufeel_save_eye_tracking_calibration_profile(UFeelProcessor* processor, const char* utf8Path);
+
+/** Loads an eye-tracking calibration profile from a UTF-8 file path. */
+UFEEL_API int32_t
+ufeel_load_eye_tracking_calibration_profile(UFeelProcessor* processor, const char* utf8Path);
+
+/** Enables or disables speech-to-text processing. */
+UFEEL_API int32_t ufeel_set_speech_to_text_enabled(UFeelProcessor* processor, int32_t enabled);
+
+/** Returns the latest speech-to-text result as a library-allocated UTF-8 string. */
+UFEEL_API char* ufeel_get_speech_to_text(UFeelProcessor* processor);
+
+/** Releases a string returned by ufeel_get_speech_to_text(). Accepts NULL. */
+UFEEL_API void ufeel_free_string(char* value);
 
 bool ufeel_get_heartrate(void* processor, UFeelHeartRateResult* result);
 

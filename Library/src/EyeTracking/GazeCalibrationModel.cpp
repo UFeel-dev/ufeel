@@ -1,4 +1,3 @@
-
 #include "EyeTracking/GazeCalibrationModel.hpp"
 
 #include "opencv2/core.hpp"

@@ -1,4 +1,3 @@
-
 #include "EyeTracking/GazeKalmanFilter.hpp"
 
 #include "opencv2/core/types.hpp"

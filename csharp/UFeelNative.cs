@@ -1,114 +1,9 @@
+using System.Reflection;
 using System.Runtime.InteropServices;
 
-public enum HeartRateStatus
+namespace UFeel
 {
-    JsonParseError = 0,
-    JsonParseOutOfRange = 1,
-    RequestFailed = 2,
-    Valid = 3,
-}
-
-public static class UFeelNative
-{
-    private const string LIB = "ufeel_wrapper";
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct UFeelFrame
-    {
-        public IntPtr data;
-        public uint width;
-        public uint height;
-        public uint stride;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct UFeelPair
-    {
-        public IntPtr key;
-        public float value;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct UFeelGaze
-    {
-        public float x;
-        public float y;
-        public uint directions;
-        public uint valid;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct UFeelGazeEx
-    {
-        public float x;
-        public float y;
-        public float confidence;
-        public uint directions;
-        public uint status;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct UFeelGazeResult
-    {
-        public float recorded_x;
-        public float recorded_y;
-        public float estimated_x;
-        public float estimated_y;
-        public float confidence;
-        public uint directions;
-        public uint status;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct UFeelCalibrationProgress
-    {
-        public uint targets_with_enough_samples;
-        public uint target_count;
-        public uint samples_for_current_target;
-        public uint required_samples_per_target;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    internal struct UFeelCalibrationDiagnostics
-    {
-        public int FailureReason;
-
-        public ulong InputTargetCount;
-        public ulong ValidTargetCount;
-        public ulong TargetsWithEnoughRawSamples;
-        public ulong TargetsWithEnoughRetainedSamples;
-
-        public ulong MinimumRetainedSamples;
-        public ulong MaximumRetainedSamples;
-
-        public double HorizontalSpan;
-        public double VerticalSpan;
-
-        public double MeanCrossValidationError;
-        public double MaximumCrossValidationError;
-
-        public ulong CrossValidationTargetsEvaluated;
-
-        public ulong RegressionFailures;
-        public ulong InvalidTargetCount;
-        public ulong TargetsWithInsufficientRawSamples;
-        public ulong TargetsWithInsufficientRetainedSamples;
-
-        public int MeanErrorExceeded;
-        public int MaximumErrorExceeded;
-    }
-
-    public enum UFeelStatus
-    {
-        Ok = 0,
-        NoGaze = 1,
-        InvalidArgument = 2,
-        InvalidState = 3,
-        CalibrationFailed = 4,
-        ProfileFailed = 5
-    }
-
-    public enum GazeStatus : uint
+    public enum GazeStatus
     {
         NotCalibrated = 0,
         FaceUnavailable = 1,
@@ -121,122 +16,258 @@ public static class UFeelNative
     }
 
     [Flags]
-    public enum GazeDirection : uint
+    public enum GazeDirection
     {
         None = 0,
-        Left = 1U << 0,
-        Right = 1U << 1,
-        Up = 1U << 2,
-        Down = 1U << 3,
-        Center = 1U << 4
+        Left = 1 << 0,
+        Right = 1 << 1,
+        Up = 1 << 2,
+        Down = 1 << 3,
+        Center = 1 << 4
     }
 
-    [StructLayout(LayoutKind.Sequential)]
-    public struct NativeHeartRateResult
+    public enum HeartRateStatus
     {
-        public int status;
-        public uint bpm;
+        JsonParseError = 0,
+        JsonParseOutOfRange = 1,
+        RequestFailed = 2,
+        Valid = 3,
     }
 
-    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
-    public static extern IntPtr ufeel_create(
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string modelDirectory,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string speechModelPath);
+    internal static class UFeelNative
+    {
+        private const string LibraryName = "ufeel_wrapper";
+        private static readonly object ResolverLock = new object();
 
-    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
-    public static extern void ufeel_destroy(
-        IntPtr processor);
+        private static string? configuredLibraryPath;
+        private static bool resolverConfigured;
 
-    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
-    public static extern int ufeel_update(
-        IntPtr processor);
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct NativeFrame
+        {
+            public IntPtr Data;
+            public int Width;
+            public int Height;
+            public int Channels;
+            public int Stride;
+        }
 
-    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
-    public static extern IntPtr ufeel_get_frame(
-        IntPtr processor);
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct NativeEmotion
+        {
+            public IntPtr Name;
+            public float Value;
+        }
 
-    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
-    public static extern void ufeel_free_frame(
-        IntPtr frame);
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct NativeGazeResult
+        {
+            public int Status;
+            public float X;
+            public float Y;
+            public float RecordedX;
+            public float RecordedY;
+            public float Confidence;
+            public int Directions;
+        }
 
-    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
-    public static extern IntPtr ufeel_get_emotions(
-        IntPtr processor,
-        out uint size);
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct NativeEyeTrackingCalibrationProgress
+        {
+            public int TargetsWithEnoughSamples;
+            public int TargetCount;
+            public int SamplesForCurrentTarget;
+            public int RequiredSamplesPerTarget;
+        }
 
-    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
-    public static extern void ufeel_free_emotions(
-        IntPtr emotions,
-        uint size);
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct NativeEyeTrackingCalibrationDiagnostics
+        {
+            public int FailureReason;
 
-    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
-    public static extern int ufeel_begin_calibration(
-        IntPtr processor);
+            public int InputTargetCount;
+            public int TargetsWithEnoughRawSamples;
+            public int TargetsWithEnoughRetainedSamples;
+            public int ValidTargetCount;
 
-    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
-    public static extern int ufeel_set_calibration_target(
-        IntPtr processor,
-        float x,
-        float y);
+            public int MinimumRetainedSamples;
+            public int MaximumRetainedSamples;
 
-    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
-    public static extern int ufeel_finish_calibration(
-        IntPtr processor);
+            public float HorizontalSpan;
+            public float VerticalSpan;
 
-    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
-    public static extern int ufeel_cancel_calibration(
-        IntPtr processor);
+            public float MeanCrossValidationError;
+            public float MaximumCrossValidationError;
+            public int CrossValidationTargetsEvaluated;
 
-    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
-    public static extern int ufeel_get_gaze(
-        IntPtr processor,
-        out UFeelGaze gaze);
+            public int MeanErrorExceeded;
+            public int MaximumErrorExceeded;
 
-    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
-    public static extern int ufeel_get_gaze_ex(
-        IntPtr processor,
-        out UFeelGazeEx gaze);
+            public int RegressionFailures;
+            public int InvalidTargetCount;
+            public int TargetsWithInsufficientRawSamples;
+            public int TargetsWithInsufficientRetainedSamples;
+        }
 
-    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
-    public static extern int ufeel_get_gaze_result(
-        IntPtr processor,
-        out UFeelGazeResult gaze);
+        [StructLayout(LayoutKind.Sequential)]
+        public struct NativeHeartRateResult
+        {
+            public int status;
+            public uint bpm;
+        }
 
-    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
-    public static extern int ufeel_get_calibration_progress(
-        IntPtr processor,
-        out UFeelCalibrationProgress progress);
+        internal enum Status
+        {
+            Ok = 0,
+            NoGaze = 1,
+            InvalidArgument = 2,
+            InvalidState = 3,
+            EyeTrackingCalibrationFailed = 4,
+            EyeTrackingProfileFailed = 5,
+            InternalError = 6
+        }
 
-    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
-    internal static extern int ufeel_get_calibration_diagnostics(
-        IntPtr processor,
-        out UFeelCalibrationDiagnostics diagnostics);
+        internal static void ConfigureLibrary(string libraryPath)
+        {
+            if (string.IsNullOrWhiteSpace(libraryPath))
+            {
+                throw new ArgumentException(
+                    "The native UFeel library path must not be empty.",
+                    nameof(libraryPath));
+            }
 
-    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
-    public static extern int ufeel_save_calibration_profile(
-        IntPtr processor,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string profilePath);
+            string fullPath = Path.GetFullPath(libraryPath);
 
-    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
-    public static extern int ufeel_load_calibration_profile(
-        IntPtr processor,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string profilePath);
+            lock (ResolverLock)
+            {
+                if (resolverConfigured)
+                {
+                    if (!string.Equals(
+                            configuredLibraryPath,
+                            fullPath,
+                            StringComparison.Ordinal))
+                    {
+                        throw new InvalidOperationException(
+                            "The native UFeel library resolver has already been configured " +
+                            "with a different library path.");
+                    }
 
-    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
-    public static extern void ufeel_toggle_speech(
-        IntPtr processor,
-        byte state);
+                    return;
+                }
 
-    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
-    public static extern IntPtr ufeel_get_speech(
-        IntPtr processor);
+                configuredLibraryPath = fullPath;
+                NativeLibrary.SetDllImportResolver(
+                    typeof(UFeelNative).Assembly,
+                    ResolveLibrary);
 
-    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
-    public static extern void ufeel_free_speech(
-        IntPtr speech);
+                resolverConfigured = true;
+            }
+        }
 
-    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
-    public static extern int ufeel_get_heartrate(
-        IntPtr processor,
-        out NativeHeartRateResult result);
+        private static IntPtr ResolveLibrary(
+            string libraryName,
+            Assembly assembly,
+            DllImportSearchPath? searchPath)
+        {
+            if (!string.Equals(libraryName, LibraryName, StringComparison.Ordinal))
+            {
+                return IntPtr.Zero;
+            }
+
+            string? path = configuredLibraryPath;
+            if (!string.IsNullOrWhiteSpace(path))
+            {
+                return NativeLibrary.Load(path);
+            }
+
+            return IntPtr.Zero;
+        }
+
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern IntPtr ufeel_create(
+            [MarshalAs(UnmanagedType.LPUTF8Str)] string modelDirectory,
+            [MarshalAs(UnmanagedType.LPUTF8Str)] string speechModelPath);
+
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern void ufeel_destroy(IntPtr processor);
+
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int ufeel_update(IntPtr processor);
+
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern IntPtr ufeel_get_frame(IntPtr processor);
+
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern void ufeel_free_frame(IntPtr frame);
+
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern IntPtr ufeel_get_emotions(
+            IntPtr processor,
+            out int count);
+
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern void ufeel_free_emotions(
+            IntPtr emotions,
+            int count);
+
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int ufeel_begin_eye_tracking_calibration(IntPtr processor);
+
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int ufeel_set_eye_tracking_calibration_target(
+            IntPtr processor,
+            float screenX,
+            float screenY);
+
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int ufeel_finish_eye_tracking_calibration(IntPtr processor);
+
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int ufeel_cancel_eye_tracking_calibration(IntPtr processor);
+
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int ufeel_get_gaze_result(
+            IntPtr processor,
+            out NativeGazeResult result);
+
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int ufeel_get_eye_tracking_calibration_progress(
+            IntPtr processor,
+            out NativeEyeTrackingCalibrationProgress progress);
+
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int ufeel_get_eye_tracking_calibration_diagnostics(
+            IntPtr processor,
+            out NativeEyeTrackingCalibrationDiagnostics diagnostics);
+
+        [DllImport(
+            LibraryName,
+            CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int ufeel_save_eye_tracking_calibration_profile(
+            IntPtr processor,
+            [MarshalAs(UnmanagedType.LPUTF8Str)] string utf8Path);
+
+        [DllImport(
+            LibraryName,
+            CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int ufeel_load_eye_tracking_calibration_profile(
+            IntPtr processor,
+            [MarshalAs(UnmanagedType.LPUTF8Str)] string utf8Path);
+
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int ufeel_set_speech_to_text_enabled(
+            IntPtr processor,
+            int enabled);
+
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern IntPtr ufeel_get_speech_to_text(IntPtr processor);
+
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern void ufeel_free_string(IntPtr value);
+
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int ufeel_get_heartrate(
+            IntPtr processor,
+            out NativeHeartRateResult result);
+    }
 }
