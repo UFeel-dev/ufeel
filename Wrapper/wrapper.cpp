@@ -291,7 +291,9 @@ __attribute__((visibility("default"))) auto ufeel_get_calibration_progress(
     return UFEEL_STATUS_OK;
 }
 
-__attribute__((visibility("default"))) auto ufeel_get_calibration_diagnostics(void* processor, UFeelCalibrationDiagnostics* diagnostics) -> int32_t
+__attribute__((visibility("default"))) auto ufeel_get_calibration_diagnostics(
+    void* processor, UFeelCalibrationDiagnostics* diagnostics
+) -> int32_t
 {
     if (processor == nullptr || diagnostics == nullptr)
     {
@@ -299,7 +301,8 @@ __attribute__((visibility("default"))) auto ufeel_get_calibration_diagnostics(vo
     }
 
     *diagnostics = {};
-    auto const result = static_cast<DataProcessor*>(processor)->getEyeTrackingCalibrationDiagnostics();
+    auto const result =
+        static_cast<DataProcessor*>(processor)->getEyeTrackingCalibrationDiagnostics();
     diagnostics->failure_reason = static_cast<int32_t>(result.failureReason);
     diagnostics->input_target_count = result.inputTargetCount;
     diagnostics->valid_target_count = result.validTargetCount;
@@ -315,7 +318,8 @@ __attribute__((visibility("default"))) auto ufeel_get_calibration_diagnostics(vo
     diagnostics->regression_failures = result.regressionFailures;
     diagnostics->invalid_target_count = result.invalidTargetCount;
     diagnostics->targets_with_insufficient_raw_samples = result.targetsWithInsufficientRawSamples;
-    diagnostics->targets_with_insufficient_retained_samples = result.targetsWithInsufficientRetainedSamples;
+    diagnostics->targets_with_insufficient_retained_samples =
+        result.targetsWithInsufficientRetainedSamples;
     diagnostics->mean_error_exceeded = result.meanErrorExceeded ? 1 : 0;
     diagnostics->maximum_error_exceeded = result.maximumErrorExceeded ? 1 : 0;
     return UFEEL_STATUS_OK;

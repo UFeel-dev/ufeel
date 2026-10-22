@@ -120,12 +120,12 @@ class ModelLoader
     Load image (BGR format) to model at index
     (Note: Only support image of type CV_8UC3 and CV_8UC4)
     */
-    virtual void loadImageToInput(const cv::Mat& inputImage, int idx);
+    virtual void loadImageToInput(const cv::Mat& inputImage, int index);
 
     /*
     Load byte data to model at index
     */
-    virtual void loadBytesToInput(const void* data, int idx);
+    virtual void loadBytesToInput(const void* data, int index);
 
     /*
     Run inference on the inputs.
@@ -173,7 +173,7 @@ class ModelLoader
     /*
     Check if index is valid for input and output tensor
     */
-    [[nodiscard]] auto isIndexValid(int idx, char c = 'i') const -> bool;
+    [[nodiscard]] auto isIndexValid(int index, char type = 'i') const -> bool;
 
     /*
     Check if all inputs have been loaded
