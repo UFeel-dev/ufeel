@@ -14,6 +14,7 @@
 #include <opencv2/core/types.hpp>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace
@@ -34,7 +35,7 @@ my::ModelLoader::ModelLoader(
     fillInputTensors();
     fillOutputTensors();
 
-    m_inputLoads.resize(m_inputs.size(), false);
+    inputLoads_.resize(inputs_.size(), false);
 }
 
 auto my::ModelLoader::getInputShape(
@@ -43,7 +44,7 @@ auto my::ModelLoader::getInputShape(
 {
     if (isIndexValid(index, 'i'))
     {
-        return m_inputs[static_cast<std::size_t>(index)].dims;
+        return inputs_[static_cast<std::size_t>(index)].dims;
     }
 
     return {};
@@ -55,7 +56,7 @@ auto my::ModelLoader::getInputData(
 {
     if (isIndexValid(index, 'i'))
     {
-        return m_inputs[static_cast<std::size_t>(index)].data;
+        return inputs_[static_cast<std::size_t>(index)].data;
     }
 
     return nullptr;
@@ -67,7 +68,7 @@ auto my::ModelLoader::getInputSize(
 {
     if (isIndexValid(index, 'i'))
     {
-        return m_inputs[static_cast<std::size_t>(index)].bytes;
+        return inputs_[static_cast<std::size_t>(index)].bytes;
     }
 
     return 0;
@@ -75,7 +76,7 @@ auto my::ModelLoader::getInputSize(
 
 auto my::ModelLoader::getNumberOfInputs() const -> int
 {
-    return static_cast<int>(m_inputs.size());
+    return static_cast<int>(inputs_.size());
 }
 
 auto my::ModelLoader::getOutputShape(
@@ -84,7 +85,7 @@ auto my::ModelLoader::getOutputShape(
 {
     if (isIndexValid(index, 'o'))
     {
-        return m_outputs[static_cast<std::size_t>(index)].dims;
+        return outputs_[static_cast<std::size_t>(index)].dims;
     }
 
     return {};
@@ -96,7 +97,7 @@ auto my::ModelLoader::getOutputData(
 {
     if (isIndexValid(index, 'o'))
     {
-        return m_outputs[static_cast<std::size_t>(index)].data;
+        return outputs_[static_cast<std::size_t>(index)].data;
     }
 
     return nullptr;
@@ -108,7 +109,7 @@ auto my::ModelLoader::getOutputSize(
 {
     if (isIndexValid(index, 'o'))
     {
-        return m_outputs[static_cast<std::size_t>(index)].bytes;
+        return outputs_[static_cast<std::size_t>(index)].bytes;
     }
 
     return 0;
@@ -116,7 +117,7 @@ auto my::ModelLoader::getOutputSize(
 
 auto my::ModelLoader::getNumberOfOutputs() const -> int
 {
-    return static_cast<int>(m_outputs.size());
+    return static_cast<int>(outputs_.size());
 }
 
 void my::ModelLoader::loadImageToInput(
@@ -149,8 +150,8 @@ void my::ModelLoader::loadBytesToInput(
     }
 
     auto const inputIndex = static_cast<std::size_t>(index);
-    auto const inputSize = m_inputs[inputIndex].bytes;
-    auto* inputData = m_inputs[inputIndex].data;
+    auto const inputSize = inputs_[inputIndex].bytes;
+    auto* inputData = inputs_[inputIndex].data;
 
     if (data == nullptr || inputData == nullptr || inputSize == 0)
     {
@@ -158,14 +159,14 @@ void my::ModelLoader::loadBytesToInput(
     }
 
     std::memcpy(inputData, data, inputSize);
-    m_inputLoads[inputIndex] = true;
+    inputLoads_[inputIndex] = true;
 }
 
 void my::ModelLoader::runInference()
 {
     inputChecker();
 
-    if (m_interpreter->Invoke() != kTfLiteOk)
+    if (interpreter_->Invoke() != kTfLiteOk)
     {
         throw std::runtime_error("TensorFlow Lite inference failed.");
     }
@@ -181,7 +182,7 @@ auto my::ModelLoader::loadOutput(
     }
 
     auto const outputIndex = static_cast<std::size_t>(index);
-    auto const& output = m_outputs[outputIndex];
+    auto const& output = outputs_[outputIndex];
 
     if (output.data == nullptr || output.bytes % sizeof(float) != 0)
     {
@@ -203,8 +204,8 @@ void my::ModelLoader::loadModel(
     const char* modelPath
 )
 {
-    m_model = tflite::FlatBufferModel::BuildFromFile(modelPath);
-    if (m_model == nullptr)
+    model_ = tflite::FlatBufferModel::BuildFromFile(modelPath);
+    if (model_ == nullptr)
     {
         throw std::runtime_error(std::string("Failed to load TensorFlow Lite model: ") + modelPath);
     }
@@ -216,18 +217,18 @@ void my::ModelLoader::buildInterpreter(
 {
     tflite::ops::builtin::BuiltinOpResolver const resolver;
 
-    if (tflite::InterpreterBuilder(*m_model, resolver)(&m_interpreter) != kTfLiteOk ||
-        m_interpreter == nullptr)
+    if (tflite::InterpreterBuilder(*model_, resolver)(&interpreter_) != kTfLiteOk ||
+        interpreter_ == nullptr)
     {
         throw std::runtime_error("Failed to build TensorFlow Lite interpreter.");
     }
 
-    m_interpreter->SetNumThreads(numThreads);
+    interpreter_->SetNumThreads(numThreads);
 }
 
 void my::ModelLoader::allocateTensors()
 {
-    if (m_interpreter == nullptr || m_interpreter->AllocateTensors() != kTfLiteOk)
+    if (interpreter_ == nullptr || interpreter_->AllocateTensors() != kTfLiteOk)
     {
         throw std::runtime_error("Failed to allocate TensorFlow Lite tensors.");
     }
@@ -235,20 +236,20 @@ void my::ModelLoader::allocateTensors()
 
 void my::ModelLoader::fillInputTensors()
 {
-    for (auto const tensorIndex : m_interpreter->inputs())
+    for (auto const tensorIndex : interpreter_->inputs())
     {
-        auto const* tensor = m_interpreter->tensor(tensorIndex);
+        auto const* tensor = interpreter_->tensor(tensorIndex);
         if (tensor == nullptr || tensor->data.f == nullptr || tensor->dims == nullptr)
         {
             throw std::runtime_error("Invalid TensorFlow Lite input tensor.");
         }
 
-        m_inputs.emplace_back(
+        inputs_.emplace_back(
             tensor->data.f, tensor->bytes, tensor->dims->data, tensor->dims->size
         );
     }
 
-    if (m_inputs.empty())
+    if (inputs_.empty())
     {
         throw std::runtime_error("The TensorFlow Lite model has no input tensors.");
     }
@@ -256,20 +257,20 @@ void my::ModelLoader::fillInputTensors()
 
 void my::ModelLoader::fillOutputTensors()
 {
-    for (auto const tensorIndex : m_interpreter->outputs())
+    for (auto const tensorIndex : interpreter_->outputs())
     {
-        auto const* tensor = m_interpreter->tensor(tensorIndex);
+        auto const* tensor = interpreter_->tensor(tensorIndex);
         if (tensor == nullptr || tensor->data.f == nullptr || tensor->dims == nullptr)
         {
             throw std::runtime_error("Invalid TensorFlow Lite output tensor.");
         }
 
-        m_outputs.emplace_back(
+        outputs_.emplace_back(
             tensor->data.f, tensor->bytes, tensor->dims->data, tensor->dims->size
         );
     }
 
-    if (m_outputs.empty())
+    if (outputs_.empty())
     {
         throw std::runtime_error("The TensorFlow Lite model has no output tensors.");
     }
@@ -283,18 +284,18 @@ auto my::ModelLoader::isIndexValid(
 
     if (type == 'i')
     {
-        size = m_inputs.size();
+        size = inputs_.size();
     }
     else if (type == 'o')
     {
-        size = m_outputs.size();
+        size = outputs_.size();
     }
     else
     {
         return false;
     }
 
-    if (index < 0 || static_cast<std::size_t>(index) >= size)
+    if (index < 0 || std::cmp_greater_equal(index, size))
     {
         std::cerr << "Tensor index " << index << " is out of range (" << size << ").\n";
         return false;
@@ -305,7 +306,7 @@ auto my::ModelLoader::isIndexValid(
 
 auto my::ModelLoader::isAllInputsLoaded() const -> bool
 {
-    return std::find(m_inputLoads.begin(), m_inputLoads.end(), false) == m_inputLoads.end();
+    return std::ranges::find(inputLoads_, false) == inputLoads_.end();
 }
 
 void my::ModelLoader::inputChecker()
@@ -313,9 +314,9 @@ void my::ModelLoader::inputChecker()
     if (!isAllInputsLoaded())
     {
         std::string message = "Model inputs have not all been loaded:";
-        for (std::size_t index = 0; index < m_inputLoads.size(); ++index)
+        for (std::size_t index = 0; index < inputLoads_.size(); ++index)
         {
-            if (!m_inputLoads[index])
+            if (!inputLoads_[index])
             {
                 message += " " + std::to_string(index);
             }
@@ -324,7 +325,7 @@ void my::ModelLoader::inputChecker()
         throw std::runtime_error(message);
     }
 
-    std::fill(m_inputLoads.begin(), m_inputLoads.end(), false);
+    std::fill(inputLoads_.begin(), inputLoads_.end(), false);
 }
 
 auto my::ModelLoader::preprocessImage(

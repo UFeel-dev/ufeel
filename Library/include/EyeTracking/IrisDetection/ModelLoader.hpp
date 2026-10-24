@@ -29,11 +29,11 @@ struct TensorWrapper
     std::vector<int> dims;
 
     TensorWrapper(
-        float* t_data, size_t t_bytes, int* t_dims, int t_dimSize
+        float* tData, size_t tBytes, int* tDims, int tDimSize
     )
-        : data(t_data)
-        , bytes(t_bytes)
-        , dims(t_dims, t_dims + t_dimSize)
+        : data(tData)
+        , bytes(tBytes)
+        , dims(tDims, tDims + tDimSize)
     {
     }
 };
@@ -198,27 +198,27 @@ private:
     /*
     Information of input tensors
     */
-    std::vector<TensorWrapper> m_inputs;
+    std::vector<TensorWrapper> inputs_;
 
     /*
     Information of output tensors
     */
-    std::vector<TensorWrapper> m_outputs;
+    std::vector<TensorWrapper> outputs_;
 
     /*
     TFLite core
     */
-    std::unique_ptr<tflite::FlatBufferModel> m_model;
+    std::unique_ptr<tflite::FlatBufferModel> model_;
 
     /*
     TFLite core
     */
-    std::unique_ptr<tflite::Interpreter> m_interpreter;
+    std::unique_ptr<tflite::Interpreter> interpreter_;
 
     /*
     Tracking inputs loaded
     */
-    std::vector<bool> m_inputLoads;
+    std::vector<bool> inputLoads_;
 };
 
 }; // namespace my

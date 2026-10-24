@@ -9,10 +9,7 @@
 #include "opencv2/objdetect/face.hpp"
 
 #include <ATen/core/TensorBody.h>
-#include <ATen/core/ivalue.h>
-#include <ATen/core/ivalue_inl.h>
 #include <algorithm>
-#include <c10/util/ArrayRef.h>
 #include <c10/util/Exception.h>
 #include <cmath>
 #include <cstddef>
@@ -20,7 +17,6 @@
 #include <iostream>
 #include <map>
 #include <opencv2/core/cvstd_wrapper.hpp>
-#include <opencv2/core/mat.inl.hpp>
 #include <stdexcept>
 #include <string>
 #include <torch/csrc/autograd/generated/variable_factories.h>
@@ -145,7 +141,7 @@ auto EmotionDetector::processFace(
     at::Tensor const output = net_.forward(inputs).toTensor();
     std::vector<float> scores(output.data_ptr<float>(), output.data_ptr<float>() + output.numel());
 
-    float const maxLogit = *std::max_element(scores.begin(), scores.end());
+    float const maxLogit = *std::ranges::max_element(scores);
     for (auto& s : scores)
     {
         s = std::exp(s - maxLogit);

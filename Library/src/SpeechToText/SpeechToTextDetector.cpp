@@ -108,12 +108,12 @@ void SpeechToTextDetector::setText(
     std::string text
 )
 {
-    std::lock_guard lock(textMutex_);
+    std::scoped_lock const lock(textMutex_);
     currentText_ = std::move(text);
 }
 
 auto SpeechToTextDetector::getText() const -> std::string
 {
-    std::lock_guard lock(textMutex_);
+    std::scoped_lock const lock(textMutex_);
     return currentText_;
 }

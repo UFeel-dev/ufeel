@@ -33,15 +33,15 @@ my::IrisLandmark::IrisLandmark(
     const std::string& modelPath
 )
     : FaceLandmark(modelPath)
-    , m_leftIrisLandmarker(modelPath + "/iris_landmark.tflite")
-    , m_rightIrisLandmarker(modelPath + "/iris_landmark.tflite")
+    , leftIrisLandmarker_(modelPath + "/iris_landmark.tflite")
+    , rightIrisLandmarker_(modelPath + "/iris_landmark.tflite")
 {
 }
 
 void my::IrisLandmark::runInference()
 {
-    m_leftEyeRoi = {};
-    m_rightEyeRoi = {};
+    leftEyeRoi_ = {};
+    rightEyeRoi_ = {};
 
     FaceLandmark::runInference();
 
@@ -53,7 +53,7 @@ void my::IrisLandmark::runInference()
     std::exception_ptr leftException;
     std::exception_ptr rightException;
 
-    std::thread leftThread([this, &leftException]() {
+    std::thread leftThread([this, &leftException]() -> void {
         try
         {
             runEyeInference(true);
@@ -77,8 +77,8 @@ void my::IrisLandmark::runInference()
 
     if (leftException || rightException)
     {
-        m_leftEyeRoi = {};
-        m_rightEyeRoi = {};
+        leftEyeRoi_ = {};
+        rightEyeRoi_ = {};
 
         if (rightException)
         {
@@ -99,8 +99,8 @@ auto my::IrisLandmark::getEyeLandmarkAt(
         return {};
     }
 
-    auto const* model = isLeftEye ? &m_leftIrisLandmarker : &m_rightIrisLandmarker;
-    auto const eyeRoi = isLeftEye ? m_leftEyeRoi : m_rightEyeRoi;
+    auto const* model = isLeftEye ? &leftIrisLandmarker_ : &rightIrisLandmarker_;
+    auto const eyeRoi = isLeftEye ? leftEyeRoi_ : rightEyeRoi_;
 
     if (eyeRoi.empty())
     {
@@ -148,7 +148,7 @@ auto my::IrisLandmark::getAllEyeLandmarks(
     bool isLeftEye, bool isIris
 ) const -> std::vector<cv::Point>
 {
-    auto const eyeRoi = isLeftEye ? m_leftEyeRoi : m_rightEyeRoi;
+    auto const eyeRoi = isLeftEye ? leftEyeRoi_ : rightEyeRoi_;
     if (eyeRoi.empty())
     {
         return {};
@@ -170,7 +170,7 @@ auto my::IrisLandmark::loadOutput(
     int index, bool isLeftEye
 ) const -> std::vector<float>
 {
-    auto const* model = isLeftEye ? &m_leftIrisLandmarker : &m_rightIrisLandmarker;
+    auto const* model = isLeftEye ? &leftIrisLandmarker_ : &rightIrisLandmarker_;
     return model->loadOutput(index);
 }
 
@@ -178,7 +178,7 @@ auto my::IrisLandmark::getEyeRoi(
     bool isLeftEye
 ) const -> cv::Rect
 {
-    return isLeftEye ? m_leftEyeRoi : m_rightEyeRoi;
+    return isLeftEye ? leftEyeRoi_ : rightEyeRoi_;
 }
 
 auto my::IrisLandmark::calculateEyeRoi(
@@ -207,8 +207,8 @@ void my::IrisLandmark::runEyeInference(
     int const firstLandmarkIndex = isLeftEye ? 446 : 244;
     int const secondLandmarkIndex = isLeftEye ? 464 : 226;
 
-    auto* eyeRoi = isLeftEye ? &m_leftEyeRoi : &m_rightEyeRoi;
-    auto* model = isLeftEye ? &m_leftIrisLandmarker : &m_rightIrisLandmarker;
+    auto* eyeRoi = isLeftEye ? &leftEyeRoi_ : &rightEyeRoi_;
+    auto* model = isLeftEye ? &leftIrisLandmarker_ : &rightIrisLandmarker_;
 
     auto const firstPoint = FaceLandmark::getFaceLandmarkAt(firstLandmarkIndex);
     auto const secondPoint = FaceLandmark::getFaceLandmarkAt(secondLandmarkIndex);

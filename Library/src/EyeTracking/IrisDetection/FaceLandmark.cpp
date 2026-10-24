@@ -34,7 +34,7 @@ my::FaceLandmark::FaceLandmark(
     const std::string& modelPath
 )
     : FaceDetection(modelPath)
-    , m_landmarkModel(modelPath + "/face_landmark.tflite")
+    , landmarkModel_(modelPath + "/face_landmark.tflite")
 {
 }
 
@@ -54,8 +54,8 @@ void my::FaceLandmark::runInference()
         throw std::runtime_error("Unable to crop the detected face.");
     }
 
-    m_landmarkModel.loadImageToInput(face);
-    m_landmarkModel.runInference();
+    landmarkModel_.loadImageToInput(face);
+    landmarkModel_.runInference();
 }
 
 auto my::FaceLandmark::getFaceLandmarkAt(
@@ -68,14 +68,14 @@ auto my::FaceLandmark::getFaceLandmarkAt(
     }
 
     auto const requiredSize = static_cast<std::size_t>(index + 1) * 3 * sizeof(float);
-    if (m_landmarkModel.getOutputSize() < requiredSize)
+    if (landmarkModel_.getOutputSize() < requiredSize)
     {
         return {};
     }
 
     auto const roi = FaceDetection::getFaceRoi();
-    auto const inputShape = m_landmarkModel.getInputShape();
-    auto const* output = m_landmarkModel.getOutputData();
+    auto const inputShape = landmarkModel_.getInputShape();
+    auto const* output = landmarkModel_.getOutputData();
 
     if (!hasValidInputShape(inputShape) || output == nullptr)
     {
@@ -106,14 +106,14 @@ auto my::FaceLandmark::getFaceLandmark3DAt(
     }
 
     auto const requiredSize = static_cast<std::size_t>(index + 1) * 3 * sizeof(float);
-    if (m_landmarkModel.getOutputSize() < requiredSize)
+    if (landmarkModel_.getOutputSize() < requiredSize)
     {
         return {};
     }
 
     auto const roi = FaceDetection::getFaceRoi();
-    auto const inputShape = m_landmarkModel.getInputShape();
-    auto const* output = m_landmarkModel.getOutputData();
+    auto const inputShape = landmarkModel_.getInputShape();
+    auto const* output = landmarkModel_.getOutputData();
 
     if (!hasValidInputShape(inputShape) || output == nullptr)
     {
@@ -161,5 +161,5 @@ auto my::FaceLandmark::loadOutput(
     int /*index*/
 ) const -> std::vector<float>
 {
-    return m_landmarkModel.loadOutput();
+    return landmarkModel_.loadOutput();
 }

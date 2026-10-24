@@ -19,10 +19,10 @@ struct BinaryHeadImpl : torch::nn::Module
     torch::nn::Linear linear{nullptr};
 
     explicit BinaryHeadImpl(
-        int64_t in_features
+        int64_t inFeatures
     )
     {
-        linear = register_module("linear", torch::nn::Linear(in_features, 1));
+        linear = register_module("linear", torch::nn::Linear(inFeatures, 1));
     }
 
     auto forward(
@@ -49,35 +49,35 @@ struct EmotionModelImpl : torch::nn::Module
     BinaryHead surprised{nullptr};
 
     explicit EmotionModelImpl(
-        const std::string& backbone_name
+        const std::string& backboneName
     )
     {
-        int64_t in_features = 0;
+        int64_t inFeatures = 0;
 
-        if (backbone_name == "resnet34")
+        if (backboneName == "resnet34")
         {
             backbone = resnet34();
 
-            in_features = 512;
+            inFeatures = 512;
         }
         else
         {
-            throw std::runtime_error("Unsupported backbone: " + backbone_name);
+            throw std::runtime_error("Unsupported backbone: " + backboneName);
         }
 
         register_module("backbone", backbone);
 
-        angry = register_module("angry", BinaryHead(in_features));
-        contemptuous = register_module("contemptuous", BinaryHead(in_features));
-        disgusted = register_module("disgusted", BinaryHead(in_features));
-        fearful = register_module("fearful", BinaryHead(in_features));
-        happy = register_module("happy", BinaryHead(in_features));
-        neutral = register_module("neutral", BinaryHead(in_features));
-        sad = register_module("sad", BinaryHead(in_features));
-        surprised = register_module("surprised", BinaryHead(in_features));
+        angry = register_module("angry", BinaryHead(inFeatures));
+        contemptuous = register_module("contemptuous", BinaryHead(inFeatures));
+        disgusted = register_module("disgusted", BinaryHead(inFeatures));
+        fearful = register_module("fearful", BinaryHead(inFeatures));
+        happy = register_module("happy", BinaryHead(inFeatures));
+        neutral = register_module("neutral", BinaryHead(inFeatures));
+        sad = register_module("sad", BinaryHead(inFeatures));
+        surprised = register_module("surprised", BinaryHead(inFeatures));
     }
 
-    auto extract_features(
+    auto extractFeatures(
         torch::Tensor x
     ) -> torch::Tensor
     {
@@ -102,7 +102,7 @@ struct EmotionModelImpl : torch::nn::Module
         torch::Tensor x
     ) -> std::unordered_map<std::string, torch::Tensor>
     {
-        auto features = extract_features(std::move(x));
+        auto features = extractFeatures(std::move(x));
 
         return {
             {"angry", angry->forward(features).squeeze(1)},

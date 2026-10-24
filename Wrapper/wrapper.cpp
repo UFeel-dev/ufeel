@@ -1,6 +1,5 @@
 #include "DataProcessor.hpp"
 #include "EyeTracking/EyeTrackingDetector.hpp"
-#include "HeartRate/UFeelHeartRateStatus.hpp"
 #include "opencv2/core/mat.hpp"
 #include "ufeel.h"
 
@@ -118,7 +117,7 @@ void ufeel_destroy(
     UFeelProcessor* processor
 )
 {
-    guardedVoid("ufeel_destroy", [processor]() { delete processor; });
+    guardedVoid("ufeel_destroy", [processor]() -> void { delete processor; });
 }
 
 auto ufeel_update(
@@ -130,7 +129,7 @@ auto ufeel_update(
         return 0;
     }
 
-    return guarded("ufeel_update", int32_t{0}, [processor]() {
+    return guarded("ufeel_update", int32_t{0}, [processor]() -> int32_t {
         return static_cast<int32_t>(processor->processor.update());
     });
 }
@@ -144,7 +143,7 @@ auto ufeel_get_frame(
         return nullptr;
     }
 
-    return guarded("ufeel_get_frame", static_cast<UFeelFrame*>(nullptr), [processor]() {
+    return guarded("ufeel_get_frame", static_cast<UFeelFrame*>(nullptr), [processor]() -> UFeelFrame* {
         const cv::Mat frame = processor->processor.getFrame();
         if (frame.empty())
         {
@@ -195,7 +194,7 @@ void ufeel_free_frame(
     UFeelFrame* frame
 )
 {
-    guardedVoid("ufeel_free_frame", [frame]() {
+    guardedVoid("ufeel_free_frame", [frame]() -> void {
         if (frame == nullptr)
         {
             return;
@@ -223,7 +222,7 @@ auto ufeel_get_emotions(
         return nullptr;
     }
 
-    return guarded("ufeel_get_emotions", static_cast<UFeelPair*>(nullptr), [processor, count]() {
+    return guarded("ufeel_get_emotions", static_cast<UFeelPair*>(nullptr), [processor, count]() -> UFeelPair* {
         const auto emotions = processor->processor.getEmotions();
 
         if (emotions.empty() ||
@@ -266,7 +265,7 @@ void ufeel_free_emotions(
     UFeelPair* emotions, int32_t count
 )
 {
-    guardedVoid("ufeel_free_emotions", [emotions, count]() {
+    guardedVoid("ufeel_free_emotions", [emotions, count]() -> void {
         if (emotions == nullptr)
         {
             return;
@@ -293,7 +292,7 @@ auto ufeel_begin_eye_tracking_calibration(
     return guarded(
         "ufeel_begin_eye_tracking_calibration",
         int32_t{UFEEL_STATUS_INTERNAL_ERROR},
-        [processor]() {
+        [processor]() -> UFeelStatus {
             processor->processor.beginEyeTrackingCalibration();
             return UFEEL_STATUS_OK;
         }
@@ -317,7 +316,7 @@ auto ufeel_set_eye_tracking_calibration_target(
     return guarded(
         "ufeel_set_eye_tracking_calibration_target",
         int32_t{UFEEL_STATUS_INTERNAL_ERROR},
-        [processor, screenX, screenY]() {
+        [processor, screenX, screenY]() -> UFeelStatus {
             return processor->processor.setEyeTrackingCalibrationTarget(screenX, screenY)
                        ? UFEEL_STATUS_OK
                        : UFEEL_STATUS_INVALID_STATE;
@@ -337,7 +336,7 @@ auto ufeel_finish_eye_tracking_calibration(
     return guarded(
         "ufeel_finish_eye_tracking_calibration",
         int32_t{UFEEL_STATUS_INTERNAL_ERROR},
-        [processor]() {
+        [processor]() -> UFeelStatus {
             return processor->processor.finishEyeTrackingCalibration()
                        ? UFEEL_STATUS_OK
                        : UFEEL_STATUS_EYE_TRACKING_CALIBRATION_FAILED;
@@ -357,7 +356,7 @@ auto ufeel_cancel_eye_tracking_calibration(
     return guarded(
         "ufeel_cancel_eye_tracking_calibration",
         int32_t{UFEEL_STATUS_INTERNAL_ERROR},
-        [processor]() {
+        [processor]() -> UFeelStatus {
             processor->processor.cancelEyeTrackingCalibration();
             return UFEEL_STATUS_OK;
         }
@@ -376,7 +375,7 @@ auto ufeel_get_gaze_result(
     *result = {};
 
     return guarded(
-        "ufeel_get_gaze_result", int32_t{UFEEL_STATUS_INTERNAL_ERROR}, [processor, result]() {
+        "ufeel_get_gaze_result", int32_t{UFEEL_STATUS_INTERNAL_ERROR}, [processor, result]() -> UFeelStatus {
             const auto gaze = processor->processor.getGaze();
 
             result->status = static_cast<int32_t>(gaze.status);
@@ -406,7 +405,7 @@ auto ufeel_get_eye_tracking_calibration_progress(
     return guarded(
         "ufeel_get_eye_tracking_calibration_progress",
         int32_t{UFEEL_STATUS_INTERNAL_ERROR},
-        [processor, progress]() {
+        [processor, progress]() -> UFeelStatus {
             const auto value = processor->processor.getEyeTrackingCalibrationProgress();
 
             progress->targetsWithEnoughSamples =
@@ -435,7 +434,7 @@ auto ufeel_get_eye_tracking_calibration_diagnostics(
     return guarded(
         "ufeel_get_eye_tracking_calibration_diagnostics",
         int32_t{UFEEL_STATUS_INTERNAL_ERROR},
-        [processor, diagnostics]() {
+        [processor, diagnostics]() -> UFeelStatus {
             const auto value = processor->processor.getEyeTrackingCalibrationDiagnostics();
 
             diagnostics->failureReason = static_cast<int32_t>(value.failureReason);
@@ -489,7 +488,7 @@ auto ufeel_save_eye_tracking_calibration_profile(
     return guarded(
         "ufeel_save_eye_tracking_calibration_profile",
         int32_t{UFEEL_STATUS_INTERNAL_ERROR},
-        [processor, utf8Path]() {
+        [processor, utf8Path]() -> UFeelStatus {
             return processor->processor.saveEyeTrackingCalibrationProfile(utf8Path)
                        ? UFEEL_STATUS_OK
                        : UFEEL_STATUS_EYE_TRACKING_PROFILE_FAILED;
@@ -509,7 +508,7 @@ auto ufeel_load_eye_tracking_calibration_profile(
     return guarded(
         "ufeel_load_eye_tracking_calibration_profile",
         int32_t{UFEEL_STATUS_INTERNAL_ERROR},
-        [processor, utf8Path]() {
+        [processor, utf8Path]() -> UFeelStatus {
             return processor->processor.loadEyeTrackingCalibrationProfile(utf8Path)
                        ? UFEEL_STATUS_OK
                        : UFEEL_STATUS_EYE_TRACKING_PROFILE_FAILED;
@@ -529,7 +528,7 @@ auto ufeel_set_speech_to_text_enabled(
     return guarded(
         "ufeel_set_speech_to_text_enabled",
         int32_t{UFEEL_STATUS_INTERNAL_ERROR},
-        [processor, enabled]() {
+        [processor, enabled]() -> UFeelStatus {
             processor->processor.toggleSpeechToText(enabled != 0);
             return UFEEL_STATUS_OK;
         }
@@ -545,7 +544,7 @@ auto ufeel_get_speech_to_text(
         return nullptr;
     }
 
-    return guarded("ufeel_get_speech_to_text", static_cast<char*>(nullptr), [processor]() {
+    return guarded("ufeel_get_speech_to_text", static_cast<char*>(nullptr), [processor]() -> char * {
         return duplicateUtf8(processor->processor.getSpeech());
     });
 }
@@ -554,7 +553,7 @@ void ufeel_free_string(
     char* value
 )
 {
-    guardedVoid("ufeel_free_string", [value]() { std::free(value); });
+    guardedVoid("ufeel_free_string", [value]() -> void { std::free(value); });
 }
 }
 
