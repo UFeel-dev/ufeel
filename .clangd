@@ -1,3 +1,14 @@
 Diagnostics:
   UnusedIncludes: Strict
   MissingIncludes: Strict
+
+CompileFlags:
+  CompilationDatabase: "build"
+  Add: 
+    - "-ILibrary/include"
+    - "-I3rdparty/opencv/include/opencv4"
+    - "-I3rdparty/libtorch/include"
+    - "-I3rdparty/tensorflowlite/include"
+    - "-I3rdparty/vosk/include"
+    - "-I3rdparty/cpr/include"
+    - "-I3rdparty/json/include"

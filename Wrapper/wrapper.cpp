@@ -1,4 +1,5 @@
 #include "DataProcessor.hpp"
+#include "HeartRate/UFeelHeartRateStatus.hpp"
 #include "opencv2/core/mat.hpp"
 #include "ufeel.h"
 
@@ -243,4 +244,23 @@ __attribute__((visibility("default"))) void ufeel_free_speech(
 {
     free(speech);
 }
+}
+
+__attribute__((visibility("default"))) auto ufeel_get_heartrate(
+    void* processor, UFeelHeartRateResult* result
+) -> bool
+{
+    if (processor == nullptr || result == nullptr)
+    {
+        return false;
+    } // TODO(augustin-grosnon): update this method to use same logic as eye tracking
+
+    *result = {};
+
+    const auto heartrate = static_cast<DataProcessor*>(processor)->getHeartRate();
+
+    result->bpm = heartrate.bpm;
+    result->status = static_cast<int32_t>(heartrate.status);
+
+    return true;
 }

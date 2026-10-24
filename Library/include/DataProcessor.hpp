@@ -1,6 +1,7 @@
 #ifndef DATAPROCESSOR_HPP
 #define DATAPROCESSOR_HPP
 
+#include "HeartRate/HeartRateDetector.hpp"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/videoio.hpp"
 
@@ -11,6 +12,7 @@
 class EmotionDetector;
 class EyeTrackingDetector;
 class SpeechToTextDetector;
+class HeartRateSensorDetector;
 
 class DataProcessor
 {
@@ -36,11 +38,11 @@ class DataProcessor
 
         auto getSpeech() const -> const std::string&;
 
+        [[nodiscard]] auto getHeartRate() const -> HeartRateResult;
+
         void calibrateEyeTracking();
 
         void toggleSpeechToText(bool state);
-
-        // auto processHeartRateSensor() -> int;
 
     protected:
 
@@ -50,6 +52,7 @@ class DataProcessor
         std::map<std::string, float> emotions_;
         std::map<std::string, bool> directions_;
         std::string speech_;
+        HeartRateResult heartrate_{};
 
         std::unique_ptr<EmotionDetector> emotionDetector_;
         std::unique_ptr<EyeTrackingDetector> eyeTrackingDetector_;

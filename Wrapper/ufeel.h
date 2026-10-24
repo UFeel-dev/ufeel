@@ -29,6 +29,20 @@ typedef struct UFeelBoolPair
         uint8_t value;
 } UFeelBoolPair;
 
+typedef enum
+{
+    UFEEL_HEARTRATE_STATUS_JSON_PARSE_ERROR = 0,
+    UFEEL_HEARTRATE_STATUS_JSON_PARSE_OUT_OF_RANGE = 1,
+    UFEEL_HEARTRATE_STATUS_REQUEST_FAILED = 2,
+    UFEEL_HEARTRATE_STATUS_NULL_PROCESSOR = 3
+} UFeelHeartRateStatus;
+
+typedef struct
+{
+        int32_t status;
+        uint32_t bpm;
+} UFeelHeartRateResult;
+
 void* ufeel_create(const char* speech_model_path);
 void ufeel_destroy(void* processor);
 
@@ -51,6 +65,8 @@ void ufeel_toggle_speech(void* processor, uint8_t state);
 
 char* ufeel_get_speech(void* processor);
 void ufeel_free_speech(char* speech);
+
+bool ufeel_get_heartrate(void* processor, UFeelHeartRateResult* result);
 
 #ifdef __cplusplus
 }
