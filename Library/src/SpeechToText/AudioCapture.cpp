@@ -246,7 +246,7 @@ auto AudioCapture::push(
 
         const int32_t right = samples[index + 1];
 
-        pendingBuffer_[pendingSize_] = static_cast<int16_t>((left + right) / 2);
+        pendingBuffer_.at(pendingSize_) = static_cast<int16_t>((left + right) / 2);
 
         ++pendingSize_;
 
@@ -265,7 +265,7 @@ auto AudioCapture::push(
             continue;
         }
 
-        buffers_[writeIndex % bufferCount] = pendingBuffer_;
+        buffers_.at(writeIndex % bufferCount) = pendingBuffer_;
 
         writeIndex_.store(writeIndex + 1, std::memory_order_release);
 
@@ -293,7 +293,7 @@ auto AudioCapture::pop(
 
         if (readIndex != writeIndex)
         {
-            const AudioBuffer& source = buffers_[readIndex % bufferCount];
+            const AudioBuffer& source = buffers_.at(readIndex % bufferCount);
 
             buffer.assign(source.begin(), source.end());
 

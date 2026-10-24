@@ -112,6 +112,6 @@ struct EmotionModelImpl : torch::nn::Module
             {"happy", happy->forward(features).squeeze(1)},
             {"neutral", neutral->forward(features).squeeze(1)},
             {"sad", sad->forward(features).squeeze(1)},
-            {"surprised", surprised->forward(features).squeeze(1)}};
+            {"surprised", surprised->forward(features).squeeze(1)},};
     }
 };
