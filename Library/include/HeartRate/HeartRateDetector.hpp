@@ -7,29 +7,29 @@
 
 struct HeartRateResult
 {
-        std::uint32_t bpm;
-        HeartRateStatus status;
+    std::uint32_t bpm;
+    HeartRateStatus status;
 };
 
 class HeartRateSensorDetector
 {
-    public:
+public:
 
-        HeartRateSensorDetector() = default;
+    HeartRateSensorDetector() = default;
 
-        ~HeartRateSensorDetector() = default;
+    ~HeartRateSensorDetector() = default;
 
-        HeartRateSensorDetector(const HeartRateSensorDetector&) = delete;
-        auto operator=(const HeartRateSensorDetector&) -> HeartRateSensorDetector& = delete;
-        HeartRateSensorDetector(HeartRateSensorDetector&&) = delete;
-        auto operator=(HeartRateSensorDetector&&) -> HeartRateSensorDetector& = delete;
+    HeartRateSensorDetector(const HeartRateSensorDetector&) = delete;
+    auto operator=(const HeartRateSensorDetector&) -> HeartRateSensorDetector& = delete;
+    HeartRateSensorDetector(HeartRateSensorDetector&&) = delete;
+    auto operator=(HeartRateSensorDetector&&) -> HeartRateSensorDetector& = delete;
 
-        [[nodiscard]]
-        static auto process() -> HeartRateResult;
+    [[nodiscard]]
+    static auto process() -> HeartRateResult;
 
-    private:
+private:
 
-        std::uint32_t bpm_{};
+    std::uint32_t bpm_{};
 };
 
 #endif // HEARTRATE_HEARTRATEDETECTOR_HPP

@@ -67,7 +67,6 @@ protected:
     std::unique_ptr<EyeTrackingDetector> eyeTrackingDetector_;
     std::unique_ptr<SpeechToTextDetector> speechToTextDetector_;
     // std::unique_ptr<HeartRateSensorDetector> heartRateSensorDetector_;
-
 };
 
 #endif // DATAPROCESSOR_HPP
