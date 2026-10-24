@@ -1,6 +1,7 @@
 #include "DataProcessor.hpp"
 #include "opencv2/core/mat.hpp"
 #include "ufeel.h"
+#include "HeartRate/UFeelHeartRateStatus.hpp"
 
 #include <cstdint>
 #include <cstdlib>
@@ -251,7 +252,7 @@ __attribute__((visibility("default"))) auto ufeel_get_heartrate(
 {
     if (processor == nullptr)
     {
-        return -1;
+        return UFeelHeartRateStatus::UFEEL_HEARTRATE_STATUS_NULL_PROCESSOR;
     }
 
     return static_cast<DataProcessor*>(processor)->getHeartRate();
