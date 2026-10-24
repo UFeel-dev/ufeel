@@ -13,6 +13,7 @@
 
 class EmotionDetector;
 class SpeechToTextDetector;
+class HeartRateSensorDetector;
 
 class DataProcessor
 {

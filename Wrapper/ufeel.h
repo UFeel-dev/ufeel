@@ -199,6 +199,8 @@ UFEEL_API void ufeel_free_string(char* value);
 
 bool ufeel_get_heartrate(void* processor, UFeelHeartRateResult* result);
 
+bool ufeel_get_heartrate(void* processor, UFeelHeartRateResult* result);
+
 #ifdef __cplusplus
 }
 #endif
