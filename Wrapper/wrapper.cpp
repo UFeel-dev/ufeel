@@ -2,6 +2,7 @@
 #include "EyeTracking/EyeTrackingDetector.hpp"
 #include "opencv2/core/mat.hpp"
 #include "ufeel.h"
+#include "HeartRate/UFeelHeartRateStatus.hpp"
 
 #include <cmath>
 #include <cstdint>
