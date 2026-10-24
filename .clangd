@@ -6,7 +6,7 @@ Diagnostics:
 
 CompileFlags:
   CompilationDatabase: "build"
-  Add: 
+  Add:
     - "-ILibrary/include"
     - "-I3rdparty/opencv/include/opencv4"
     - "-I3rdparty/libtorch/include"
