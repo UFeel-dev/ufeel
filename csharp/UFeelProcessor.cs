@@ -278,7 +278,7 @@ public sealed class UFeelProcessor : IDisposable
         }
         finally
         {
-            UFeelNative.ufeel_free_string(pointer);
+            UFeelNative.ufeel_free_speech(speech);
         }
     }
 
@@ -569,19 +569,9 @@ public sealed class UFeelProcessor : IDisposable
     public int GetHeartRate()
     {
         IntPtr bpm =
-            UFeelNative.ufeel_get_heartrate(Handle);
+            UFeelNative.ufeel_get_heartrate(processor);
 
-        if (bpm == IntPtr.Zero)
-            return -1;
-
-        try
-        {
-            return (int)bpm;
-        }
-        catch
-        {
-            return -1;
-        }
+        return (int)bpm;
     }
 
     public void Dispose()
