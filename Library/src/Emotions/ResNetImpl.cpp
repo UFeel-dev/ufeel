@@ -71,10 +71,10 @@ ResNetImpl::ResNetImpl(
     );
     bn1 = register_module("bn1", torch::nn::BatchNorm2d(64));
 
-    layer1 = register_module("layer1", makeLayer(64, layers[0], 1));
-    layer2 = register_module("layer2", makeLayer(128, layers[1], 2));
-    layer3 = register_module("layer3", makeLayer(256, layers[2], 2));
-    layer4 = register_module("layer4", makeLayer(512, layers[3], 2));
+    layer1 = register_module("layer1", makeLayer(64, layers.at(0), 1));
+    layer2 = register_module("layer2", makeLayer(128, layers.at(1), 2));
+    layer3 = register_module("layer3", makeLayer(256, layers.at(2), 2));
+    layer4 = register_module("layer4", makeLayer(512, layers.at(3), 2));
 
     fc = register_module("fc", torch::nn::Linear(512, numClasses));
 }

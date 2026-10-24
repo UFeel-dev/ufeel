@@ -43,14 +43,14 @@ auto my::DetectionPostProcess::decodeBox(
     const std::vector<float>& rawBoxes, int index
 ) const -> cv::Rect2f
 {
-    auto anchor = anchors_[index];
+    auto anchor = anchors_.at(index);
     auto center = (anchor.tl() + anchor.br()) * 0.5;
 
     auto boxOffset = index * NUM_COORD;
-    float cx = rawBoxes[boxOffset];
-    float cy = rawBoxes[boxOffset + 1];
-    float w = rawBoxes[boxOffset + 2];
-    float h = rawBoxes[boxOffset + 3];
+    float cx = rawBoxes.at(boxOffset);
+    float cy = rawBoxes.at(boxOffset + 1);
+    float w = rawBoxes.at(boxOffset + 2);
+    float h = rawBoxes.at(boxOffset + 3);
 
     cx = (cx / DETECTION_SIZE * anchor.width) + center.x;
     cy = (cy / DETECTION_SIZE * anchor.height) + center.y;
@@ -67,10 +67,10 @@ auto my::DetectionPostProcess::getHighestScoreDetection(
     my::Detection detection;
     for (int i = 0; i < NUM_BOXES; i++)
     {
-        if (scores[i] > std::max(MIN_THRESHOLD, detection.score))
+        if (scores.at(i) > std::max(MIN_THRESHOLD, detection.score))
         {
             auto data = decodeBox(rawBoxes, i);
-            detection = my::Detection(scores[i], CLASS_ID, data);
+            detection = my::Detection(scores.at(i), CLASS_ID, data);
         }
     }
     return detection;

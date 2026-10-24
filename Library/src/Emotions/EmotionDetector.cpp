@@ -109,7 +109,7 @@ auto EmotionDetector::preProcess(
     cv::split(gray3, ch);
     for (size_t i = 0; i < 3; i++)
     {
-        ch[i] = (ch[i] - mean[i]) / std[i];
+        ch.at(i) = (ch.at(i) - mean[i]) / std[i];
     }
     cv::merge(ch, gray3);
     return gray3;
@@ -152,7 +152,7 @@ auto EmotionDetector::processFace(
         s /= sum;
     }
 
-    scores[4] *= neutralFactor;
+    scores.at(4) *= neutralFactor;
     for (auto s : scores)
     {
         total += s;
@@ -209,7 +209,7 @@ auto EmotionDetector::process(
         std::map<std::string, float> labeled;
         for (size_t j = 0; j < classLabels_.size(); j++)
         {
-            labeled[classLabels_[j]] = scores[j];
+            labeled[classLabels_.at(j)] = scores.at(j);
         }
         return labeled;
     }

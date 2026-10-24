@@ -25,7 +25,7 @@ auto hasValidInputShape(
     const std::vector<int>& shape
 ) -> bool
 {
-    return shape.size() >= 3 && shape[1] > 0 && shape[2] > 0;
+    return shape.size() >= 3 && shape.at(1) > 0 && shape.at(2) > 0;
 }
 
 } // namespace
@@ -90,8 +90,8 @@ auto my::FaceLandmark::getFaceLandmarkAt(
         return {};
     }
 
-    int const imageX = static_cast<int>(x / static_cast<float>(inputShape[2]) * roi.width) + roi.x;
-    int const imageY = static_cast<int>(y / static_cast<float>(inputShape[1]) * roi.height) + roi.y;
+    int const imageX = static_cast<int>(x / static_cast<float>(inputShape.at(2)) * roi.width) + roi.x;
+    int const imageY = static_cast<int>(y / static_cast<float>(inputShape.at(1)) * roi.height) + roi.y;
 
     return {imageX, imageY};
 }
@@ -129,8 +129,8 @@ auto my::FaceLandmark::getFaceLandmark3DAt(
         return {};
     }
 
-    auto const inputWidth = static_cast<float>(inputShape[2]);
-    auto const inputHeight = static_cast<float>(inputShape[1]);
+    auto const inputWidth = static_cast<float>(inputShape.at(2));
+    auto const inputHeight = static_cast<float>(inputShape.at(1));
     float const depthScale = static_cast<float>(roi.width) / inputWidth;
 
     return {

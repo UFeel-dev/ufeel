@@ -44,7 +44,7 @@ auto my::ModelLoader::getInputShape(
 {
     if (isIndexValid(index, 'i'))
     {
-        return inputs_[static_cast<std::size_t>(index)].dims;
+        return inputs_.at(static_cast<std::size_t>(index)).dims;
     }
 
     return {};
@@ -56,7 +56,7 @@ auto my::ModelLoader::getInputData(
 {
     if (isIndexValid(index, 'i'))
     {
-        return inputs_[static_cast<std::size_t>(index)].data;
+        return inputs_.at(static_cast<std::size_t>(index)).data;
     }
 
     return nullptr;
@@ -68,7 +68,7 @@ auto my::ModelLoader::getInputSize(
 {
     if (isIndexValid(index, 'i'))
     {
-        return inputs_[static_cast<std::size_t>(index)].bytes;
+        return inputs_.at(static_cast<std::size_t>(index)).bytes;
     }
 
     return 0;
@@ -85,7 +85,7 @@ auto my::ModelLoader::getOutputShape(
 {
     if (isIndexValid(index, 'o'))
     {
-        return outputs_[static_cast<std::size_t>(index)].dims;
+        return outputs_.at(static_cast<std::size_t>(index)).dims;
     }
 
     return {};
@@ -97,7 +97,7 @@ auto my::ModelLoader::getOutputData(
 {
     if (isIndexValid(index, 'o'))
     {
-        return outputs_[static_cast<std::size_t>(index)].data;
+        return outputs_.at(static_cast<std::size_t>(index)).data;
     }
 
     return nullptr;
@@ -109,7 +109,7 @@ auto my::ModelLoader::getOutputSize(
 {
     if (isIndexValid(index, 'o'))
     {
-        return outputs_[static_cast<std::size_t>(index)].bytes;
+        return outputs_.at(static_cast<std::size_t>(index)).bytes;
     }
 
     return 0;
@@ -150,8 +150,8 @@ void my::ModelLoader::loadBytesToInput(
     }
 
     auto const inputIndex = static_cast<std::size_t>(index);
-    auto const inputSize = inputs_[inputIndex].bytes;
-    auto* inputData = inputs_[inputIndex].data;
+    auto const inputSize = inputs_.at(inputIndex).bytes;
+    auto* inputData = inputs_.at(inputIndex).data;
 
     if (data == nullptr || inputData == nullptr || inputSize == 0)
     {
@@ -159,7 +159,7 @@ void my::ModelLoader::loadBytesToInput(
     }
 
     std::memcpy(inputData, data, inputSize);
-    inputLoads_[inputIndex] = true;
+    inputLoads_.at(inputIndex) = true;
 }
 
 void my::ModelLoader::runInference()
@@ -182,7 +182,7 @@ auto my::ModelLoader::loadOutput(
     }
 
     auto const outputIndex = static_cast<std::size_t>(index);
-    auto const& output = outputs_[outputIndex];
+    auto const& output = outputs_.at(outputIndex);
 
     if (output.data == nullptr || output.bytes % sizeof(float) != 0)
     {
@@ -316,7 +316,7 @@ void my::ModelLoader::inputChecker()
         std::string message = "Model inputs have not all been loaded:";
         for (std::size_t index = 0; index < inputLoads_.size(); ++index)
         {
-            if (!inputLoads_[index])
+            if (!inputLoads_.at(index))
             {
                 message += " " + std::to_string(index);
             }
@@ -325,7 +325,7 @@ void my::ModelLoader::inputChecker()
         throw std::runtime_error(message);
     }
 
-    std::fill(inputLoads_.begin(), inputLoads_.end(), false);
+    std::ranges::fill(inputLoads_, false);
 }
 
 auto my::ModelLoader::preprocessImage(
@@ -338,15 +338,15 @@ auto my::ModelLoader::preprocessImage(
     }
 
     auto const inputShape = getInputShape(index);
-    if (inputShape.size() < 3 || inputShape[1] <= 0 || inputShape[2] <= 0 ||
-        (inputShape.size() >= 4 && inputShape[3] != 3))
+    if (inputShape.size() < 3 || inputShape.at(1) <= 0 || inputShape.at(2) <= 0 ||
+        (inputShape.size() >= 4 && inputShape.at(3) != 3))
     {
         throw std::runtime_error("Unsupported model image input shape.");
     }
 
     auto output = convertToRGB(input);
 
-    cv::resize(output, output, cv::Size(inputShape[2], inputShape[1]));
+    cv::resize(output, output, cv::Size(inputShape.at(2), inputShape.at(1)));
 
     output.convertTo(output, CV_32FC3, 1.0 / INPUT_NORM_STD, -INPUT_NORM_MEAN / INPUT_NORM_STD);
 
