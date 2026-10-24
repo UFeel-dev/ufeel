@@ -278,7 +278,7 @@ public sealed class UFeelProcessor : IDisposable
         }
         finally
         {
-            UFeelNative.ufeel_free_string(pointer);
+            UFeelNative.ufeel_free_speech(speech);
         }
     }
 
