@@ -1,12 +1,14 @@
 #ifndef HEARTRATE_UFEELHEARTRATESTATUS_HPP
 #define HEARTRATE_UFEELHEARTRATESTATUS_HPP
 
-using UFeelHeartRateStatus = enum
+#include <cstdint>
+
+enum class HeartRateStatus : std::uint8_t
 {
-    UFEEL_HEARTRATE_STATUS_JSON_PARSE_ERROR = 0,
-    UFEEL_HEARTRATE_STATUS_JSON_PARSE_OUT_OF_RANGE = 1,
-    UFEEL_HEARTRATE_STATUS_REQUEST_FAILED = 2,
-    UFEEL_HEARTRATE_STATUS_NULL_PROCESSOR = 3
+    JsonParseError = 0,
+    JsonParseOutOfRange = 1,
+    RequestFailed = 2,
+    Valid = 3,
 };
 
 #endif // HEARTRATE_UFEELHEARTRATESTATUS_HPP

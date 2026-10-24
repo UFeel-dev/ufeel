@@ -1,5 +1,13 @@
 using System.Runtime.InteropServices;
 
+public enum HeartRateStatus
+{
+    JsonParseError = 0,
+    JsonParseOutOfRange = 1,
+    RequestFailed = 2,
+    Valid = 3,
+}
+
 public static class UFeelNative
 {
     private const string LIB = "ufeel_wrapper";
@@ -25,6 +33,13 @@ public static class UFeelNative
     {
         public IntPtr key;
         public byte value;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct NativeHeartRateResult
+    {
+        public int status;
+        public uint bpm;
     }
 
     [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
@@ -85,6 +100,7 @@ public static class UFeelNative
         IntPtr speech);
 
     [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
-    public static extern IntPtr ufeel_get_heartrate(
-        IntPtr processor);
+    public static extern int ufeel_get_heartrate(
+        IntPtr processor,
+        out NativeHeartRateResult result);
 }

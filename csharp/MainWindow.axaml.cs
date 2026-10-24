@@ -62,7 +62,7 @@ public partial class MainWindow : Window
                 Dictionary<string, float> emotions;
                 Dictionary<string, bool> directions;
                 string speech;
-                int heartrate;
+                uint heartrate;
 
                 await processorGate.WaitAsync(token);
 
@@ -75,7 +75,7 @@ public partial class MainWindow : Window
                         emotions = new();
                         directions = new();
                         speech = string.Empty;
-                        heartrate = -1;
+                        heartrate = 0;
                     }
                     else
                     {

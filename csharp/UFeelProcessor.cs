@@ -197,12 +197,12 @@ public sealed class UFeelProcessor : IDisposable
         }
     }
 
-    public int GetHeartRate()
+    public uint GetHeartRate()
     {
-        IntPtr bpm =
-            UFeelNative.ufeel_get_heartrate(processor);
+        int status =
+            UFeelNative.ufeel_get_heartrate(processor, out UFeelNative.NativeHeartRateResult result);
 
-        return (int)bpm;
+        return result.bpm;
     }
 
     public void Dispose()

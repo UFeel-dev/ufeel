@@ -1,12 +1,18 @@
 #include "HeartRate/HeartRateDetector.hpp"
-#include "HeartRate/UFeelHeartRateStatus.hpp"
 
-#include "cpr/cpr.h"
+#include "HeartRate/UFeelHeartRateStatus.hpp"
+#include "cpr/api.h"
+#include "cpr/cprtypes.h"
+#include "cpr/response.h"
 #include "nlohmann/json.hpp"
 
-auto HeartRateSensorDetector::process() -> int
+#include <cstdint>
+
+auto HeartRateSensorDetector::process() -> HeartRateResult
 {
     cpr::Response r = cpr::Get(cpr::Url{"http://localhost:8000"});
+
+    HeartRateResult result = {.bpm = 0, .status = HeartRateStatus::Valid};
 
     if (r.status_code == 200)
     {
@@ -14,17 +20,21 @@ auto HeartRateSensorDetector::process() -> int
         {
             nlohmann::json j = nlohmann::json::parse(r.text);
 
-            return j.at("bpm").get<int>();
+            result.bpm = j.at("bpm").get<std::uint32_t>();
         }
         catch (const nlohmann::json::parse_error& e)
         {
-            return UFeelHeartRateStatus::UFEEL_HEARTRATE_STATUS_JSON_PARSE_ERROR;
+            result.status = HeartRateStatus::JsonParseError;
         }
         catch (const nlohmann::json::out_of_range& e)
         {
-            return UFeelHeartRateStatus::UFEEL_HEARTRATE_STATUS_JSON_PARSE_OUT_OF_RANGE;
+            result.status = HeartRateStatus::JsonParseOutOfRange;
         }
     }
+    else
+    {
+        result.status = HeartRateStatus::RequestFailed;
+    }
 
-    return UFeelHeartRateStatus::UFEEL_HEARTRATE_STATUS_REQUEST_FAILED;
+    return result;
 }
