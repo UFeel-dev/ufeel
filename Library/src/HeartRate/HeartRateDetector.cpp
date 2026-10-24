@@ -1,13 +1,10 @@
 #include "HeartRate/HeartRateDetector.hpp"
+#include "HeartRate/UFeelHeartRateStatus.hpp"
 
-#include <cpr/cpr.h>
-#include <nlohmann/json.hpp>
+#include "cpr/cpr.h"
+#include "nlohmann/json.hpp"
 
-HeartRateSensorDetector::HeartRateSensorDetector() {}
-
-HeartRateSensorDetector::~HeartRateSensorDetector() = default;
-
-auto HeartRateSensorDetector::process() const -> int
+auto HeartRateSensorDetector::process() -> int
 {
     cpr::Response r = cpr::Get(cpr::Url{"http://localhost:8000"});
 
@@ -21,13 +18,13 @@ auto HeartRateSensorDetector::process() const -> int
         }
         catch (const nlohmann::json::parse_error& e)
         {
-            return -1;
+            return UFeelHeartRateStatus::UFEEL_HEARTRATE_STATUS_JSON_PARSE_ERROR;
         }
         catch (const nlohmann::json::out_of_range& e)
         {
-            return -1;
+            return UFeelHeartRateStatus::UFEEL_HEARTRATE_STATUS_JSON_PARSE_OUT_OF_RANGE;
         }
     }
 
-    return -1;
+    return UFeelHeartRateStatus::UFEEL_HEARTRATE_STATUS_REQUEST_FAILED;
 }
