@@ -53,7 +53,7 @@ void my::IrisLandmark::runInference()
     std::exception_ptr leftException;
     std::exception_ptr rightException;
 
-    std::thread leftThread([this, &leftException]() -> void {
+    std::thread leftThread([this, &leftException] -> void {
         try
         {
             runEyeInference(true);

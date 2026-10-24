@@ -1,3 +1,5 @@
 Diagnostics:
+  ClangTidy:
+    FastCheckFilter: Loose
   UnusedIncludes: Strict
   MissingIncludes: Strict

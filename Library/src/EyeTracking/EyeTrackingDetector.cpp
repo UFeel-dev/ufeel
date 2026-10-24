@@ -192,7 +192,7 @@ using Vector3 = std::array<double, 3>;
         std::clamp(imageEyeSpan / (minimumFrameDimension * 0.10), 0.35, 1.0);
     double const maximumIrisOffset = std::max(
         {std::abs(left.x - 0.5),
-        std::abs(right.x - 0.5), std::abs(left.y - 0.5), std::abs(right.y - 0.5)}
+        std::abs(right.x - 0.5), std::abs(left.y - 0.5), std::abs(right.y - 0.5),}
     );
     double const irisQuality = std::clamp(1.0 - maximumIrisOffset, 0.35, 1.0);
     double const opennessQuality = std::clamp(std::min(leftEar, rightEar) / 0.25, 0.45, 1.0);
@@ -493,7 +493,7 @@ auto EyeTrackingDetector::extractFeatures(
         return std::nullopt;
     }
 
-    auto addEyeAspectSample = [&]() -> void {
+    auto addEyeAspectSample = [&] -> void {
         eyeAspectHistory_.push_back(averageEar);
         if (eyeAspectHistory_.size() > BLINK_EAR_HISTORY_LENGTH)
         {
@@ -527,7 +527,7 @@ auto EyeTrackingDetector::extractFeatures(
     Vector3 const eyeCenter = {
         (leftOuter[0] + rightOuter[0]) * 0.5,
         (leftOuter[1] + rightOuter[1]) * 0.5,
-        (leftOuter[2] + rightOuter[2]) * 0.5};
+        (leftOuter[2] + rightOuter[2]) * 0.5,};
     Vector3 vertical = subtract(topOfHead, eyeCenter);
     if (!xAxis)
     {

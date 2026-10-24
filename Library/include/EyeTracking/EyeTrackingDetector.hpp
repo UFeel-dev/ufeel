@@ -29,7 +29,7 @@ enum class GazeStatus : std::uint8_t
     Calibrating = 4,
     Valid = 5,
     Disabled = 6,
-    FrameUnavailable = 7
+    FrameUnavailable = 7,
 };
 
 struct GazeResult
@@ -57,7 +57,7 @@ enum GazeDirectionFlags : std::uint8_t
     GazeRight = 1U << 1U,
     GazeUp = 1U << 2U,
     GazeDown = 1U << 3U,
-    GazeCenter = 1U << 4U
+    GazeCenter = 1U << 4U,
 };
 
 class EyeTrackingDetector

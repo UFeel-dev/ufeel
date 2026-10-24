@@ -36,7 +36,7 @@ enum class CalibrationFailureReason : std::uint8_t
     RegressionFailed,
     CrossValidationMeanErrorExceeded,
     CrossValidationMaxErrorExceeded,
-    InvalidCrossValidationResult
+    InvalidCrossValidationResult,
 };
 
 struct CalibrationDiagnostics

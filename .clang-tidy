@@ -78,3 +78,5 @@ CheckOptions:
   readability-identifier-naming.MacroDefinitionCase: UPPER_CASE
 
   readability-identifier-naming.IgnoreMainLikeFunctions: '1'
+
+  cppcoreguidelines-pro-bounds-avoid-unchecked-container-access.FixMode: at
