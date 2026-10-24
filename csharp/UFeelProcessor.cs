@@ -454,57 +454,6 @@ public sealed class EyeTrackingCalibrationProgress
     }
 }
 
-public sealed class FrameData
-{
-    public byte[] Data { get; }
-    public int Width { get; }
-    public int Height { get; }
-    public int Channels { get; }
-    public int Stride { get; }
-
-    public FrameData(
-        byte[] data, int width, int height, int channels, int stride)
-    {
-        Data = data;
-        Width = width;
-        Height = height;
-        Channels = channels;
-        Stride = stride;
-    }
-}
-
-public sealed record GazeResultData(
-    GazeStatus Status,
-    float EstimatedX,
-    float EstimatedY,
-    float RecordedX,
-    float RecordedY,
-    float Confidence,
-    GazeDirection Directions)
-{
-    public bool IsValid => Status == GazeStatus.Valid;
-}
-
-public sealed class EyeTrackingCalibrationProgress
-{
-    public int TargetsWithEnoughSamples { get; }
-    public int TargetCount { get; }
-    public int SamplesForCurrentTarget { get; }
-    public int RequiredSamplesPerTarget { get; }
-
-    public EyeTrackingCalibrationProgress(
-        int targetsWithEnoughSamples,
-        int targetCount,
-        int samplesForCurrentTarget,
-        int requiredSamplesPerTarget)
-    {
-        TargetsWithEnoughSamples = targetsWithEnoughSamples;
-        TargetCount = targetCount;
-        SamplesForCurrentTarget = samplesForCurrentTarget;
-        RequiredSamplesPerTarget = requiredSamplesPerTarget;
-    }
-}
-
 public enum CalibrationFailureReason
 {
     None = 0,

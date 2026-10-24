@@ -323,7 +323,7 @@ void my::ModelLoader::inputChecker()
         throw std::runtime_error(message);
     }
 
-    std::ranges::fill(inputLoads_, false);
+    std::fill(inputLoads_.begin(), inputLoads_.end(), false);
 }
 
 auto my::ModelLoader::preprocessImage(
