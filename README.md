@@ -28,6 +28,14 @@ This project provides the **UFEEL native library**, a tool to handle emotion rec
 
 Note: you will need appropriate input devices to test some of the features, such as a camera and a microphone.
 
+To use clang-related tools (e.g. linting, formatting, or even some IDE features), you should setup the compile database:
+
+- Install `bear`.
+- Remove the `build` directory if it exists.
+- Run `bear -- ./build.sh all`.
+
+This is because the compile database auto-generated from `cmake` is not always usable as-is.
+
 ## Requirements
 
 Docker installation:
