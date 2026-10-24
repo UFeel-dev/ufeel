@@ -3,8 +3,7 @@
 #include <cpr/cpr.h>
 #include <nlohmann/json.hpp>
 
-HeartRateSensorDetector::HeartRateSensorDetector()
-{}
+HeartRateSensorDetector::HeartRateSensorDetector() {}
 
 HeartRateSensorDetector::~HeartRateSensorDetector() = default;
 
