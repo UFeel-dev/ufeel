@@ -5,8 +5,6 @@
 #include "EyeTracking/EyeTrackingDetector.hpp"
 #include "EyeTracking/GazeCalibrationModel.hpp"
 #include "HeartRate/HeartRateDetector.hpp"
-#include "EyeTracking/EyeTrackingDetector.hpp"
-#include "EyeTracking/GazeCalibrationModel.hpp"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/videoio.hpp"
 
@@ -16,7 +14,6 @@
 
 class EmotionDetector;
 class SpeechToTextDetector;
-class HeartRateSensorDetector;
 
 class DataProcessor
 {

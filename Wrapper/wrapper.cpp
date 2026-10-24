@@ -42,7 +42,7 @@ auto guarded(
     {
         std::cerr << "UFeel: " << operation << " failed: " << exception.what() << '\n';
     }
-    catch (const std::exception& exception)
+    catch (...)
     {
         std::cerr << "UFeel: " << operation << " failed with an unknown exception\n";
     }
