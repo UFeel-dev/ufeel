@@ -130,8 +130,8 @@ typedef enum
 
 typedef struct
 {
-        int32_t status;
-        uint32_t bpm;
+    int32_t status;
+    uint32_t bpm;
 } UFeelHeartRateResult;
 
 /** Creates a processor. Returns NULL if initialization fails. */
