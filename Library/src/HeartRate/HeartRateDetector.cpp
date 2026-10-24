@@ -1,5 +1,4 @@
 #include "HeartRate/HeartRateDetector.hpp"
-#include "HeartRate/UFeelHeartRateStatus.hpp"
 
 #include "HeartRate/UFeelHeartRateStatus.hpp"
 #include "cpr/api.h"
@@ -12,6 +11,8 @@
 auto HeartRateSensorDetector::process() -> HeartRateResult
 {
     cpr::Response const r = cpr::Get(cpr::Url{"http://localhost:8000"});
+
+    HeartRateResult result = {.bpm = 0, .status = HeartRateStatus::Valid};
 
     HeartRateResult result = {.bpm = 0, .status = HeartRateStatus::Valid};
 
