@@ -1,6 +1,7 @@
 #include "DataProcessor.hpp"
 #include "EyeTracking/EyeTrackingDetector.hpp"
 #include "ufeel.h"
+#include "HeartRate/UFeelHeartRateStatus.hpp"
 
 #include <cmath>
 #include <cstdint>

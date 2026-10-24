@@ -1,4 +1,5 @@
 #include "HeartRate/HeartRateDetector.hpp"
+#include "HeartRate/UFeelHeartRateStatus.hpp"
 
 #include "HeartRate/UFeelHeartRateStatus.hpp"
 #include "cpr/api.h"
