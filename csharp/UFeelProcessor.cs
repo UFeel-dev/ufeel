@@ -571,7 +571,7 @@ public sealed class UFeelProcessor : IDisposable
         int status =
             UFeelNative.ufeel_get_heartrate(Handle, out UFeelNative.NativeHeartRateResult result);
 
-        return (int)bpm;
+        return result.bpm;
     }
 
     private IntPtr Handle

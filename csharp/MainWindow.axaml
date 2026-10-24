@@ -236,7 +236,10 @@
             IsVisible="False"
             Background="#E6171B22">
             <Canvas
+                x:Name="CalibrationCanvas"
                 Background="Transparent">
+                <Ellipse
+                    x:Name="CalibrationMarker"
                     Width="28"
                     Height="28"
                     Fill="#35D07F"
