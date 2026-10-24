@@ -201,18 +201,8 @@ public sealed class UFeelProcessor : IDisposable
     {
         IntPtr bpm =
             UFeelNative.ufeel_get_heartrate(processor);
-        
-        if (bpm == IntPtr.Zero)
-            return -1;
-        
-        try
-        {
-            return (int)bpm;
-        }
-        catch
-        {
-            return -1;
-        }
+
+        return (int)bpm;
     }
 
     public void Dispose()

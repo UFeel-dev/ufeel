@@ -46,7 +46,7 @@ auto DataProcessor::update() -> bool
 
     speech_ = speechToTextDetector_->process();
 
-    heartrate = heartRateSensorDetector_->process();
+    heartrate = HeartRateSensorDetector::process();
 
     return true;
 }
