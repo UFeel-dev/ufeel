@@ -1,6 +1,7 @@
+import json
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from random import randint
-import json
+
 
 class GetHandler(BaseHTTPRequestHandler):
     def do_GET(self):
