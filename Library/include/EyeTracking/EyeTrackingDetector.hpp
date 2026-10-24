@@ -104,4 +104,6 @@ private:
     my::IrisLandmark irisLandmarker_;
 };
 
+// TODO: improve eye tracking to handle glasses and other bad inputs better
+
 #endif // EYETRACKING_EYETRACKINGDETECTOR_HPP

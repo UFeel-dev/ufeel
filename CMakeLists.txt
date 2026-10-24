@@ -231,7 +231,3 @@ install(
     DIRECTORY ${MODELS_DIR}/
     DESTINATION models
 )
-
-# TODO: resolve the path for every single model accordingly (currently only vosk)
-
-# TODO: improve eye tracking to handle glasses and other bad inputs better

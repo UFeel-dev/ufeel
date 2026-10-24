@@ -153,7 +153,8 @@ using Vector3 = std::array<double, 3>;
     return {
         (left.at(1) * right.at(2)) - (left.at(2) * right.at(1)),
         (left.at(2) * right.at(0)) - (left.at(0) * right.at(2)),
-        (left.at(0) * right.at(1)) - (left.at(1) * right.at(0))};
+        (left.at(0) * right.at(1)) - (left.at(1) * right.at(0)),
+    };
 }
 
 [[nodiscard]] auto normalized(
@@ -190,10 +191,12 @@ using Vector3 = std::array<double, 3>;
 {
     double const scaleQuality =
         std::clamp(imageEyeSpan / (minimumFrameDimension * 0.10), 0.35, 1.0);
-    double const maximumIrisOffset = std::max(
-        {std::abs(left.x - 0.5),
-        std::abs(right.x - 0.5), std::abs(left.y - 0.5), std::abs(right.y - 0.5),}
-    );
+    double const maximumIrisOffset = std::max({
+        std::abs(left.x - 0.5),
+        std::abs(right.x - 0.5),
+        std::abs(left.y - 0.5),
+        std::abs(right.y - 0.5),
+    });
     double const irisQuality = std::clamp(1.0 - maximumIrisOffset, 0.35, 1.0);
     double const opennessQuality = std::clamp(std::min(leftEar, rightEar) / 0.25, 0.45, 1.0);
     return static_cast<float>(
@@ -351,10 +354,11 @@ auto EyeTrackingDetector::setCalibrationTarget(
 
     cv::Point2f const newTarget(x, y);
     auto const previousTargetIndex = calibrationTargetIndex_;
-    auto target =
-        std::ranges::find_if(calibrationTargets_, [&newTarget](GazeCalibrationTarget const& item) -> bool {
+    auto target = std::ranges::find_if(
+        calibrationTargets_, [&newTarget](GazeCalibrationTarget const& item) -> bool {
             return cv::norm(item.target - newTarget) < 1.0e-4;
-        });
+        }
+    );
     std::size_t targetIndex = 0;
     if (target == calibrationTargets_.end())
     {
@@ -362,7 +366,7 @@ auto EyeTrackingDetector::setCalibrationTarget(
         {
             return false;
         }
-        calibrationTargets_.push_back({.target=newTarget, .samples={}});
+        calibrationTargets_.push_back({.target = newTarget, .samples = {}});
         targetIndex = calibrationTargets_.size() - 1;
     }
     else
@@ -527,7 +531,8 @@ auto EyeTrackingDetector::extractFeatures(
     Vector3 const eyeCenter = {
         (leftOuter.at(0) + rightOuter.at(0)) * 0.5,
         (leftOuter.at(1) + rightOuter.at(1)) * 0.5,
-        (leftOuter.at(2) + rightOuter.at(2)) * 0.5,};
+        (leftOuter.at(2) + rightOuter.at(2)) * 0.5,
+    };
     Vector3 vertical = subtract(topOfHead, eyeCenter);
     if (!xAxis)
     {

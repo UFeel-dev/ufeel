@@ -142,51 +142,53 @@ auto ufeel_get_frame(
         return nullptr;
     }
 
-    return guarded("ufeel_get_frame", static_cast<UFeelFrame*>(nullptr), [processor] -> UFeelFrame* {
-        const cv::Mat frame = processor->processor.getFrame();
-        if (frame.empty())
-        {
-            return static_cast<UFeelFrame*>(nullptr);
+    return guarded(
+        "ufeel_get_frame", static_cast<UFeelFrame*>(nullptr), [processor] -> UFeelFrame* {
+            const cv::Mat frame = processor->processor.getFrame();
+            if (frame.empty())
+            {
+                return static_cast<UFeelFrame*>(nullptr);
+            }
+
+            if (frame.cols <= 0 || frame.rows <= 0 || frame.channels() <= 0)
+            {
+                return static_cast<UFeelFrame*>(nullptr);
+            }
+
+            const size_t stride = frame.step[0];
+            const auto height = static_cast<size_t>(frame.rows);
+
+            if (stride == 0 || stride < static_cast<size_t>(frame.cols) * frame.elemSize() ||
+                stride > std::numeric_limits<size_t>::max() / height ||
+                stride > static_cast<size_t>(std::numeric_limits<int32_t>::max()))
+            {
+                return static_cast<UFeelFrame*>(nullptr);
+            }
+
+            const size_t byteCount = stride * height;
+
+            auto output = std::unique_ptr<UFeelFrame>(new (std::nothrow) UFeelFrame{});
+            if (!output)
+            {
+                return static_cast<UFeelFrame*>(nullptr);
+            }
+
+            output->data = static_cast<uint8_t*>(std::malloc(byteCount));
+            if (output->data == nullptr)
+            {
+                return static_cast<UFeelFrame*>(nullptr);
+            }
+
+            std::memcpy(output->data, frame.data, byteCount);
+
+            output->width = frame.cols;
+            output->height = frame.rows;
+            output->channels = frame.channels();
+            output->stride = static_cast<int32_t>(stride);
+
+            return output.release();
         }
-
-        if (frame.cols <= 0 || frame.rows <= 0 || frame.channels() <= 0)
-        {
-            return static_cast<UFeelFrame*>(nullptr);
-        }
-
-        const size_t stride = frame.step[0];
-        const auto height = static_cast<size_t>(frame.rows);
-
-        if (stride == 0 || stride < static_cast<size_t>(frame.cols) * frame.elemSize() ||
-            stride > std::numeric_limits<size_t>::max() / height ||
-            stride > static_cast<size_t>(std::numeric_limits<int32_t>::max()))
-        {
-            return static_cast<UFeelFrame*>(nullptr);
-        }
-
-        const size_t byteCount = stride * height;
-
-        auto output = std::unique_ptr<UFeelFrame>(new (std::nothrow) UFeelFrame{});
-        if (!output)
-        {
-            return static_cast<UFeelFrame*>(nullptr);
-        }
-
-        output->data = static_cast<uint8_t*>(std::malloc(byteCount));
-        if (output->data == nullptr)
-        {
-            return static_cast<UFeelFrame*>(nullptr);
-        }
-
-        std::memcpy(output->data, frame.data, byteCount);
-
-        output->width = frame.cols;
-        output->height = frame.rows;
-        output->channels = frame.channels();
-        output->stride = static_cast<int32_t>(stride);
-
-        return output.release();
-    });
+    );
 }
 
 void ufeel_free_frame(
@@ -221,43 +223,46 @@ auto ufeel_get_emotions(
         return nullptr;
     }
 
-    return guarded("ufeel_get_emotions", static_cast<UFeelPair*>(nullptr), [processor, count] -> UFeelPair* {
-        const auto emotions = processor->processor.getEmotions();
+    return guarded(
+        "ufeel_get_emotions", static_cast<UFeelPair*>(nullptr), [processor, count] -> UFeelPair* {
+            const auto emotions = processor->processor.getEmotions();
 
-        if (emotions.empty() ||
-            emotions.size() > static_cast<size_t>(std::numeric_limits<int32_t>::max()))
-        {
-            return static_cast<UFeelPair*>(nullptr);
-        }
-
-        auto output = std::unique_ptr<UFeelPair[]>(new (std::nothrow) UFeelPair[emotions.size()]{});
-
-        if (!output)
-        {
-            return static_cast<UFeelPair*>(nullptr);
-        }
-
-        int32_t index = 0;
-        for (const auto& [name, value] : emotions)
-        {
-            output[index].name = duplicateUtf8(name);
-            if (output[index].name == nullptr)
+            if (emotions.empty() ||
+                emotions.size() > static_cast<size_t>(std::numeric_limits<int32_t>::max()))
             {
-                for (int32_t allocated = 0; allocated < index; ++allocated)
-                {
-                    std::free(output[allocated].name);
-                }
-
                 return static_cast<UFeelPair*>(nullptr);
             }
 
-            output[index].value = static_cast<float>(value);
-            ++index;
-        }
+            auto output =
+                std::unique_ptr<UFeelPair[]>(new (std::nothrow) UFeelPair[emotions.size()]{});
 
-        *count = index;
-        return output.release();
-    });
+            if (!output)
+            {
+                return static_cast<UFeelPair*>(nullptr);
+            }
+
+            int32_t index = 0;
+            for (const auto& [name, value] : emotions)
+            {
+                output[index].name = duplicateUtf8(name);
+                if (output[index].name == nullptr)
+                {
+                    for (int32_t allocated = 0; allocated < index; ++allocated)
+                    {
+                        std::free(output[allocated].name);
+                    }
+
+                    return static_cast<UFeelPair*>(nullptr);
+                }
+
+                output[index].value = static_cast<float>(value);
+                ++index;
+            }
+
+            *count = index;
+            return output.release();
+        }
+    );
 }
 
 void ufeel_free_emotions(
@@ -374,7 +379,9 @@ auto ufeel_get_gaze_result(
     *result = {};
 
     return guarded(
-        "ufeel_get_gaze_result", int32_t{UFEEL_STATUS_INTERNAL_ERROR}, [processor, result] -> UFeelStatus {
+        "ufeel_get_gaze_result",
+        int32_t{UFEEL_STATUS_INTERNAL_ERROR},
+        [processor, result] -> UFeelStatus {
             const auto gaze = processor->processor.getGaze();
 
             result->status = static_cast<int32_t>(gaze.status);
@@ -543,7 +550,7 @@ auto ufeel_get_speech_to_text(
         return nullptr;
     }
 
-    return guarded("ufeel_get_speech_to_text", static_cast<char*>(nullptr), [processor] -> char * {
+    return guarded("ufeel_get_speech_to_text", static_cast<char*>(nullptr), [processor] -> char* {
         return duplicateUtf8(processor->processor.getSpeech());
     });
 }

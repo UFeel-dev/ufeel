@@ -244,15 +244,17 @@ auto GazeCalibrationModel::fit(
         return std::nullopt;
     }
 
-    auto const [minimumX, maximumX] =
-        std::ranges::minmax_element(validTargets, {}, [](GazeCalibrationTarget const& target) -> float {
+    auto const [minimumX, maximumX] = std::ranges::minmax_element(
+        validTargets, {}, [](GazeCalibrationTarget const& target) -> float {
             return target.target.x;
-        });
+        }
+    );
 
-    auto const [minimumY, maximumY] =
-        std::ranges::minmax_element(validTargets, {}, [](GazeCalibrationTarget const& target) -> float {
+    auto const [minimumY, maximumY] = std::ranges::minmax_element(
+        validTargets, {}, [](GazeCalibrationTarget const& target) -> float {
             return target.target.y;
-        });
+        }
+    );
 
     report.horizontalSpan = static_cast<double>(maximumX->target.x - minimumX->target.x);
     report.verticalSpan = static_cast<double>(maximumY->target.y - minimumY->target.y);
@@ -492,8 +494,8 @@ auto GazeCalibrationModel::fitRegression(
         double const standardDeviation = std::sqrt(variance);
 
         model.scales_.at(feature) = std::isfinite(standardDeviation) && standardDeviation > 1.0e-5
-                                     ? standardDeviation
-                                     : 1.0;
+                                        ? standardDeviation
+                                        : 1.0;
     }
 
     auto const augmentedRowCount = rowCount + static_cast<std::size_t>(columnCount);
@@ -562,7 +564,7 @@ auto GazeCalibrationModel::fitRegression(
             }
 
             model.coefficients_.at(static_cast<std::size_t>(coordinate))
-                               .at(static_cast<std::size_t>(feature)) = coefficient;
+                .at(static_cast<std::size_t>(feature)) = coefficient;
         }
     }
 
@@ -607,8 +609,8 @@ auto GazeCalibrationModel::predictCoordinate(
 
     for (std::size_t feature = 0; feature < GAZE_FEATURE_COUNT; ++feature)
     {
-        result +=
-            ((features.at(feature) - means_.at(feature)) / scales_.at(feature)) * coefficients.at(feature + 1);
+        result += ((features.at(feature) - means_.at(feature)) / scales_.at(feature)) *
+                  coefficients.at(feature + 1);
     }
 
     return result;
