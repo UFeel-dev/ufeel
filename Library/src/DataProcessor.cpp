@@ -128,7 +128,7 @@ auto DataProcessor::loadEyeTrackingCalibrationProfile(
     return eyeTrackingDetector_->loadCalibrationProfile(path);
 }
 
-auto DataProcessor::getHeartRate() const -> int
+auto DataProcessor::getHeartRate() const -> HeartRateResult
 {
     return heartrate_;
 }

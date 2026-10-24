@@ -4,6 +4,7 @@
 #include "HeartRate/HeartRateDetector.hpp"
 #include "EyeTracking/EyeTrackingDetector.hpp"
 #include "EyeTracking/GazeCalibrationModel.hpp"
+#include "HeartRate/HeartRateDetector.hpp"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/videoio.hpp"
 
@@ -41,14 +42,7 @@ public:
 
     [[nodiscard]] auto getSpeech() const -> const std::string&;
 
-    void beginEyeTrackingCalibration();
-    [[nodiscard]] auto setEyeTrackingCalibrationTarget(float x, float y) -> bool;
-    [[nodiscard]] auto finishEyeTrackingCalibration() -> bool;
-    void cancelEyeTrackingCalibration();
-    [[nodiscard]] auto getEyeTrackingCalibrationProgress() const -> CalibrationProgress;
-    [[nodiscard]] auto getEyeTrackingCalibrationDiagnostics() const -> CalibrationDiagnostics;
-    [[nodiscard]] auto saveEyeTrackingCalibrationProfile(const std::string& path) const -> bool;
-    [[nodiscard]] auto loadEyeTrackingCalibrationProfile(const std::string& path) -> bool;
+    [[nodiscard]] auto getHeartRate() const -> HeartRateResult;
 
     [[nodiscard]] auto getHeartRate() const -> int;
 
