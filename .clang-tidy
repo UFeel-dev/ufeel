@@ -1,47 +1,63 @@
 Checks: >
-  *,
-  misc-include-cleaner,
+  -*,
+
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+
+  clang-analyzer-apiModeling.*,
+  clang-analyzer-core.*,
+  clang-analyzer-cplusplus.*,
+  clang-analyzer-deadcode.*,
+  clang-analyzer-security.*,
+  clang-analyzer-unix.*,
+
+  concurrency-*
+
+  cppcoreguidelines-*,
+  -cppcoreguidelines-avoid-const-or-ref-data-members,
+  -cppcoreguidelines-avoid-c-arrays,
+  -cppcoreguidelines-avoid-do-while,
   -cppcoreguidelines-avoid-magic-numbers,
+  -cppcoreguidelines-non-private-member-variables-in-classes,
+  -cppcoreguidelines-no-malloc,
+  -cppcoreguidelines-owning-memory,
+  -cppcoreguidelines-prefer-member-initializer,
+  -cppcoreguidelines-pro-bounds-constant-array-index,
   -cppcoreguidelines-pro-bounds-pointer-arithmetic,
+  -cppcoreguidelines-pro-type-vararg,
+
+  misc-*,
+  -misc-non-private-member-variables-in-classes,
+  -misc-no-recursion,
+  -misc-use-anonymous-namespace,
+
+  modernize-*,
+  -modernize-avoid-c-arrays,
+
+  performance-*,
+
+  portability-*,
+
+  readability-*,
+  -readability-uppercase-literal-suffix,
   -readability-magic-numbers,
   -readability-identifier-length,
   -readability-function-cognitive-complexity,
-  -bugprone-easily-swappable-parameters,
-  -cppcoreguidelines-non-private-member-variables-in-classes,
-  -misc-non-private-member-variables-in-classes,
-  -cppcoreguidelines-avoid-do-while,
-  -hicpp-signed-bitwise,
-  -hicpp-no-malloc,
-  -misc-use-anonymous-namespace,
-  -cppcoreguidelines-pro-type-vararg,
-  -cppcoreguidelines-pro-bounds-constant-array-index,
-  -cppcoreguidelines-owning-memory,
-  -cppcoreguidelines-no-malloc,
-  -cppcoreguidelines-avoid-const-or-ref-data-members,
-  -fuchsia-trailing-return,
-  -fuchsia-default-arguments-declarations,
-  -fuchsia-overloaded-operator,
-  -fuchsia-default-arguments-calls,
-  -fuchsia-statically-constructed-objects,
-  -hicpp-vararg,
-  -llvmlibc-restrict-system-libc-headers,
-  -llvmlibc-implementation-in-namespace,
-  -llvmlibc-callee-namespace,
-  -llvmlibc-inline-function-decl,
-  -hicpp-avoid-c-arrays,
-  -cppcoreguidelines-avoid-c-arrays,
-  -modernize-avoid-c-arrays,
-  -google-readability-todo,
-  -abseil-string-find-str-contains,
-  -altera-unroll-loops,
-  -misc-no-recursion,
-  -altera-struct-pack-align,
-  -cppcoreguidelines-prefer-member-initializer,
-  -boost-use-ranges,
-  -hicpp-uppercase-literal-suffix,
-  -readability-uppercase-literal-suffix,
-  -cert-msc51-cpp,
-  -cert-msc32-c,
-  -llvm-namespace-comment,
-  -google-readability-namespace-comments,
-  -llvm-use-ranges
+
+  llvm-header-guard
+
+CheckOptions:
+  readability-identifier-naming.ClassCase: CamelCase
+  readability-identifier-naming.StructCase: CamelCase
+  readability-identifier-naming.EnumCase: CamelCase
+  readability-identifier-naming.TypeAliasCase: CamelCase
+  readability-identifier-naming.FunctionCase: camelBack
+  readability-identifier-naming.FunctionIgnoredRegexp: '^ufeel_.*$'
+  readability-identifier-naming.ClassMethodCase: camelBack
+  readability-identifier-naming.PrivateMemberCase: camelBack
+  readability-identifier-naming.PrivateMemberSuffix: _
+  readability-identifier-naming.PublicMemberCase: camelBack
+  readability-identifier-naming.ProtectedMemberCase: camelBack
+  readability-identifier-naming.ParameterCase: camelBack
+  readability-identifier-naming.LocalVariableCase: camelBack
+  readability-identifier-naming.IgnoreMainLikeFunctions: '1'
