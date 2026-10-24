@@ -118,6 +118,20 @@ typedef struct
     int32_t targetsWithInsufficientRetainedSamples;
 } UFeelEyeTrackingCalibrationDiagnostics;
 
+typedef enum
+{
+    UFEEL_HEARTRATE_STATUS_JSON_PARSE_ERROR = 0,
+    UFEEL_HEARTRATE_STATUS_JSON_PARSE_OUT_OF_RANGE = 1,
+    UFEEL_HEARTRATE_STATUS_REQUEST_FAILED = 2,
+    UFEEL_HEARTRATE_STATUS_NULL_PROCESSOR = 3
+} UFeelHeartRateStatus;
+
+typedef struct
+{
+        int32_t status;
+        uint32_t bpm;
+} UFeelHeartRateResult;
+
 /** Creates a processor. Returns NULL if initialization fails. */
 UFEEL_API UFeelProcessor*
 ufeel_create(const char* utf8ModelDirectory, const char* utf8SpeechModelPath);
