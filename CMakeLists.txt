@@ -259,8 +259,6 @@ install(
     DESTINATION models
 )
 
-# TODO: resolve the path for every single model accordingly (currently only vosk)
-
 option(UFEEL_BUILD_TESTS "Build unit tests" ON)
 
 if(UFEEL_BUILD_TESTS)

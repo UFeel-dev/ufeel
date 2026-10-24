@@ -244,9 +244,7 @@ void my::ModelLoader::fillInputTensors()
             throw std::runtime_error("Invalid TensorFlow Lite input tensor.");
         }
 
-        inputs_.emplace_back(
-            tensor->data.f, tensor->bytes, tensor->dims->data, tensor->dims->size
-        );
+        inputs_.emplace_back(tensor->data.f, tensor->bytes, tensor->dims->data, tensor->dims->size);
     }
 
     if (inputs_.empty())
