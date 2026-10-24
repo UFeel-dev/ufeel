@@ -1,6 +1,5 @@
-
-#ifndef GAZEKALMANFILTER_HPP
-#define GAZEKALMANFILTER_HPP
+#ifndef EYETRACKING_GAZEKALMANFILTER_HPP
+#define EYETRACKING_GAZEKALMANFILTER_HPP
 
 #include "opencv2/core/types.hpp"
 
@@ -48,4 +47,4 @@ public:
         -> cv::Point2f;
 };
 
-#endif // GAZEKALMANFILTER_HPP
+#endif // EYETRACKING_GAZEKALMANFILTER_HPP
