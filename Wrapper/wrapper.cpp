@@ -1,6 +1,5 @@
 #include "DataProcessor.hpp"
 #include "EyeTracking/EyeTrackingDetector.hpp"
-#include "opencv2/core/mat.hpp"
 #include "ufeel.h"
 
 #include <cmath>
