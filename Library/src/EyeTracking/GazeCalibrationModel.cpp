@@ -16,9 +16,6 @@
 #include <ios>
 #include <limits>
 #include <numeric>
-#include <opencv2/core/base.hpp>
-#include <opencv2/core/hal/interface.h>
-#include <opencv2/core/types.hpp>
 #include <optional>
 #include <string>
 #include <system_error>
@@ -237,6 +234,7 @@ auto GazeCalibrationModel::fit(
     }
 
     report.validTargetCount = validTargets.size();
+
     if (validTargets.size() < GAZE_MINIMUM_CALIBRATION_TARGETS)
     {
         report.failureReason = report.targetsWithInsufficientRawSamples > 0 ||
@@ -358,6 +356,10 @@ auto GazeCalibrationModel::fit(
         double const error = std::hypot(
             static_cast<double>(prediction->x) - validTargets.at(heldOut).target.x,
             static_cast<double>(prediction->y) - validTargets.at(heldOut).target.y
+        );
+
+        if (!std::isfinite(error))
+        {
             report.failureReason = CalibrationFailureReason::InvalidCrossValidationResult;
             return std::nullopt;
         }

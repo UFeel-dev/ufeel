@@ -119,47 +119,6 @@ typedef enum
 /** Estimated gaze coordinates and diagnostics for the current video frame. */
 typedef struct
 {
-<<<<<<< HEAD
-=======
-        int32_t status;
-        uint32_t bpm;
-} UFeelHeartRateResult;
-
-typedef struct UFeelGaze
-{
-    float x;
-    float y;
-    uint32_t directions;
-    uint32_t valid;
-} UFeelGaze;
-
-typedef struct UFeelGazeEx
-{
-    UFEEL_GAZE_STATUS_NOT_CALIBRATED = 0,
-    UFEEL_GAZE_STATUS_FACE_UNAVAILABLE = 1,
-    UFEEL_GAZE_STATUS_BLINKING = 2,
-    UFEEL_GAZE_STATUS_LOW_QUALITY = 3,
-    UFEEL_GAZE_STATUS_CALIBRATING = 4,
-    UFEEL_GAZE_STATUS_VALID = 5,
-    UFEEL_GAZE_STATUS_DISABLED = 6,
-    UFEEL_GAZE_STATUS_FRAME_UNAVAILABLE = 7
-} UFeelGazeStatus;
-
-/** Bit flags indicating the estimated gaze direction. Multiple flags may be set. */
-typedef enum
-{
-    UFEEL_GAZE_DIRECTION_NONE = 0,
-    UFEEL_GAZE_DIRECTION_LEFT = 1 << 0,
-    UFEEL_GAZE_DIRECTION_RIGHT = 1 << 1,
-    UFEEL_GAZE_DIRECTION_UP = 1 << 2,
-    UFEEL_GAZE_DIRECTION_DOWN = 1 << 3,
-    UFEEL_GAZE_DIRECTION_CENTER = 1 << 4
-} UFeelGazeDirection;
-
-/** Estimated gaze coordinates and diagnostics for the current video frame. */
-typedef struct
-{
->>>>>>> 6015f05 (fix: improve public API for eye tracking, update C# to adapt to the new API)
     int32_t status;
     float x;
     float y;
