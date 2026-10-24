@@ -125,7 +125,7 @@ public partial class MainWindow : Window
                 Dictionary<string, float> emotions;
                 GazeResultData gaze;
                 string speech;
-                int heartrate;
+                uint heartrate;
 
                 await processorGate.WaitAsync(token);
 
@@ -148,7 +148,7 @@ public partial class MainWindow : Window
                         smoothedGazeY = null;
                         lastGazeTimestamp = null;
                         speech = string.Empty;
-                        heartrate = -1;
+                        heartrate = 0;
                     }
                     else
                     {

@@ -3,6 +3,7 @@
 
 #include "EyeTracking/EyeTrackingDetector.hpp"
 #include "EyeTracking/GazeCalibrationModel.hpp"
+#include "HeartRate/HeartRateDetector.hpp"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/videoio.hpp"
 
@@ -38,14 +39,7 @@ public:
 
     [[nodiscard]] auto getSpeech() const -> const std::string&;
 
-    void beginEyeTrackingCalibration();
-    [[nodiscard]] auto setEyeTrackingCalibrationTarget(float x, float y) -> bool;
-    [[nodiscard]] auto finishEyeTrackingCalibration() -> bool;
-    void cancelEyeTrackingCalibration();
-    [[nodiscard]] auto getEyeTrackingCalibrationProgress() const -> CalibrationProgress;
-    [[nodiscard]] auto getEyeTrackingCalibrationDiagnostics() const -> CalibrationDiagnostics;
-    [[nodiscard]] auto saveEyeTrackingCalibrationProfile(const std::string& path) const -> bool;
-    [[nodiscard]] auto loadEyeTrackingCalibrationProfile(const std::string& path) -> bool;
+    [[nodiscard]] auto getHeartRate() const -> HeartRateResult;
 
     [[nodiscard]] auto getHeartRate() const -> int;
 
@@ -59,14 +53,13 @@ protected:
     std::map<std::string, float> emotions_;
     GazeResult gaze_;
     std::string speech_;
-    int heartrate_;
+    HeartRateResult heartrate_{};
 
     std::unique_ptr<EmotionDetector> emotionDetector_;
     std::unique_ptr<EyeTrackingDetector> eyeTrackingDetector_;
     std::unique_ptr<SpeechToTextDetector> speechToTextDetector_;
     // std::unique_ptr<HeartRateSensorDetector> heartRateSensorDetector_;
 
-private:
 };
 
 #endif // DATAPROCESSOR_HPP

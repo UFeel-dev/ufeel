@@ -3,6 +3,7 @@
 #include "Emotions/EmotionDetector.hpp"
 #include "EyeTracking/EyeTrackingDetector.hpp"
 #include "EyeTracking/GazeCalibrationModel.hpp"
+#include "HeartRate/HeartRateDetector.hpp"
 #include "SpeechToText/SpeechToTextDetector.hpp"
 
 #include <filesystem>
@@ -51,7 +52,7 @@ auto DataProcessor::update() -> bool
 
     speech_ = speechToTextDetector_->process();
 
-    // heartrate_ = heartRateSensorDetector_->process();
+    heartrate_ = HeartRateSensorDetector::process();
 
     return true;
 }
@@ -122,7 +123,7 @@ auto DataProcessor::loadEyeTrackingCalibrationProfile(
     return eyeTrackingDetector_->loadCalibrationProfile(path);
 }
 
-auto DataProcessor::getHeartRate() const -> int
+auto DataProcessor::getHeartRate() const -> HeartRateResult
 {
     return heartrate_;
 }

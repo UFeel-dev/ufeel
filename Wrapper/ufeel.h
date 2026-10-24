@@ -183,7 +183,7 @@ UFEEL_API char* ufeel_get_speech_to_text(UFeelProcessor* processor);
 /** Releases a string returned by ufeel_get_speech_to_text(). Accepts NULL. */
 UFEEL_API void ufeel_free_string(char* value);
 
-int ufeel_get_heartrate(void* processor);
+bool ufeel_get_heartrate(void* processor, UFeelHeartRateResult* result);
 
 #ifdef __cplusplus
 }
