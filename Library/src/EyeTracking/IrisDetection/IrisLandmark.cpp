@@ -117,7 +117,7 @@ auto my::IrisLandmark::getEyeLandmarkAt(
     }
 
     auto const inputShape = model->getInputShape();
-    if (inputShape.size() < 3 || inputShape[1] <= 0 || inputShape[2] <= 0)
+    if (inputShape.size() < 3 || inputShape.at(1) <= 0 || inputShape.at(2) <= 0)
     {
         return {};
     }
@@ -137,9 +137,9 @@ auto my::IrisLandmark::getEyeLandmarkAt(
     }
 
     int const imageX =
-        static_cast<int>(x / static_cast<float>(inputShape[2]) * eyeRoi.width) + eyeRoi.x;
+        static_cast<int>(x / static_cast<float>(inputShape.at(2)) * eyeRoi.width) + eyeRoi.x;
     int const imageY =
-        static_cast<int>(y / static_cast<float>(inputShape[1]) * eyeRoi.height) + eyeRoi.y;
+        static_cast<int>(y / static_cast<float>(inputShape.at(1)) * eyeRoi.height) + eyeRoi.y;
 
     return {imageX, imageY};
 }

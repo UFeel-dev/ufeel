@@ -56,7 +56,7 @@ using Vector3 = std::array<double, 3>;
         return std::nullopt;
     }
 
-    auto const pupil = irisLandmarks[0];
+    auto const pupil = irisLandmarks.at(0);
 
     cv::Point2d const horizontal(
         static_cast<double>(corner2.x - corner1.x), static_cast<double>(corner2.y - corner1.y)
@@ -136,14 +136,14 @@ using Vector3 = std::array<double, 3>;
     const Vector3& left, const Vector3& right
 ) -> Vector3
 {
-    return {left[0] - right[0], left[1] - right[1], left[2] - right[2]};
+    return {left.at(0) - right.at(0), left.at(1) - right.at(1), left.at(2) - right.at(2)};
 }
 
 [[nodiscard]] auto dot(
     const Vector3& left, const Vector3& right
 ) -> double
 {
-    return (left[0] * right[0]) + (left[1] * right[1]) + (left[2] * right[2]);
+    return (left.at(0) * right.at(0)) + (left.at(1) * right.at(1)) + (left.at(2) * right.at(2));
 }
 
 [[nodiscard]] auto cross(
@@ -151,9 +151,9 @@ using Vector3 = std::array<double, 3>;
 ) -> Vector3
 {
     return {
-        (left[1] * right[2]) - (left[2] * right[1]),
-        (left[2] * right[0]) - (left[0] * right[2]),
-        (left[0] * right[1]) - (left[1] * right[0])};
+        (left.at(1) * right.at(2)) - (left.at(2) * right.at(1)),
+        (left.at(2) * right.at(0)) - (left.at(0) * right.at(2)),
+        (left.at(0) * right.at(1)) - (left.at(1) * right.at(0))};
 }
 
 [[nodiscard]] auto normalized(
@@ -263,7 +263,7 @@ auto EyeTrackingDetector::process(
     {
         if (calibrationTargetIndex_ && *calibrationTargetIndex_ < calibrationTargets_.size())
         {
-            auto& samples = calibrationTargets_[*calibrationTargetIndex_].samples;
+            auto& samples = calibrationTargets_.at(*calibrationTargetIndex_).samples;
             auto const now = std::chrono::steady_clock::now();
             if (calibrationTargetSetAt_ &&
                 now - *calibrationTargetSetAt_ >= CALIBRATION_SETTLE_TIME &&
@@ -525,9 +525,9 @@ auto EyeTrackingDetector::extractFeatures(
 
     auto const xAxis = normalized(eyeAxis);
     Vector3 const eyeCenter = {
-        (leftOuter[0] + rightOuter[0]) * 0.5,
-        (leftOuter[1] + rightOuter[1]) * 0.5,
-        (leftOuter[2] + rightOuter[2]) * 0.5,};
+        (leftOuter.at(0) + rightOuter.at(0)) * 0.5,
+        (leftOuter.at(1) + rightOuter.at(1)) * 0.5,
+        (leftOuter.at(2) + rightOuter.at(2)) * 0.5,};
     Vector3 vertical = subtract(topOfHead, eyeCenter);
     if (!xAxis)
     {
@@ -537,7 +537,7 @@ auto EyeTrackingDetector::extractFeatures(
     double const verticalProjection = dot(vertical, *xAxis);
     for (std::size_t axis = 0; axis < vertical.size(); ++axis)
     {
-        vertical[axis] -= verticalProjection * (*xAxis)[axis];
+        vertical.at(axis) -= verticalProjection * (*xAxis).at(axis);
     }
     auto const yAxis = normalized(vertical);
     if (!yAxis)
@@ -558,7 +558,7 @@ auto EyeTrackingDetector::extractFeatures(
         {
             return false;
         }
-        features[featureIndex++] = value;
+        features.at(featureIndex++) = value;
         return true;
     };
     if (!appendFeature(leftPosition->x) || !appendFeature(leftPosition->y) ||
@@ -597,9 +597,9 @@ auto EyeTrackingDetector::extractFeatures(
         }
     }
 
-    if (!appendFeature(std::atan2((*xAxis)[1], (*xAxis)[0])) ||
-        !appendFeature(std::atan2(-(*xAxis)[2], std::hypot((*yAxis)[2], (*zAxis)[2]))) ||
-        !appendFeature(std::atan2((*yAxis)[2], (*zAxis)[2])) || !appendFeature(leftEar) ||
+    if (!appendFeature(std::atan2((*xAxis).at(1), (*xAxis).at(0))) ||
+        !appendFeature(std::atan2(-(*xAxis).at(2), std::hypot((*yAxis).at(2), (*zAxis).at(2)))) ||
+        !appendFeature(std::atan2((*yAxis).at(2), (*zAxis).at(2))) || !appendFeature(leftEar) ||
         !appendFeature(rightEar))
     {
         status = GazeStatus::LowQuality;
@@ -639,7 +639,7 @@ auto EyeTrackingDetector::calibrationProgress() const -> CalibrationProgress
     if (calibrationTargetIndex_ && *calibrationTargetIndex_ < calibrationTargets_.size())
     {
         progress.samplesForCurrentTarget = static_cast<std::uint32_t>(
-            calibrationTargets_[*calibrationTargetIndex_].samples.size()
+            calibrationTargets_.at(*calibrationTargetIndex_).samples.size()
         );
     }
     return progress;

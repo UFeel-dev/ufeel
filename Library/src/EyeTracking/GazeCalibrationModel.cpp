@@ -49,10 +49,10 @@ template <typename Values>
 
     if (values.size() % 2 == 0)
     {
-        return (values[middle - 1] + values[middle]) * 0.5;
+        return (values.at(middle - 1) + values.at(middle)) * 0.5;
     }
 
-    return values[middle];
+    return values.at(middle);
 }
 
 [[nodiscard]] auto isFinite(
@@ -93,20 +93,20 @@ template <typename Values>
 
         for (auto const& sample : finiteSamples)
         {
-            values.push_back(sample[feature]);
+            values.push_back(sample.at(feature));
         }
 
-        centers[feature] = median(values);
+        centers.at(feature) = median(values);
 
         std::vector<double> deviations;
         deviations.reserve(values.size());
 
         for (auto value : values)
         {
-            deviations.push_back(std::abs(value - centers[feature]));
+            deviations.push_back(std::abs(value - centers.at(feature)));
         }
 
-        thresholds[feature] = std::max(0.02, 4.5 * 1.4826 * median(deviations));
+        thresholds.at(feature) = std::max(0.02, 4.5 * 1.4826 * median(deviations));
     }
 
     retained.reserve(finiteSamples.size());
@@ -117,7 +117,7 @@ template <typename Values>
 
         for (std::size_t feature = 0; feature < GAZE_FEATURE_COUNT; ++feature)
         {
-            if (std::abs(sample[feature] - centers[feature]) > thresholds[feature])
+            if (std::abs(sample.at(feature) - centers.at(feature)) > thresholds.at(feature))
             {
                 inlier = false;
                 break;
@@ -284,8 +284,8 @@ auto GazeCalibrationModel::fit(
             SPATIAL_GRID_BAND_COUNT - 1
         );
 
-        ++horizontalBands[horizontalBand];
-        ++verticalBands[verticalBand];
+        ++horizontalBands.at(horizontalBand);
+        ++verticalBands.at(verticalBand);
     }
 
     if (std::ranges::any_of(horizontalBands, [](std::size_t count) -> bool { return count < 2; }) ||
@@ -307,7 +307,7 @@ auto GazeCalibrationModel::fit(
         {
             if (index != heldOut)
             {
-                trainingTargets.push_back(validTargets[index]);
+                trainingTargets.push_back(validTargets.at(index));
             }
         }
 
@@ -320,7 +320,7 @@ auto GazeCalibrationModel::fit(
             return std::nullopt;
         }
 
-        auto const heldOutSamples = robustSamples(validTargets[heldOut]);
+        auto const heldOutSamples = robustSamples(validTargets.at(heldOut));
 
         if (heldOutSamples.size() < MINIMUM_RETAINED_SAMPLES_PER_TARGET)
         {
@@ -337,10 +337,10 @@ auto GazeCalibrationModel::fit(
 
             for (auto const& sample : heldOutSamples)
             {
-                values.push_back(sample[feature]);
+                values.push_back(sample.at(feature));
             }
 
-            medianFeatures[feature] = median(values);
+            medianFeatures.at(feature) = median(values);
         }
 
         auto const prediction = trainingModel->predict(medianFeatures);
@@ -352,8 +352,8 @@ auto GazeCalibrationModel::fit(
         }
 
         double const error = std::hypot(
-            static_cast<double>(prediction->x) - validTargets[heldOut].target.x,
-            static_cast<double>(prediction->y) - validTargets[heldOut].target.y
+            static_cast<double>(prediction->x) - validTargets.at(heldOut).target.x,
+            static_cast<double>(prediction->y) - validTargets.at(heldOut).target.y
         );
 
         if (!std::isfinite(error))
@@ -468,7 +468,7 @@ auto GazeCalibrationModel::fitRegression(
         {
             for (std::size_t feature = 0; feature < GAZE_FEATURE_COUNT; ++feature)
             {
-                model.means_[feature] += sample[feature] * sampleWeight;
+                model.means_.at(feature) += sample.at(feature) * sampleWeight;
             }
         }
     }
@@ -484,14 +484,14 @@ auto GazeCalibrationModel::fitRegression(
 
             for (auto const& sample : samples)
             {
-                double const difference = sample[feature] - model.means_[feature];
+                double const difference = sample.at(feature) - model.means_.at(feature);
                 variance += difference * difference * sampleWeight;
             }
         }
 
         double const standardDeviation = std::sqrt(variance);
 
-        model.scales_[feature] = std::isfinite(standardDeviation) && standardDeviation > 1.0e-5
+        model.scales_.at(feature) = std::isfinite(standardDeviation) && standardDeviation > 1.0e-5
                                      ? standardDeviation
                                      : 1.0;
     }
@@ -506,7 +506,7 @@ auto GazeCalibrationModel::fitRegression(
 
     for (std::size_t targetIndex = 0; targetIndex < samplesByTarget.size(); ++targetIndex)
     {
-        auto const& samples = samplesByTarget[targetIndex];
+        auto const& samples = samplesByTarget.at(targetIndex);
         double const balanceWeight = 1.0 / std::sqrt(static_cast<double>(samples.size()));
 
         for (auto const& sample : samples)
@@ -516,17 +516,17 @@ auto GazeCalibrationModel::fitRegression(
             for (std::size_t feature = 0; feature < GAZE_FEATURE_COUNT; ++feature)
             {
                 double const standardized =
-                    (sample[feature] - model.means_[feature]) / model.scales_[feature];
+                    (sample.at(feature) - model.means_.at(feature)) / model.scales_.at(feature);
 
                 design.at<double>(static_cast<int>(row), static_cast<int>(feature + 1)) =
                     balanceWeight * standardized;
             }
 
             targetValues.at<double>(static_cast<int>(row), 0) =
-                static_cast<double>(targets[targetIndex].target.x) * balanceWeight;
+                static_cast<double>(targets.at(targetIndex).target.x) * balanceWeight;
 
             targetValues.at<double>(static_cast<int>(row), 1) =
-                static_cast<double>(targets[targetIndex].target.y) * balanceWeight;
+                static_cast<double>(targets.at(targetIndex).target.y) * balanceWeight;
 
             ++row;
         }
@@ -561,8 +561,8 @@ auto GazeCalibrationModel::fitRegression(
                 return std::nullopt;
             }
 
-            model.coefficients_[static_cast<std::size_t>(coordinate)]
-                               [static_cast<std::size_t>(feature)] = coefficient;
+            model.coefficients_.at(static_cast<std::size_t>(coordinate))
+                               .at(static_cast<std::size_t>(feature)) = coefficient;
         }
     }
 
@@ -602,13 +602,13 @@ auto GazeCalibrationModel::predictCoordinate(
     const GazeFeatureVector& features, int coordinate
 ) const -> double
 {
-    auto const& coefficients = coefficients_[static_cast<std::size_t>(coordinate)];
-    double result = coefficients[0];
+    auto const& coefficients = coefficients_.at(static_cast<std::size_t>(coordinate));
+    double result = coefficients.at(0);
 
     for (std::size_t feature = 0; feature < GAZE_FEATURE_COUNT; ++feature)
     {
         result +=
-            ((features[feature] - means_[feature]) / scales_[feature]) * coefficients[feature + 1];
+            ((features.at(feature) - means_.at(feature)) / scales_.at(feature)) * coefficients.at(feature + 1);
     }
 
     return result;
