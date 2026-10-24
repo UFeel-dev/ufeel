@@ -93,7 +93,7 @@ private:
     /*
     Calculate Eye Roi from the first and last EyeLower2 landmark
     */
-    static auto calculateEyeRoi(cv::Point leftMoft, cv::Point rightMost) -> cv::Rect;
+    static auto calculateEyeRoi(cv::Point leftMost, cv::Point rightMost) -> cv::Rect;
 
     /*
     Run inference on each eye (for multithread)

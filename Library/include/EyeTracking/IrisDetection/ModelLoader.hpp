@@ -188,7 +188,7 @@ private:
     /*
     Convert image to float and resize to getInputShape(idx)
     */
-    [[nodiscard]] auto preprocessImage(const cv::Mat& in, int idx) const -> cv::Mat;
+    [[nodiscard]] auto preprocessImage(const cv::Mat& input, int index) const -> cv::Mat;
 
     /*
     Convert image of type CV_8UC3 or CV_8UC4 to RGB format
