@@ -19,14 +19,14 @@ static auto generateAnchors(
         {
             for (auto x = 0; x < size; ++x)
             {
-                float const x_center = (x + options.offsetX) * 1.f / size;
-                float const y_center = (y + options.offsetY) * 1.f / size;
+                float const xCenter = (x + options.offsetX) * 1.f / size;
+                float const yCenter = (y + options.offsetY) * 1.f / size;
                 float const w = 1.f;
                 float const h = 1.f;
                 anchors.insert(
                     anchors.end(),
                     numLayer,
-                    cv::Rect2f(x_center - (w / 2.f), y_center - (h / 2.f), w, h)
+                    cv::Rect2f(xCenter - (w / 2.f), yCenter - (h / 2.f), w, h)
                 );
             }
         }
@@ -35,7 +35,7 @@ static auto generateAnchors(
 }
 
 my::DetectionPostProcess::DetectionPostProcess()
-    : m_anchors(generateAnchors(AnchorOptions()))
+    : anchors_(generateAnchors(AnchorOptions()))
 {
 }
 
@@ -43,7 +43,7 @@ auto my::DetectionPostProcess::decodeBox(
     const std::vector<float>& rawBoxes, int index
 ) const -> cv::Rect2f
 {
-    auto anchor = m_anchors[index];
+    auto anchor = anchors_[index];
     auto center = (anchor.tl() + anchor.br()) * 0.5;
 
     auto boxOffset = index * NUM_COORD;

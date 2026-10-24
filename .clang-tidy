@@ -47,17 +47,34 @@ Checks: >
   llvm-header-guard
 
 CheckOptions:
+  readability-identifier-naming.NamespaceCase: lower_case
+
   readability-identifier-naming.ClassCase: CamelCase
   readability-identifier-naming.StructCase: CamelCase
   readability-identifier-naming.EnumCase: CamelCase
   readability-identifier-naming.TypeAliasCase: CamelCase
+  readability-identifier-naming.TemplateParameterCase: CamelCase
+  readability-identifier-naming.ConceptCase: CamelCase
+
+  readability-identifier-naming.EnumConstantCase: CamelCase
+  readability-identifier-naming.ScopedEnumConstantCase: CamelCase
+
   readability-identifier-naming.FunctionCase: camelBack
   readability-identifier-naming.FunctionIgnoredRegexp: '^ufeel_.*$'
   readability-identifier-naming.ClassMethodCase: camelBack
-  readability-identifier-naming.PrivateMemberCase: camelBack
-  readability-identifier-naming.PrivateMemberSuffix: _
+  readability-identifier-naming.PublicMethodCase: camelBack
+  readability-identifier-naming.ProtectedMethodCase: camelBack
+  readability-identifier-naming.PrivateMethodCase: camelBack
+
   readability-identifier-naming.PublicMemberCase: camelBack
   readability-identifier-naming.ProtectedMemberCase: camelBack
+  readability-identifier-naming.PrivateMemberCase: camelBack
+  readability-identifier-naming.PrivateMemberSuffix: _
+  readability-identifier-naming.ProtectedMemberSuffix: _
+
   readability-identifier-naming.ParameterCase: camelBack
   readability-identifier-naming.LocalVariableCase: camelBack
+
+  readability-identifier-naming.MacroDefinitionCase: UPPER_CASE
+
   readability-identifier-naming.IgnoreMainLikeFunctions: '1'

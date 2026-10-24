@@ -63,7 +63,7 @@ private:
 
     [[nodiscard]] auto decodeBox(const std::vector<float>& rawBoxes, int index) const -> cv::Rect2f;
 
-    std::vector<cv::Rect2f> m_anchors;
+    std::vector<cv::Rect2f> anchors_;
 };
 
 } // namespace my

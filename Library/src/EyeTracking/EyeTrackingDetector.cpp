@@ -13,7 +13,6 @@
 #include <iostream>
 #include <iterator>
 #include <numeric>
-#include <opencv2/core/saturate.hpp>
 #include <optional>
 #include <string>
 #include <vector>
@@ -35,10 +34,10 @@ static_assert(
     GAZE_FEATURE_COUNT ==
     4 + (EYE_FRAME_LANDMARKS.size() * 3) + (FACE_FEATURE_LANDMARKS.size() * 3) + 5
 );
-static_assert(std::ranges::all_of(EYE_FRAME_LANDMARKS, [](int index) {
+static_assert(std::ranges::all_of(EYE_FRAME_LANDMARKS, [](int index) -> bool {
     return index >= 0 && index < FACE_LANDMARK_COUNT;
 }));
-static_assert(std::ranges::all_of(FACE_FEATURE_LANDMARKS, [](int index) {
+static_assert(std::ranges::all_of(FACE_FEATURE_LANDMARKS, [](int index) -> bool {
     return index >= 0 && index < FACE_LANDMARK_COUNT;
 }));
 
@@ -177,7 +176,7 @@ using Vector3 = std::array<double, 3>;
     const Vector3& point
 ) -> bool
 {
-    return std::ranges::all_of(point, [](double value) { return std::isfinite(value); });
+    return std::ranges::all_of(point, [](double value) -> bool { return std::isfinite(value); });
 }
 
 [[nodiscard]] auto qualityOf(
@@ -192,8 +191,8 @@ using Vector3 = std::array<double, 3>;
     double const scaleQuality =
         std::clamp(imageEyeSpan / (minimumFrameDimension * 0.10), 0.35, 1.0);
     double const maximumIrisOffset = std::max(
-        std::abs(left.x - 0.5),
-        std::max(std::abs(right.x - 0.5), std::max(std::abs(left.y - 0.5), std::abs(right.y - 0.5)))
+        {std::abs(left.x - 0.5),
+        std::abs(right.x - 0.5), std::abs(left.y - 0.5), std::abs(right.y - 0.5)}
     );
     double const irisQuality = std::clamp(1.0 - maximumIrisOffset, 0.35, 1.0);
     double const opennessQuality = std::clamp(std::min(leftEar, rightEar) / 0.25, 0.45, 1.0);
@@ -353,7 +352,7 @@ auto EyeTrackingDetector::setCalibrationTarget(
     cv::Point2f const newTarget(x, y);
     auto const previousTargetIndex = calibrationTargetIndex_;
     auto target =
-        std::ranges::find_if(calibrationTargets_, [&newTarget](GazeCalibrationTarget const& item) {
+        std::ranges::find_if(calibrationTargets_, [&newTarget](GazeCalibrationTarget const& item) -> bool {
             return cv::norm(item.target - newTarget) < 1.0e-4;
         });
     std::size_t targetIndex = 0;
@@ -363,7 +362,7 @@ auto EyeTrackingDetector::setCalibrationTarget(
         {
             return false;
         }
-        calibrationTargets_.push_back({newTarget, {}});
+        calibrationTargets_.push_back({.target=newTarget, .samples={}});
         targetIndex = calibrationTargets_.size() - 1;
     }
     else
@@ -494,7 +493,7 @@ auto EyeTrackingDetector::extractFeatures(
         return std::nullopt;
     }
 
-    auto addEyeAspectSample = [&]() {
+    auto addEyeAspectSample = [&]() -> void {
         eyeAspectHistory_.push_back(averageEar);
         if (eyeAspectHistory_.size() > BLINK_EAR_HISTORY_LENGTH)
         {
@@ -554,7 +553,7 @@ auto EyeTrackingDetector::extractFeatures(
     }
     GazeFeatureVector features{};
     std::size_t featureIndex = 0;
-    auto appendFeature = [&features, &featureIndex](double value) {
+    auto appendFeature = [&features, &featureIndex](double value) -> bool {
         if (featureIndex >= features.size() || !std::isfinite(value))
         {
             return false;
@@ -569,7 +568,7 @@ auto EyeTrackingDetector::extractFeatures(
         return std::nullopt;
     }
 
-    auto appendLandmarkFeatures = [&](int landmarkIndex) {
+    auto appendLandmarkFeatures = [&](int landmarkIndex) -> bool {
         auto const landmark = vectorFrom(irisLandmarker_.getFaceLandmark3DAt(landmarkIndex));
         if (!finite(landmark))
         {
@@ -581,7 +580,7 @@ auto EyeTrackingDetector::extractFeatures(
                appendFeature(dot(offset, *zAxis) / eyeSpan);
     };
 
-    for (int landmarkIndex : EYE_FRAME_LANDMARKS)
+    for (int const landmarkIndex : EYE_FRAME_LANDMARKS)
     {
         if (!appendLandmarkFeatures(landmarkIndex))
         {
@@ -589,7 +588,7 @@ auto EyeTrackingDetector::extractFeatures(
             return std::nullopt;
         }
     }
-    for (int landmarkIndex : FACE_FEATURE_LANDMARKS)
+    for (int const landmarkIndex : FACE_FEATURE_LANDMARKS)
     {
         if (!appendLandmarkFeatures(landmarkIndex))
         {
@@ -608,7 +607,7 @@ auto EyeTrackingDetector::extractFeatures(
     }
 
     if (featureIndex != features.size() ||
-        !std::ranges::all_of(features, [](double value) { return std::isfinite(value); }) ||
+        !std::ranges::all_of(features, [](double value) -> bool { return std::isfinite(value); }) ||
         leftPosition->x < -0.25 || leftPosition->x > 1.25 || rightPosition->x < -0.25 ||
         rightPosition->x > 1.25 || leftPosition->y < -0.5 || leftPosition->y > 1.5 ||
         rightPosition->y < -0.5 || rightPosition->y > 1.5)

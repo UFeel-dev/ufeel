@@ -59,7 +59,7 @@ template <typename Values>
     const GazeFeatureVector& features
 ) -> bool
 {
-    return std::ranges::all_of(features, [](double value) { return std::isfinite(value); });
+    return std::ranges::all_of(features, [](double value) -> bool { return std::isfinite(value); });
 }
 
 [[nodiscard]] auto robustSamples(
@@ -245,12 +245,12 @@ auto GazeCalibrationModel::fit(
     }
 
     auto const [minimumX, maximumX] =
-        std::ranges::minmax_element(validTargets, {}, [](GazeCalibrationTarget const& target) {
+        std::ranges::minmax_element(validTargets, {}, [](GazeCalibrationTarget const& target) -> float {
             return target.target.x;
         });
 
     auto const [minimumY, maximumY] =
-        std::ranges::minmax_element(validTargets, {}, [](GazeCalibrationTarget const& target) {
+        std::ranges::minmax_element(validTargets, {}, [](GazeCalibrationTarget const& target) -> float {
             return target.target.y;
         });
 
@@ -288,8 +288,8 @@ auto GazeCalibrationModel::fit(
         ++verticalBands[verticalBand];
     }
 
-    if (std::ranges::any_of(horizontalBands, [](std::size_t count) { return count < 2; }) ||
-        std::ranges::any_of(verticalBands, [](std::size_t count) { return count < 2; }))
+    if (std::ranges::any_of(horizontalBands, [](std::size_t count) -> bool { return count < 2; }) ||
+        std::ranges::any_of(verticalBands, [](std::size_t count) -> bool { return count < 2; }))
     {
         report.failureReason = CalibrationFailureReason::InsufficientSpatialGridCoverage;
         return std::nullopt;
@@ -450,9 +450,9 @@ auto GazeCalibrationModel::fitRegression(
         samplesByTarget.push_back(std::move(samples));
     }
 
-    constexpr int COLUMN_COUNT = static_cast<int>(GAZE_FEATURE_COUNT + 1);
+    constexpr int columnCount = static_cast<int>(GAZE_FEATURE_COUNT + 1);
 
-    if (rowCount > static_cast<std::size_t>(std::numeric_limits<int>::max() - COLUMN_COUNT))
+    if (rowCount > static_cast<std::size_t>(std::numeric_limits<int>::max() - columnCount))
     {
         return std::nullopt;
     }
@@ -496,9 +496,9 @@ auto GazeCalibrationModel::fitRegression(
                                      : 1.0;
     }
 
-    auto const augmentedRowCount = rowCount + static_cast<std::size_t>(COLUMN_COUNT);
+    auto const augmentedRowCount = rowCount + static_cast<std::size_t>(columnCount);
 
-    cv::Mat design(static_cast<int>(augmentedRowCount), COLUMN_COUNT, CV_64F, cv::Scalar(0.0));
+    cv::Mat design(static_cast<int>(augmentedRowCount), columnCount, CV_64F, cv::Scalar(0.0));
 
     cv::Mat targetValues(static_cast<int>(augmentedRowCount), 2, CV_64F, cv::Scalar(0.0));
 
@@ -532,7 +532,7 @@ auto GazeCalibrationModel::fitRegression(
         }
     }
 
-    for (int column = 0; column < COLUMN_COUNT; ++column)
+    for (int column = 0; column < columnCount; ++column)
     {
         double const penalty = column == 0 ? INTERCEPT_PENALTY : RIDGE_PENALTY;
         design.at<double>(static_cast<int>(row) + column, column) = std::sqrt(penalty);
@@ -545,12 +545,12 @@ auto GazeCalibrationModel::fitRegression(
         return std::nullopt;
     }
 
-    if (solution.rows != COLUMN_COUNT || solution.cols != 2)
+    if (solution.rows != columnCount || solution.cols != 2)
     {
         return std::nullopt;
     }
 
-    for (int feature = 0; feature < COLUMN_COUNT; ++feature)
+    for (int feature = 0; feature < columnCount; ++feature)
     {
         for (int coordinate = 0; coordinate < 2; ++coordinate)
         {

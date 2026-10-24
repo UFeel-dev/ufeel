@@ -100,11 +100,11 @@ private:
     */
     void runEyeInference(bool isLeftEye);
 
-    ModelLoader m_leftIrisLandmarker;
-    ModelLoader m_rightIrisLandmarker;
+    ModelLoader leftIrisLandmarker_;
+    ModelLoader rightIrisLandmarker_;
 
-    cv::Rect m_leftEyeRoi;
-    cv::Rect m_rightEyeRoi;
+    cv::Rect leftEyeRoi_;
+    cv::Rect rightEyeRoi_;
 };
 
 } // namespace my

@@ -6,6 +6,7 @@
 #include <iostream>
 #include <portaudio.h>
 #include <string>
+#include <utility>
 #include <vector>
 
 AudioCapture::AudioCapture()
@@ -60,7 +61,7 @@ auto AudioCapture::findInputDevice() -> PaDeviceIndex
 
         const PaDeviceInfo* info = Pa_GetDeviceInfo(device);
 
-        if (info == nullptr || info->maxInputChannels < channelCount)
+        if (info == nullptr || std::cmp_less(info->maxInputChannels, channelCount))
         {
             continue;
         }
@@ -83,12 +84,12 @@ auto AudioCapture::findInputDevice() -> PaDeviceIndex
             score += 100;
         }
 
-        if (std::string(info->name).find("(hw:") != std::string::npos)
+        if (std::string(info->name).contains("(hw:"))
         {
             score += 50;
         }
 
-        if (std::string(info->name).find("default") == std::string::npos)
+        if (!std::string(info->name).contains("default"))
         {
             score += 10;
         }

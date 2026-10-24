@@ -77,13 +77,13 @@ private:
     /*
     Help getting Region of Interest from model outputs
     */
-    DetectionPostProcess m_postProcessor;
+    DetectionPostProcess postProcessor_;
 
     /*
     Save some informations
     */
-    cv::Mat m_originImage;
-    cv::Rect m_roi;
+    cv::Mat originImage_;
+    cv::Rect roi_;
 };
 
 } // namespace my

@@ -63,7 +63,7 @@ public:
 
 private:
 
-    my::ModelLoader m_landmarkModel;
+    my::ModelLoader landmarkModel_;
 };
 
 } // namespace my

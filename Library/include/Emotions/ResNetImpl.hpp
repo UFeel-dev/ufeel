@@ -50,9 +50,9 @@ struct ResNetImpl : torch::nn::Module
 
     int64_t inplanes = 64;
 
-    explicit ResNetImpl(const std::vector<int64_t>& layers, int64_t num_classes = 1000);
+    explicit ResNetImpl(const std::vector<int64_t>& layers, int64_t numClasses = 1000);
 
-    auto make_layer(int64_t planes, int64_t blocks, int64_t stride) -> torch::nn::Sequential;
+    auto makeLayer(int64_t planes, int64_t blocks, int64_t stride) -> torch::nn::Sequential;
     auto forward(torch::Tensor x) -> torch::Tensor;
 };
 

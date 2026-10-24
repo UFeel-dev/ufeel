@@ -4,7 +4,6 @@
 #include "EyeTracking/IrisDetection/ModelLoader.hpp"
 
 #include <cmath>
-#include <opencv2/core.hpp>
 #include <opencv2/core/mat.hpp>
 #include <opencv2/core/types.hpp>
 #include <string>
@@ -21,31 +20,31 @@ void my::FaceDetection::loadImageToInput(
     const cv::Mat& inputImage, int /*idx*/
 )
 {
-    m_roi = {};
-    m_originImage = inputImage;
+    roi_ = {};
+    originImage_ = inputImage;
 
     ModelLoader::loadImageToInput(inputImage, 0);
 }
 
 void my::FaceDetection::runInference()
 {
-    m_roi = {};
+    roi_ = {};
 
     ModelLoader::runInference();
 
     auto const regressor = getFaceRegressor();
     auto const classificator = getFaceClassificator();
-    auto const detection = m_postProcessor.getHighestScoreDetection(regressor, classificator);
+    auto const detection = postProcessor_.getHighestScoreDetection(regressor, classificator);
 
     if (detection.classId != -1)
     {
-        m_roi = calculateRoiFromDetection(detection);
+        roi_ = calculateRoiFromDetection(detection);
     }
 }
 
 auto my::FaceDetection::getOriginalImage() const -> cv::Mat
 {
-    return m_originImage;
+    return originImage_;
 }
 
 auto my::FaceDetection::getFaceRegressor() const -> std::vector<float>
@@ -60,14 +59,14 @@ auto my::FaceDetection::getFaceClassificator() const -> std::vector<float>
 
 auto my::FaceDetection::getFaceRoi() const -> cv::Rect
 {
-    return m_roi;
+    return roi_;
 }
 
 auto my::FaceDetection::cropFrame(
     const cv::Rect& roi
 ) const -> cv::Mat
 {
-    auto const& frame = m_originImage;
+    auto const& frame = originImage_;
 
     if (frame.empty() || roi.width <= 0 || roi.height <= 0)
     {
@@ -95,13 +94,13 @@ auto my::FaceDetection::calculateRoiFromDetection(
     const Detection& detection
 ) const -> cv::Rect
 {
-    if (m_originImage.empty())
+    if (originImage_.empty())
     {
         return {};
     }
 
-    int const originalWidth = m_originImage.cols;
-    int const originalHeight = m_originImage.rows;
+    int const originalWidth = originImage_.cols;
+    int const originalHeight = originImage_.rows;
 
     auto const center = (detection.roi.tl() + detection.roi.br()) * 0.5f;
 
