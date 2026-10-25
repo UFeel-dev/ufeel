@@ -202,6 +202,22 @@ public partial class MainWindow : Window
             directions.Select(pair => $"{pair.Key}: {pair.Value}"));
     }
 
+    private static string FormatHeartRate(HeartRateResultData heartrate)
+    {
+        if (!heartrate.IsValid)
+        {
+            return heartrate.Status switch
+            {
+                HeartRateStatus.JsonParseError => "JSON parse error",
+                HeartRateStatus.JsonParseOutOfRange => "JSON parse - out of range",
+                HeartRateStatus.RequestFailed => "Request failed",
+                _ => "Heartrate unavailable"
+            };
+        }
+
+        return heartrate.Bpm.ToString();
+    }
+
     private async void SpeechButton_OnClick(
         object? sender,
         RoutedEventArgs e)
