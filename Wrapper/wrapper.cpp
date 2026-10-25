@@ -565,20 +565,29 @@ void ufeel_free_string(
 }
 
 __attribute__((visibility("default"))) auto ufeel_get_heartrate(
-    void* processor, UFeelHeartRateResult* result
-) -> bool
+    UFeelProcessor* processor, UFeelHeartRateResult* result
+) -> int32_t
 {
-    if (processor == nullptr || result == nullptr)
+    if (result == nullptr || !isValidProcessor(processor))
     {
-        return false;
-    } // TODO(augustin-grosnon): update this method to use same logic as eye tracking
+        return UFEEL_STATUS_INVALID_ARGUMENT;
+    }
 
     *result = {};
 
-    const auto heartrate = static_cast<DataProcessor*>(processor)->getHeartRate();
+    return guarded(
+        "ufeel_get_heartrate",
+        int32_t{UFEEL_STATUS_INTERNAL_ERROR},
+        [processor, result] -> UFeelStatus {
+            const auto heartrate = processor->processor.getHeartRate();
 
-    result->bpm = heartrate.bpm;
-    result->status = static_cast<int32_t>(heartrate.status);
+            result->status = static_cast<int32_t>(heartrate.status);
+            result->bpm = heartrate.bpm;
 
-    return true;
+            return heartrate.status == HeartRateStatus::Valid ? UFEEL_STATUS_OK
+                                                              : UFEEL_STATUS_NO_HEARTRATE;
+        }
+    );
+
+    return UFEEL_STATUS_OK;
 }

@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
 namespace UFeel;
@@ -280,12 +282,21 @@ public sealed class UFeelProcessor : IDisposable
         }
     }
 
-    public uint GetHeartRate()
+    public HeartRateResultData GetHeartRate()
     {
-        int status =
-            UFeelNative.ufeel_get_heartrate(Handle, out UFeelNative.NativeHeartRateResult result);
+        UFeelNative.Status status =
+            (UFeelNative.Status)UFeelNative.ufeel_get_heartrate(
+                Handle, out UFeelNative.NativeHeartRateResult result);
 
-        return result.bpm;
+        if (status != UFeelNative.Status.Ok &&
+            status != UFeelNative.Status.NoHeartRate)
+        {
+            ThrowIfFailed(status, "retrieve the heartrate value");
+        }
+
+        return new HeartRateResultData(
+            (HeartRateStatus)result.Status,
+            result.Bpm);
     }
 
     private IntPtr Handle
@@ -316,6 +327,8 @@ public sealed class UFeelProcessor : IDisposable
         {
             UFeelNative.Status.NoGaze =>
                 "A valid gaze estimate is not available.",
+            UFeelNative.Status.NoHeartRate =>
+                "A valid heartrate is not available.",
             UFeelNative.Status.InvalidArgument =>
                 "One or more arguments are invalid.",
             UFeelNative.Status.InvalidState =>
@@ -529,4 +542,11 @@ public sealed class EyeTrackingCalibrationDiagnostics
         TargetsWithInsufficientRawSamples = targetsWithInsufficientRawSamples;
         TargetsWithInsufficientRetainedSamples = targetsWithInsufficientRetainedSamples;
     }
+}
+
+public sealed record HeartRateResultData(
+    HeartRateStatus Status,
+    uint Bpm)
+{
+    public bool IsValid => Status == HeartRateStatus.Valid;
 }
