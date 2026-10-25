@@ -79,11 +79,12 @@ typedef enum
 {
     UFEEL_STATUS_OK = 0,
     UFEEL_STATUS_NO_GAZE = 1,
-    UFEEL_STATUS_INVALID_ARGUMENT = 2,
-    UFEEL_STATUS_INVALID_STATE = 3,
-    UFEEL_STATUS_EYE_TRACKING_CALIBRATION_FAILED = 4,
-    UFEEL_STATUS_EYE_TRACKING_PROFILE_FAILED = 5,
-    UFEEL_STATUS_INTERNAL_ERROR = 6
+    UFEEL_STATUS_NO_HEARTRATE = 2,
+    UFEEL_STATUS_INVALID_ARGUMENT = 3,
+    UFEEL_STATUS_INVALID_STATE = 4,
+    UFEEL_STATUS_EYE_TRACKING_CALIBRATION_FAILED = 5,
+    UFEEL_STATUS_EYE_TRACKING_PROFILE_FAILED = 6,
+    UFEEL_STATUS_INTERNAL_ERROR = 7
 } UFeelStatus;
 
 /** Progress of the active eye-tracking calibration session. */
@@ -149,7 +150,9 @@ UFEEL_API UFeelFrame* ufeel_get_frame(UFeelProcessor* processor);
 UFEEL_API void ufeel_free_frame(UFeelFrame* frame);
 
 /** Returns the current emotion scores. Set *count to zero if no scores are available. */
-UFEEL_API UFeelPair* ufeel_get_emotions(UFeelProcessor* processor, int32_t* count);
+UFEEL_API UFeelPair* ufeel_get_emotions(
+    UFeelProcessor* processor, int32_t* count
+); // TODO: update to match eye tracking and heartrate
 
 /** Releases emotion results returned by ufeel_get_emotions(). Accepts NULL. */
 UFEEL_API void ufeel_free_emotions(UFeelPair* emotions, int32_t count);
@@ -192,14 +195,15 @@ ufeel_load_eye_tracking_calibration_profile(UFeelProcessor* processor, const cha
 UFEEL_API int32_t ufeel_set_speech_to_text_enabled(UFeelProcessor* processor, int32_t enabled);
 
 /** Returns the latest speech-to-text result as a library-allocated UTF-8 string. */
-UFEEL_API char* ufeel_get_speech_to_text(UFeelProcessor* processor);
+UFEEL_API char* ufeel_get_speech_to_text(
+    UFeelProcessor* processor
+); // TODO: update to match eye tracking and heartrate
 
 /** Releases a string returned by ufeel_get_speech_to_text(). Accepts NULL. */
 UFEEL_API void ufeel_free_string(char* value);
 
-bool ufeel_get_heartrate(void* processor, UFeelHeartRateResult* result);
-
-bool ufeel_get_heartrate(void* processor, UFeelHeartRateResult* result);
+/** Fetches and returns the current heartrate and its validity status. */
+UFEEL_API int32_t ufeel_get_heartrate(UFeelProcessor* processor, UFeelHeartRateResult* result);
 
 #ifdef __cplusplus
 }

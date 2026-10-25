@@ -1,5 +1,10 @@
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
-using Avalonia;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -125,7 +130,7 @@ public partial class MainWindow : Window
                 Dictionary<string, float> emotions;
                 GazeResultData gaze;
                 string speech;
-                uint heartrate;
+                HeartRateResultData heartrate;
 
                 await processorGate.WaitAsync(token);
 
@@ -148,7 +153,9 @@ public partial class MainWindow : Window
                         smoothedGazeY = null;
                         lastGazeTimestamp = null;
                         speech = string.Empty;
-                        heartrate = 0;
+                        heartrate = new HeartRateResultData(
+                            HeartRateStatus.RequestFailed,
+                            0);
                     }
                     else
                     {
@@ -214,7 +221,7 @@ public partial class MainWindow : Window
                     SpeechText.Text = string.IsNullOrWhiteSpace(speech)
                         ? "No speech detected"
                         : speech;
-                    HeartRate.Text = heartrate.ToString();
+                    HeartRate.Text = FormatHeartRate(heartrate);
                 });
 
                 await Task.Delay(33, token);
@@ -362,6 +369,22 @@ public partial class MainWindow : Window
         Canvas.SetTop(
             GazeMarker,
             gaze.EstimatedY * height - GazeMarker.Height / 2);
+    }
+
+    private static string FormatHeartRate(HeartRateResultData heartrate)
+    {
+        if (!heartrate.IsValid)
+        {
+            return heartrate.Status switch
+            {
+                HeartRateStatus.JsonParseError => "JSON parse error",
+                HeartRateStatus.JsonParseOutOfRange => "JSON parse - out of range",
+                HeartRateStatus.RequestFailed => "Request failed",
+                _ => "Heartrate unavailable"
+            };
+        }
+
+        return heartrate.Bpm.ToString();
     }
 
     private async void SpeechButton_OnClick(

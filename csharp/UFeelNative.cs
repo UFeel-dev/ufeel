@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
@@ -112,19 +114,20 @@ namespace UFeel
         [StructLayout(LayoutKind.Sequential)]
         public struct NativeHeartRateResult
         {
-            public int status;
-            public uint bpm;
+            public int Status;
+            public uint Bpm;
         }
 
         internal enum Status
         {
             Ok = 0,
             NoGaze = 1,
-            InvalidArgument = 2,
-            InvalidState = 3,
-            EyeTrackingCalibrationFailed = 4,
-            EyeTrackingProfileFailed = 5,
-            InternalError = 6
+            NoHeartRate = 2,
+            InvalidArgument = 3,
+            InvalidState = 4,
+            EyeTrackingCalibrationFailed = 5,
+            EyeTrackingProfileFailed = 6,
+            InternalError = 7
         }
 
         internal static void ConfigureLibrary(string libraryPath)
