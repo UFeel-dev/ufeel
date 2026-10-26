@@ -239,3 +239,10 @@ install(
 )
 
 # TODO: resolve the path for every single model accordingly (currently only vosk)
+
+option(UFEEL_BUILD_TESTS "Build unit tests" ON)
+
+if(UFEEL_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()

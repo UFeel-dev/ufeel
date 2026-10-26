@@ -150,7 +150,7 @@ all()
     configure
     build
     package
-    test
+    test # Maybe remove test from all and update documentation
 }
 
 usage()
@@ -165,6 +165,18 @@ usage()
     echo "  ./build.sh lint [files...]"
     echo "  ./build.sh fix [files...]"
     echo "  ./build.sh include-fix [files...]"
+    echo "  ./build.sh run-unit-tests"
+}
+
+run_unit_tests()
+{
+    require_build
+
+    echo "Building unit tests..."
+    cmake --build "${BUILD_DIR}" --target run_unit_tests --parallel
+
+    echo "Running Google Test unit tests..."
+    "${BUILD_DIR}/tests/unit/run_unit_tests"
 }
 
 case "${1:-}" in
@@ -194,6 +206,9 @@ case "${1:-}" in
         ;;
     include-fix)
         include_fix "${@:2}"
+        ;;
+    run-unit-tests)
+        run_unit_tests
         ;;
     *)
         usage
