@@ -77,6 +77,52 @@ auto DataProcessor::getSpeech() const -> const std::string&
     return speech_;
 }
 
+void DataProcessor::beginEyeTrackingCalibration()
+{
+    eyeTrackingDetector_->beginCalibration();
+}
+
+auto DataProcessor::setEyeTrackingCalibrationTarget(
+    float x, float y
+) -> bool
+{
+    return eyeTrackingDetector_->setCalibrationTarget(x, y);
+}
+
+auto DataProcessor::finishEyeTrackingCalibration() -> bool
+{
+    return eyeTrackingDetector_->finishCalibration();
+}
+
+void DataProcessor::cancelEyeTrackingCalibration()
+{
+    eyeTrackingDetector_->cancelCalibration();
+}
+
+auto DataProcessor::getEyeTrackingCalibrationProgress() const -> CalibrationProgress
+{
+    return eyeTrackingDetector_->calibrationProgress();
+}
+
+auto DataProcessor::getEyeTrackingCalibrationDiagnostics() const -> CalibrationDiagnostics
+{
+    return eyeTrackingDetector_->calibrationDiagnostics();
+}
+
+auto DataProcessor::saveEyeTrackingCalibrationProfile(
+    const std::string& path
+) const -> bool
+{
+    return eyeTrackingDetector_->saveCalibrationProfile(path);
+}
+
+auto DataProcessor::loadEyeTrackingCalibrationProfile(
+    const std::string& path
+) -> bool
+{
+    return eyeTrackingDetector_->loadCalibrationProfile(path);
+}
+
 auto DataProcessor::getHeartRate() const -> HeartRateResult
 {
     return heartrate_;

@@ -182,6 +182,7 @@
                                 MinHeight="48" />
                         </StackPanel>
                     </Border>
+
                 </StackPanel>
                 </ScrollViewer>
             </Grid>

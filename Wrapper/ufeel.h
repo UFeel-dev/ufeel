@@ -56,8 +56,8 @@ typedef enum
 
 typedef struct
 {
-        int32_t status;
-        uint32_t bpm;
+    int32_t status;
+    uint32_t bpm;
 } UFeelHeartRateResult;
 
 typedef struct UFeelGaze
@@ -256,7 +256,43 @@ UFEEL_API char* ufeel_get_speech_to_text(
 /** Releases a string returned by ufeel_get_speech_to_text(). Accepts NULL. */
 UFEEL_API void ufeel_free_string(char* value);
 
-bool ufeel_get_heartrate(void* processor, UFeelHeartRateResult* result);
+/** Aborts eye-tracking calibration without activating the unfinished model. */
+UFEEL_API int32_t ufeel_cancel_eye_tracking_calibration(UFeelProcessor* processor);
+
+/** Retrieves the latest gaze estimate and its validity status. */
+UFEEL_API int32_t ufeel_get_gaze_result(UFeelProcessor* processor, UFeelGazeResult* result);
+
+/** Retrieves progress for the current eye-tracking calibration session. */
+UFEEL_API int32_t ufeel_get_eye_tracking_calibration_progress(
+    UFeelProcessor* processor, UFeelEyeTrackingCalibrationProgress* progress
+);
+
+/** Retrieves diagnostic measurements from eye-tracking calibration. */
+UFEEL_API int32_t ufeel_get_eye_tracking_calibration_diagnostics(
+    UFeelProcessor* processor, UFeelEyeTrackingCalibrationDiagnostics* diagnostics
+);
+
+/** Saves the active eye-tracking calibration profile to a UTF-8 file path. */
+UFEEL_API int32_t
+ufeel_save_eye_tracking_calibration_profile(UFeelProcessor* processor, const char* utf8Path);
+
+/** Loads an eye-tracking calibration profile from a UTF-8 file path. */
+UFEEL_API int32_t
+ufeel_load_eye_tracking_calibration_profile(UFeelProcessor* processor, const char* utf8Path);
+
+/** Enables or disables speech-to-text processing. */
+UFEEL_API int32_t ufeel_set_speech_to_text_enabled(UFeelProcessor* processor, int32_t enabled);
+
+/** Returns the latest speech-to-text result as a library-allocated UTF-8 string. */
+UFEEL_API char* ufeel_get_speech_to_text(
+    UFeelProcessor* processor
+); // TODO: update to match eye tracking and heartrate
+
+/** Releases a string returned by ufeel_get_speech_to_text(). Accepts NULL. */
+UFEEL_API void ufeel_free_string(char* value);
+
+/** Fetches and returns the current heartrate and its validity status. */
+UFEEL_API int32_t ufeel_get_heartrate(UFeelProcessor* processor, UFeelHeartRateResult* result);
 
 #ifdef __cplusplus
 }

@@ -1,6 +1,8 @@
 #ifndef DATAPROCESSOR_HPP
 #define DATAPROCESSOR_HPP
 
+#include "EyeTracking/EyeTrackingDetector.hpp"
+#include "EyeTracking/GazeCalibrationModel.hpp"
 #include "HeartRate/HeartRateDetector.hpp"
 #include "EyeTracking/EyeTrackingDetector.hpp"
 #include "EyeTracking/GazeCalibrationModel.hpp"
@@ -43,7 +45,7 @@ public:
 
     [[nodiscard]] auto getEmotions() const -> const std::map<std::string, float>&;
 
-        [[nodiscard]] auto getHeartRate() const -> HeartRateResult;
+    [[nodiscard]] auto getHeartRate() const -> HeartRateResult;
 
     [[nodiscard]] auto getGaze() const -> GazeResult;
 
