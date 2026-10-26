@@ -122,3 +122,6 @@ nunit-*.xml
 
 # Packaging
 package
+
+# Coverage
+*.profraw

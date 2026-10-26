@@ -25,6 +25,7 @@ RUN apt-get update && \
         clang-22 \
         clang-tidy-22 \
         clang-format-22 \
+        llvm-22 \
         cmake \
         ninja-build \
         libasound2 \

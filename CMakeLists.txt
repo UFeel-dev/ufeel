@@ -151,6 +151,19 @@ target_compile_options(ufeel_detection_library
         ${TORCH_CXX_FLAGS}
 )
 
+option(UFEEL_ENABLE_COVERAGE "Enable LLVM source-based coverage" OFF) ## add
+
+if(UFEEL_ENABLE_COVERAGE)
+    target_compile_options(ufeel_detection_library PRIVATE
+        -fprofile-instr-generate
+        -fcoverage-mapping
+    )
+
+    target_link_options(ufeel_detection_library INTERFACE
+        -fprofile-instr-generate
+    )
+endif()
+
 add_library(ufeel_wrapper SHARED
     ${WRAPPER_DIR}/wrapper.cpp
 )

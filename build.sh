@@ -12,6 +12,9 @@ CSHARP_PROJECT="${ROOT_DIR}/csharp"
 CMAKE_GENERATOR="Ninja"
 CMAKE_ARGS=("${@:2}")
 
+COVERAGE_BUILD_DIR="${ROOT_DIR}/build-coverage"
+LLVM_BIN="/usr/lib/llvm-22/bin"
+
 require_build()
 {
     if [ ! -f "${BUILD_DIR}/build.ninja" ]; then
@@ -170,13 +173,38 @@ usage()
 
 run_unit_tests()
 {
-    require_build
+    echo "Configuring coverage build..."
+    cmake \
+        -S "${ROOT_DIR}" \
+        -B "${COVERAGE_BUILD_DIR}" \
+        -G "${CMAKE_GENERATOR}" \
+        -DCMAKE_BUILD_TYPE=Debug \
+        -DCMAKE_CXX_COMPILER=clang++-22 \
+        -DUFEEL_BUILD_TESTS=ON \
+        -DUFEEL_ENABLE_COVERAGE=ON
 
     echo "Building unit tests..."
-    cmake --build "${BUILD_DIR}" --target run_unit_tests --parallel
+    cmake --build "${COVERAGE_BUILD_DIR}" --parallel
 
-    echo "Running Google Test unit tests..."
-    "${BUILD_DIR}/tests/unit/run_unit_tests"
+    echo "Running unit tests..."
+    rm -f "${COVERAGE_BUILD_DIR}"/coverage-*.profraw
+
+    LLVM_PROFILE_FILE="${COVERAGE_BUILD_DIR}/coverage-%p.profraw" \
+        ctest \
+            --test-dir "${COVERAGE_BUILD_DIR}" \
+            --output-on-failure
+
+    echo "Merging coverage profiles..."
+    "${LLVM_BIN}/llvm-profdata" merge -sparse \
+        "${COVERAGE_BUILD_DIR}"/coverage-*.profraw \
+        -o "${COVERAGE_BUILD_DIR}/coverage.profdata"
+
+    echo "Generating coverage report..."
+    "${LLVM_BIN}/llvm-cov" report \
+        "${COVERAGE_BUILD_DIR}/tests/unit/run_unit_tests" \
+        -object="${COVERAGE_BUILD_DIR}/libufeel_detection_library.a" \
+        -instr-profile="${COVERAGE_BUILD_DIR}/coverage.profdata" \
+        -ignore-filename-regex='(/tests/|googletest|/usr/|3rdparty/)'
 }
 
 case "${1:-}" in
