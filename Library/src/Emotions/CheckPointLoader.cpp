@@ -4,7 +4,7 @@
 #include <torch/serialize/input-archive.h>
 
 template <typename Model>
-static auto load_checkpoint(
+static auto loadCheckpoint(
     Model model, const std::string& path, torch::Device device = torch::kCPU
 ) -> Model
 {

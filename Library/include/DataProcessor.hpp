@@ -1,6 +1,9 @@
 #ifndef DATAPROCESSOR_HPP
 #define DATAPROCESSOR_HPP
 
+#include "EyeTracking/EyeTrackingDetector.hpp"
+#include "EyeTracking/GazeCalibrationModel.hpp"
+#include "HeartRate/HeartRateDetector.hpp"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/videoio.hpp"
 
@@ -9,54 +12,62 @@
 #include <string>
 
 class EmotionDetector;
-class EyeTrackingDetector;
 class SpeechToTextDetector;
+class HeartRateSensorDetector;
 
 class DataProcessor
 {
-    public:
+public:
 
-        DataProcessor(const std::string& speechModelPath);
+    DataProcessor(const std::string& modelDirectory, const std::string& speechModelPath);
 
-        ~DataProcessor();
+    ~DataProcessor();
 
-        DataProcessor(const DataProcessor&) = delete;
-        auto operator=(const DataProcessor&) -> DataProcessor& = delete;
+    DataProcessor(const DataProcessor&) = delete;
+    auto operator=(const DataProcessor&) -> DataProcessor& = delete;
 
-        DataProcessor(DataProcessor&&) = delete;
-        auto operator=(DataProcessor&&) -> DataProcessor& = delete;
+    DataProcessor(DataProcessor&&) = delete;
+    auto operator=(DataProcessor&&) -> DataProcessor& = delete;
 
-        auto update() -> bool;
+    auto update() -> bool;
 
-        auto getFrame() const -> cv::Mat;
+    [[nodiscard]] auto getFrame() const -> cv::Mat;
 
-        auto getEmotions() const -> const std::map<std::string, float>&;
+    [[nodiscard]] auto getEmotions() const -> const std::map<std::string, float>&;
 
-        auto getDirections() const -> const std::map<std::string, bool>&;
+    [[nodiscard]] auto getGaze() const -> GazeResult;
 
-        auto getSpeech() const -> const std::string&;
+    [[nodiscard]] auto getSpeech() const -> const std::string&;
 
-        void calibrateEyeTracking();
+    [[nodiscard]] auto getHeartRate() const -> HeartRateResult;
 
-        void toggleSpeechToText(bool state);
+    void beginEyeTrackingCalibration();
+    [[nodiscard]] auto setEyeTrackingCalibrationTarget(float x, float y) -> bool;
+    [[nodiscard]] auto finishEyeTrackingCalibration() -> bool;
+    void cancelEyeTrackingCalibration();
+    [[nodiscard]] auto getEyeTrackingCalibrationProgress() const -> CalibrationProgress;
+    [[nodiscard]] auto getEyeTrackingCalibrationDiagnostics() const -> CalibrationDiagnostics;
+    [[nodiscard]] auto saveEyeTrackingCalibrationProfile(const std::string& path) const -> bool;
+    [[nodiscard]] auto loadEyeTrackingCalibrationProfile(const std::string& path) -> bool;
 
-        // auto processHeartRateSensor() -> int;
+    void toggleSpeechToText(bool state);
 
-    protected:
+    // auto processHeartRateSensor() -> int;
 
-        cv::VideoCapture cap_;
-        cv::Mat frame_;
+protected:
 
-        std::map<std::string, float> emotions_;
-        std::map<std::string, bool> directions_;
-        std::string speech_;
+    cv::VideoCapture cap_;
+    cv::Mat frame_;
 
-        std::unique_ptr<EmotionDetector> emotionDetector_;
-        std::unique_ptr<EyeTrackingDetector> eyeTrackingDetector_;
-        std::unique_ptr<SpeechToTextDetector> speechToTextDetector_;
-        // std::unique_ptr<HeartRateSensorDetector> heartRateSensorDetector_;
+    std::map<std::string, float> emotions_;
+    GazeResult gaze_;
+    std::string speech_;
+    HeartRateResult heartrate_{};
 
-    private:
+    std::unique_ptr<EmotionDetector> emotionDetector_;
+    std::unique_ptr<EyeTrackingDetector> eyeTrackingDetector_;
+    std::unique_ptr<SpeechToTextDetector> speechToTextDetector_;
+    // std::unique_ptr<HeartRateSensorDetector> heartRateSensorDetector_;
 };
 
 #endif // DATAPROCESSOR_HPP

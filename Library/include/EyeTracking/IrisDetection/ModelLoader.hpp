@@ -24,18 +24,18 @@ Attributes:
 */
 struct TensorWrapper
 {
-        float* data;
-        size_t bytes;
-        std::vector<int> dims;
+    float* data;
+    size_t bytes;
+    std::vector<int> dims;
 
-        TensorWrapper(
-            float* t_data, size_t t_bytes, int* t_dims, int t_dimSize
-        )
-            : data(t_data)
-            , bytes(t_bytes)
-            , dims(t_dims, t_dims + t_dimSize)
-        {
-        }
+    TensorWrapper(
+        float* tData, size_t tBytes, int* tDims, int tDimSize
+    )
+        : data(tData)
+        , bytes(tBytes)
+        , dims(tDims, tDims + tDimSize)
+    {
+    }
 };
 
 /*
@@ -44,181 +44,181 @@ This class is non-copyable.
 */
 class ModelLoader
 {
-    public:
+public:
 
-        /*
-        Constructor from a .tflite file
-        Parameters:
-            modelPath: path to .tflite
-        */
-        explicit ModelLoader(const std::string& modelPath);
-        ModelLoader(const ModelLoader& other) = delete;
-        auto operator=(const ModelLoader& other) -> ModelLoader& = delete;
-        ModelLoader(ModelLoader&&) = delete;
-        auto operator=(ModelLoader&&) -> ModelLoader& = delete;
-        virtual ~ModelLoader() = default;
+    /*
+    Constructor from a .tflite file
+    Parameters:
+        modelPath: path to .tflite
+    */
+    explicit ModelLoader(const std::string& modelPath);
+    ModelLoader(const ModelLoader& other) = delete;
+    auto operator=(const ModelLoader& other) -> ModelLoader& = delete;
+    ModelLoader(ModelLoader&&) = delete;
+    auto operator=(ModelLoader&&) -> ModelLoader& = delete;
+    virtual ~ModelLoader() = default;
 
-        /*
-        Get shape of input tensor at index.
-        (Note: A model can have multiple inputs)
-        Parameters:
-            index: index of input tensor
-        */
-        [[nodiscard]] auto getInputShape(int index = 0) const -> std::vector<int>;
+    /*
+    Get shape of input tensor at index.
+    (Note: A model can have multiple inputs)
+    Parameters:
+        index: index of input tensor
+    */
+    [[nodiscard]] auto getInputShape(int index = 0) const -> std::vector<int>;
 
-        /*
-        Get the pointer to the data of input tensor at index.
-        (Note: A model can have multiple inputs)
-        Parameters:
-            index: index of input tensor
-        */
-        [[nodiscard]] auto getInputData(int index = 0) const -> float*;
+    /*
+    Get the pointer to the data of input tensor at index.
+    (Note: A model can have multiple inputs)
+    Parameters:
+        index: index of input tensor
+    */
+    [[nodiscard]] auto getInputData(int index = 0) const -> float*;
 
-        /*
-        Get size in bytes of input tensor at index.
-        (Note: A model can have multiple inputs)
-        Parameters:
-            index: index of input tensor
-        */
-        [[nodiscard]] auto getInputSize(int index = 0) const -> size_t;
+    /*
+    Get size in bytes of input tensor at index.
+    (Note: A model can have multiple inputs)
+    Parameters:
+        index: index of input tensor
+    */
+    [[nodiscard]] auto getInputSize(int index = 0) const -> size_t;
 
-        /*
-        Get number of inputs needed to run inference.
-        */
-        [[nodiscard]] auto getNumberOfInputs() const -> int;
+    /*
+    Get number of inputs needed to run inference.
+    */
+    [[nodiscard]] auto getNumberOfInputs() const -> int;
 
-        /*
-        Get shape of output tensor at index.
-        (Note: A model can have multiple outputs)
-        Parameters:
-            index: index of output tensor
-        */
-        [[nodiscard]] auto getOutputShape(int index = 0) const -> std::vector<int>;
+    /*
+    Get shape of output tensor at index.
+    (Note: A model can have multiple outputs)
+    Parameters:
+        index: index of output tensor
+    */
+    [[nodiscard]] auto getOutputShape(int index = 0) const -> std::vector<int>;
 
-        /*
-        Get the pointer to the data of output tensor at index.
-        (Note: A model can have multiple outputs)
-        Parameters:
-            index: index of output tensor
-        */
-        [[nodiscard]] auto getOutputData(int index = 0) const -> float*;
+    /*
+    Get the pointer to the data of output tensor at index.
+    (Note: A model can have multiple outputs)
+    Parameters:
+        index: index of output tensor
+    */
+    [[nodiscard]] auto getOutputData(int index = 0) const -> float*;
 
-        /*
-        Get size in bytes of output tensor at index.
-        (Note: A model can have multiple outputs)
-        Parameters:
-            index: index of output tensor
-        */
-        [[nodiscard]] auto getOutputSize(int index = 0) const -> size_t;
+    /*
+    Get size in bytes of output tensor at index.
+    (Note: A model can have multiple outputs)
+    Parameters:
+        index: index of output tensor
+    */
+    [[nodiscard]] auto getOutputSize(int index = 0) const -> size_t;
 
-        /*
-        Get number of outputs from inference.
-        */
-        [[nodiscard]] auto getNumberOfOutputs() const -> int;
+    /*
+    Get number of outputs from inference.
+    */
+    [[nodiscard]] auto getNumberOfOutputs() const -> int;
 
-        /*
-        Load image (BGR format) to model at index
-        (Note: Only support image of type CV_8UC3 and CV_8UC4)
-        */
-        virtual void loadImageToInput(const cv::Mat& inputImage, int idx);
+    /*
+    Load image (BGR format) to model at index
+    (Note: Only support image of type CV_8UC3 and CV_8UC4)
+    */
+    virtual void loadImageToInput(const cv::Mat& inputImage, int index);
 
-        /*
-        Load byte data to model at index
-        */
-        virtual void loadBytesToInput(const void* data, int idx);
+    /*
+    Load byte data to model at index
+    */
+    virtual void loadBytesToInput(const void* data, int index);
 
-        /*
-        Run inference on the inputs.
-        Can only run when all input tensors have been loaded.
-        */
-        virtual void runInference();
+    /*
+    Run inference on the inputs.
+    Can only run when all input tensors have been loaded.
+    */
+    virtual void runInference();
 
-        /*
-        A vector contains output data at index.
-        Its shape is flattened from getOutputShape(index)
-        */
-        [[nodiscard]] virtual auto loadOutput(int index) const -> std::vector<float>;
+    /*
+    A vector contains output data at index.
+    Its shape is flattened from getOutputShape(index)
+    */
+    [[nodiscard]] virtual auto loadOutput(int index) const -> std::vector<float>;
 
-        // Non-virtual convenience overloads (provides default index = 0)
-        void loadImageToInput(
-            const cv::Mat& inputImage
-        )
-        {
-            loadImageToInput(inputImage, 0);
-        }
+    // Non-virtual convenience overloads (provides default index = 0)
+    void loadImageToInput(
+        const cv::Mat& inputImage
+    )
+    {
+        loadImageToInput(inputImage, 0);
+    }
 
-        void loadBytesToInput(
-            const void* data
-        )
-        {
-            loadBytesToInput(data, 0);
-        }
+    void loadBytesToInput(
+        const void* data
+    )
+    {
+        loadBytesToInput(data, 0);
+    }
 
-        [[nodiscard]] auto loadOutput() const -> std::vector<float>
-        {
-            return loadOutput(0);
-        }
+    [[nodiscard]] auto loadOutput() const -> std::vector<float>
+    {
+        return loadOutput(0);
+    }
 
-    private:
+private:
 
-        /*
-        Constructor helper functions
-        */
-        void loadModel(const char* modelPath);
-        void buildInterpreter(int numThreads = -1);
-        void allocateTensors();
-        void fillInputTensors();
-        void fillOutputTensors();
+    /*
+    Constructor helper functions
+    */
+    void loadModel(const char* modelPath);
+    void buildInterpreter(int numThreads = -1);
+    void allocateTensors();
+    void fillInputTensors();
+    void fillOutputTensors();
 
-        /*
-        Check if index is valid for input and output tensor
-        */
-        [[nodiscard]] auto isIndexValid(int idx, char c = 'i') const -> bool;
+    /*
+    Check if index is valid for input and output tensor
+    */
+    [[nodiscard]] auto isIndexValid(int index, char type = 'i') const -> bool;
 
-        /*
-        Check if all inputs have been loaded
-        */
-        [[nodiscard]] auto isAllInputsLoaded() const -> bool;
+    /*
+    Check if all inputs have been loaded
+    */
+    [[nodiscard]] auto isAllInputsLoaded() const -> bool;
 
-        /*
-        Process input loads before run inference
-        */
-        void inputChecker();
+    /*
+    Process input loads before run inference
+    */
+    void inputChecker();
 
-        /*
-        Convert image to float and resize to getInputShape(idx)
-        */
-        [[nodiscard]] auto preprocessImage(const cv::Mat& in, int idx) const -> cv::Mat;
+    /*
+    Convert image to float and resize to getInputShape(idx)
+    */
+    [[nodiscard]] auto preprocessImage(const cv::Mat& input, int index) const -> cv::Mat;
 
-        /*
-        Convert image of type CV_8UC3 or CV_8UC4 to RGB format
-        */
-        static auto convertToRGB(const cv::Mat& in) -> cv::Mat;
+    /*
+    Convert image of type CV_8UC3 or CV_8UC4 to RGB format
+    */
+    static auto convertToRGB(const cv::Mat& in) -> cv::Mat;
 
-        /*
-        Information of input tensors
-        */
-        std::vector<TensorWrapper> m_inputs;
+    /*
+    Information of input tensors
+    */
+    std::vector<TensorWrapper> inputs_;
 
-        /*
-        Information of output tensors
-        */
-        std::vector<TensorWrapper> m_outputs;
+    /*
+    Information of output tensors
+    */
+    std::vector<TensorWrapper> outputs_;
 
-        /*
-        TFLite core
-        */
-        std::unique_ptr<tflite::FlatBufferModel> m_model;
+    /*
+    TFLite core
+    */
+    std::unique_ptr<tflite::FlatBufferModel> model_;
 
-        /*
-        TFLite core
-        */
-        std::unique_ptr<tflite::Interpreter> m_interpreter;
+    /*
+    TFLite core
+    */
+    std::unique_ptr<tflite::Interpreter> interpreter_;
 
-        /*
-        Tracking inputs loaded
-        */
-        std::vector<bool> m_inputLoads;
+    /*
+    Tracking inputs loaded
+    */
+    std::vector<bool> inputLoads_;
 };
 
 }; // namespace my
