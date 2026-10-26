@@ -4,16 +4,6 @@
 #include "EyeTracking/EyeTrackingDetector.hpp"
 #include "EyeTracking/GazeCalibrationModel.hpp"
 #include "HeartRate/HeartRateDetector.hpp"
-#include "EyeTracking/EyeTrackingDetector.hpp"
-#include "EyeTracking/GazeCalibrationModel.hpp"
-#include "HeartRate/HeartRateDetector.hpp"
-#include "EyeTracking/EyeTrackingDetector.hpp"
-#include "EyeTracking/GazeCalibrationModel.hpp"
-#include "HeartRate/HeartRateDetector.hpp"
-#include "EyeTracking/EyeTrackingDetector.hpp"
-#include "EyeTracking/GazeCalibrationModel.hpp"
-#include "HeartRate/HeartRateDetector.hpp"
-#include "EyeTracking/EyeTrackingDetector.hpp"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/videoio.hpp"
 
@@ -45,15 +35,24 @@ public:
 
     [[nodiscard]] auto getEmotions() const -> const std::map<std::string, float>&;
 
-    [[nodiscard]] auto getHeartRate() const -> HeartRateResult;
-
     [[nodiscard]] auto getGaze() const -> GazeResult;
 
     [[nodiscard]] auto getSpeech() const -> const std::string&;
 
     [[nodiscard]] auto getHeartRate() const -> HeartRateResult;
 
-    [[nodiscard]] auto getHeartRate() const -> int;
+    void beginEyeTrackingCalibration();
+    [[nodiscard]] auto setEyeTrackingCalibrationTarget(float x, float y) -> bool;
+    [[nodiscard]] auto finishEyeTrackingCalibration() -> bool;
+    void cancelEyeTrackingCalibration();
+    [[nodiscard]] auto getEyeTrackingCalibrationProgress() const -> CalibrationProgress;
+    [[nodiscard]] auto getEyeTrackingCalibrationDiagnostics() const -> CalibrationDiagnostics;
+    [[nodiscard]] auto saveEyeTrackingCalibrationProfile(const std::string& path) const -> bool;
+    [[nodiscard]] auto loadEyeTrackingCalibrationProfile(const std::string& path) -> bool;
+
+    void toggleSpeechToText(bool state);
+
+    // auto processHeartRateSensor() -> int;
 
 protected:
 
@@ -65,8 +64,10 @@ protected:
     std::string speech_;
     HeartRateResult heartrate_{};
 
+    std::unique_ptr<EmotionDetector> emotionDetector_;
     std::unique_ptr<EyeTrackingDetector> eyeTrackingDetector_;
-private:
+    std::unique_ptr<SpeechToTextDetector> speechToTextDetector_;
+    // std::unique_ptr<HeartRateSensorDetector> heartRateSensorDetector_;
 };
 
 #endif // DATAPROCESSOR_HPP

@@ -387,22 +387,6 @@ public partial class MainWindow : Window
         return heartrate.Bpm.ToString();
     }
 
-    private static string FormatHeartRate(HeartRateResultData heartrate)
-    {
-        if (!heartrate.IsValid)
-        {
-            return heartrate.Status switch
-            {
-                HeartRateStatus.JsonParseError => "JSON parse error",
-                HeartRateStatus.JsonParseOutOfRange => "JSON parse - out of range",
-                HeartRateStatus.RequestFailed => "Request failed",
-                _ => "Heartrate unavailable"
-            };
-        }
-
-        return heartrate.Bpm.ToString();
-    }
-
     private async void SpeechButton_OnClick(
         object? sender,
         RoutedEventArgs e)
@@ -598,6 +582,200 @@ public partial class MainWindow : Window
         {
             if (!closing)
                 StatusText.Text = exception.Message;
+        }
+        finally
+        {
+            try
+            {
+                if (calibrationStarted)
+                {
+                    try
+                    {
+                        await processorGate.WaitAsync();
+                        try
+                        {
+                            processor.CancelEyeTrackingCalibration();
+                        }
+                        finally
+                        {
+                            processorGate.Release();
+                        }
+                    }
+                    catch (Exception exception)
+                    {
+                        if (!closing)
+                        {
+                            StatusText.Text =
+                                $"Could not cancel eye-tracking calibration: {exception.Message}";
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                CalibrationOverlay.IsVisible = false;
+                GazeOverlay.IsVisible = lastGaze.IsValid;
+                if (GazeOverlay.IsVisible)
+                    UpdateGazeMarker(lastGaze);
+            }
+        }
+    }
+
+    private async Task WaitForCalibrationReadinessAsync(CancellationToken token)
+    {
+        Stopwatch? readyTimer = null;
+
+        while (true)
+        {
+            token.ThrowIfCancellationRequested();
+
+            if (lastGaze.Status == GazeStatus.Calibrating)
+            {
+                readyTimer ??= Stopwatch.StartNew();
+                CalibrationInstruction.Text =
+                    "Face detected. Keep your face steady and eyes open";
+                StatusText.Text = "Hold a steady position before calibration";
+                if (readyTimer.Elapsed >= TimeSpan.FromSeconds(2))
+                    return;
+            }
+            else
+            {
+                readyTimer = null;
+                CalibrationInstruction.Text =
+                    "Position your face in the camera view and keep your eyes open";
+                StatusText.Text = "Waiting for a valid face and eye landmarks";
+            }
+
+            await Task.Delay(100, token);
+        }
+    }
+
+    private bool SaveEyeTrackingCalibrationProfile()
+    {
+        string? profileDirectory = Path.GetDirectoryName(calibrationProfilePath);
+
+        if (string.IsNullOrWhiteSpace(profileDirectory))
+            throw new InvalidOperationException(
+                "Cannot determine the eye-tracking profile directory.");
+
+        Directory.CreateDirectory(profileDirectory);
+
+        return processor.SaveEyeTrackingCalibrationProfile(calibrationProfilePath);
+    }
+
+    private void UpdateCalibrationMarker(float x, float y)
+    {
+        double width = CalibrationCanvas.Bounds.Width;
+        double height = CalibrationCanvas.Bounds.Height;
+        if (width <= 0 || height <= 0)
+            return;
+
+        Canvas.SetLeft(CalibrationMarker, x * width - CalibrationMarker.Width / 2);
+        Canvas.SetTop(CalibrationMarker, y * height - CalibrationMarker.Height / 2);
+    }
+
+    private static string FormatCalibrationFailure(
+        EyeTrackingCalibrationDiagnostics diagnostics)
+    {
+        string reason = diagnostics.FailureReason switch
+        {
+            CalibrationFailureReason.NotCalibrating =>
+                "Calibration was not active. Start a new calibration.",
+
+            CalibrationFailureReason.TooFewValidTargets =>
+                "Not enough valid calibration targets were collected.",
+
+            CalibrationFailureReason.InsufficientSamples =>
+                "There were not enough usable samples. Keep your head steady and look directly at each target.",
+
+            CalibrationFailureReason.InsufficientHorizontalCoverage =>
+                "The calibration targets did not cover enough of the screen horizontally.",
+
+            CalibrationFailureReason.InsufficientVerticalCoverage =>
+                "The calibration targets did not cover enough of the screen vertically.",
+
+            CalibrationFailureReason.InsufficientSpatialGridCoverage =>
+                "The targets were not distributed sufficiently across the screen.",
+
+            CalibrationFailureReason.RegressionFailed =>
+                "The calibration model could not be fitted. Repeat calibration.",
+
+            CalibrationFailureReason.CrossValidationMeanErrorExceeded =>
+                "Average calibration error was too high. Repeat calibration while looking steadily at each target.",
+
+            CalibrationFailureReason.CrossValidationMaxErrorExceeded =>
+                "At least one target had excessive prediction error. Repeat calibration and focus on each target.",
+
+            CalibrationFailureReason.InvalidCrossValidationResult =>
+                "Calibration validation produced an invalid result. Repeat calibration.",
+
+            _ =>
+                "Calibration failed without a specific failure reason."
+        };
+
+        var details = new List<string>
+        {
+            $"Failure: {reason}",
+            $"Valid targets: {diagnostics.ValidTargetCount}/{diagnostics.InputTargetCount}",
+            $"Targets with enough raw samples: {diagnostics.TargetsWithEnoughRawSamples}",
+            $"Targets with enough retained samples: {diagnostics.TargetsWithEnoughRetainedSamples}"
+        };
+
+        if (diagnostics.InvalidTargetCount > 0)
+            details.Add($"Invalid targets: {diagnostics.InvalidTargetCount}");
+
+        if (diagnostics.TargetsWithInsufficientRawSamples > 0)
+        {
+            details.Add(
+                $"Targets with insufficient raw samples: {diagnostics.TargetsWithInsufficientRawSamples}");
+        }
+
+        if (diagnostics.TargetsWithInsufficientRetainedSamples > 0)
+        {
+            details.Add(
+                $"Targets with insufficient retained samples: {diagnostics.TargetsWithInsufficientRetainedSamples}");
+        }
+
+        if (diagnostics.MinimumRetainedSamples > 0 ||
+            diagnostics.MaximumRetainedSamples > 0)
+        {
+            details.Add(
+                $"Retained samples per target: {diagnostics.MinimumRetainedSamples}–{diagnostics.MaximumRetainedSamples}");
+        }
+
+        details.Add(
+            $"Horizontal span: {diagnostics.HorizontalSpan:F3}; vertical span: {diagnostics.VerticalSpan:F3}");
+
+        if (diagnostics.CrossValidationTargetsEvaluated > 0)
+        {
+            details.Add(
+                $"Cross-validation targets evaluated: {diagnostics.CrossValidationTargetsEvaluated}");
+
+            details.Add(
+                $"Mean cross-validation error: {diagnostics.MeanCrossValidationError:F3}");
+
+            details.Add(
+                $"Maximum cross-validation error: {diagnostics.MaximumCrossValidationError:F3}");
+        }
+
+        if (diagnostics.RegressionFailures > 0)
+            details.Add($"Regression failures: {diagnostics.RegressionFailures}");
+
+        if (diagnostics.MeanErrorExceeded)
+            details.Add("The mean-error threshold was exceeded.");
+
+        if (diagnostics.MaximumErrorExceeded)
+            details.Add("The maximum-error threshold was exceeded.");
+
+        return string.Join(Environment.NewLine, details);
+    }
+
+    private void MainWindow_OnKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape && calibrationCancellation is not null)
+        {
+            calibrationCancellation.Cancel();
+            e.Handled = true;
         }
     }
 

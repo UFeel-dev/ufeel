@@ -14,10 +14,6 @@ auto HeartRateSensorDetector::process() -> HeartRateResult
 
     HeartRateResult result = {.bpm = 0, .status = HeartRateStatus::Valid};
 
-    HeartRateResult result = {.bpm = 0, .status = HeartRateStatus::Valid};
-
-    HeartRateResult result = {.bpm = 0, .status = HeartRateStatus::Valid};
-
     if (r.status_code == 200)
     {
         try

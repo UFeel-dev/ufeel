@@ -1,7 +1,6 @@
 #include "EyeTracking/IrisDetection/DetectionPostProcess.hpp"
 
 #include "opencv2/core/types.hpp"
-#include "opencv2/core/saturate.hpp"
 
 #include <algorithm>
 #include <vector>

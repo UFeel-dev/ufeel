@@ -38,62 +38,8 @@ typedef struct
     float value;
 } UFeelPair;
 
-typedef struct UFeelGaze
-{
-    float x;
-    float y;
-    uint32_t directions;
-    uint32_t valid;
-} UFeelGaze;
-
+/** Status describing whether a gaze estimate is currently usable. */
 typedef enum
-{
-    UFEEL_HEARTRATE_STATUS_JSON_PARSE_ERROR = 0,
-    UFEEL_HEARTRATE_STATUS_JSON_PARSE_OUT_OF_RANGE = 1,
-    UFEEL_HEARTRATE_STATUS_REQUEST_FAILED = 2,
-    UFEEL_HEARTRATE_STATUS_NULL_PROCESSOR = 3
-} UFeelHeartRateStatus;
-
-typedef struct
-{
-    int32_t status;
-    uint32_t bpm;
-} UFeelHeartRateResult;
-
-typedef struct UFeelGaze
-{
-    UFEEL_GAZE_STATUS_NOT_CALIBRATED = 0,
-    UFEEL_GAZE_STATUS_FACE_UNAVAILABLE = 1,
-    UFEEL_GAZE_STATUS_BLINKING = 2,
-    UFEEL_GAZE_STATUS_LOW_QUALITY = 3,
-    UFEEL_GAZE_STATUS_CALIBRATING = 4,
-    UFEEL_GAZE_STATUS_VALID = 5,
-    UFEEL_GAZE_STATUS_DISABLED = 6,
-    UFEEL_GAZE_STATUS_FRAME_UNAVAILABLE = 7
-} UFeelGazeStatus;
-
-/** Bit flags indicating the estimated gaze direction. Multiple flags may be set. */
-typedef enum
-{
-    UFEEL_GAZE_DIRECTION_NONE = 0,
-    UFEEL_GAZE_DIRECTION_LEFT = 1 << 0,
-    UFEEL_GAZE_DIRECTION_RIGHT = 1 << 1,
-    UFEEL_GAZE_DIRECTION_UP = 1 << 2,
-    UFEEL_GAZE_DIRECTION_DOWN = 1 << 3,
-    UFEEL_GAZE_DIRECTION_CENTER = 1 << 4
-} UFeelGazeDirection;
-
-/** Estimated gaze coordinates and diagnostics for the current video frame. */
-typedef struct
-{
-    int32_t status;
-    float x;
-    float y;
-    uint32_t directions;
-    uint32_t valid;
-} UFeelGaze;
-
-typedef struct UFeelGazeEx
 {
     UFEEL_GAZE_STATUS_NOT_CALIBRATED = 0,
     UFEEL_GAZE_STATUS_FACE_UNAVAILABLE = 1,
@@ -220,41 +166,6 @@ ufeel_set_eye_tracking_calibration_target(UFeelProcessor* processor, float scree
 
 /** Fits and activates the eye-tracking calibration model. */
 UFEEL_API int32_t ufeel_finish_eye_tracking_calibration(UFeelProcessor* processor);
-
-/** Aborts eye-tracking calibration without activating the unfinished model. */
-UFEEL_API int32_t ufeel_cancel_eye_tracking_calibration(UFeelProcessor* processor);
-
-/** Retrieves the latest gaze estimate and its validity status. */
-UFEEL_API int32_t ufeel_get_gaze_result(UFeelProcessor* processor, UFeelGazeResult* result);
-
-/** Retrieves progress for the current eye-tracking calibration session. */
-UFEEL_API int32_t ufeel_get_eye_tracking_calibration_progress(
-    UFeelProcessor* processor, UFeelEyeTrackingCalibrationProgress* progress
-);
-
-/** Retrieves diagnostic measurements from eye-tracking calibration. */
-UFEEL_API int32_t ufeel_get_eye_tracking_calibration_diagnostics(
-    UFeelProcessor* processor, UFeelEyeTrackingCalibrationDiagnostics* diagnostics
-);
-
-/** Saves the active eye-tracking calibration profile to a UTF-8 file path. */
-UFEEL_API int32_t
-ufeel_save_eye_tracking_calibration_profile(UFeelProcessor* processor, const char* utf8Path);
-
-/** Loads an eye-tracking calibration profile from a UTF-8 file path. */
-UFEEL_API int32_t
-ufeel_load_eye_tracking_calibration_profile(UFeelProcessor* processor, const char* utf8Path);
-
-/** Enables or disables speech-to-text processing. */
-UFEEL_API int32_t ufeel_set_speech_to_text_enabled(UFeelProcessor* processor, int32_t enabled);
-
-/** Returns the latest speech-to-text result as a library-allocated UTF-8 string. */
-UFEEL_API char* ufeel_get_speech_to_text(
-    UFeelProcessor* processor
-); // TODO: update to match eye tracking and heartrate
-
-/** Releases a string returned by ufeel_get_speech_to_text(). Accepts NULL. */
-UFEEL_API void ufeel_free_string(char* value);
 
 /** Aborts eye-tracking calibration without activating the unfinished model. */
 UFEEL_API int32_t ufeel_cancel_eye_tracking_calibration(UFeelProcessor* processor);
