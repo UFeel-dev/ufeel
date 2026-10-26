@@ -33,8 +33,8 @@ BraceWrapping:
 NamespaceIndentation: None
 WrapNamespaceBodyWithEmptyLines: Always
 
-AccessModifierOffset: 4
-IndentAccessModifiers: true
+AccessModifierOffset: -4
+# IndentAccessModifiers: true
 EmptyLineBeforeAccessModifier: Always
 EmptyLineAfterAccessModifier: Always
 

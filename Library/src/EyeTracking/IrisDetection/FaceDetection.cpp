@@ -2,52 +2,49 @@
 
 #include "EyeTracking/IrisDetection/DetectionPostProcess.hpp"
 #include "EyeTracking/IrisDetection/ModelLoader.hpp"
-#include "opencv2/core/hal/interface.h"
-#include "opencv2/core/mat.hpp"
-#include "opencv2/core/types.hpp"
 
+#include <cmath>
+#include <opencv2/core/mat.hpp>
+#include <opencv2/core/types.hpp>
 #include <string>
 #include <vector>
 
 my::FaceDetection::FaceDetection(
     const std::string& modelDir
 )
-    : my::ModelLoader(modelDir + std::string("/face_detection_short.tflite"))
+    : my::ModelLoader(modelDir + "/face_detection_short.tflite")
 {
 }
 
 void my::FaceDetection::loadImageToInput(
-    const cv::Mat& in, int /*index*/
+    const cv::Mat& inputImage, int /*idx*/
 )
 {
-    m_originImage = in;
-    ModelLoader::loadImageToInput(in, 0);
+    roi_ = {};
+    originImage_ = inputImage;
+
+    ModelLoader::loadImageToInput(inputImage, 0);
 }
 
 void my::FaceDetection::runInference()
 {
+    roi_ = {};
+
     ModelLoader::runInference();
 
-    auto regressor = getFaceRegressor();
-    auto classificator = getFaceClassificator();
-    auto detection = m_postProcessor.getHighestScoreDetection(regressor, classificator);
+    auto const regressor = getFaceRegressor();
+    auto const classificator = getFaceClassificator();
+    auto const detection = postProcessor_.getHighestScoreDetection(regressor, classificator);
 
     if (detection.classId != -1)
     {
-        /*
-        The detection is still in local shape [0..1]
-        */
-        m_roi = calculateRoiFromDetection(detection);
-    }
-    else
-    {
-        m_roi = cv::Rect();
+        roi_ = calculateRoiFromDetection(detection);
     }
 }
 
 auto my::FaceDetection::getOriginalImage() const -> cv::Mat
 {
-    return m_originImage;
+    return originImage_;
 }
 
 auto my::FaceDetection::getFaceRegressor() const -> std::vector<float>
@@ -62,70 +59,65 @@ auto my::FaceDetection::getFaceClassificator() const -> std::vector<float>
 
 auto my::FaceDetection::getFaceRoi() const -> cv::Rect
 {
-    return m_roi;
+    return roi_;
 }
 
 auto my::FaceDetection::cropFrame(
     const cv::Rect& roi
 ) const -> cv::Mat
 {
-    const cv::Mat frame = getOriginalImage();
-    const cv::Size originalSize(roi.size());
+    auto const& frame = originImage_;
 
-    cv::Point offsetStart(0, 0);
-    cv::Point offsetEnd(roi.width, roi.height);
-
-    /*
-    Padding the frame with 0 if the Roi is out of frame size.
-    */
-    auto pt1 = roi.tl();
-    auto pt2 = roi.br();
-
-    if (pt1.x < 0)
+    if (frame.empty() || roi.width <= 0 || roi.height <= 0)
     {
-        offsetStart.x -= pt1.x;
-        pt1.x = 0;
-    }
-    if (pt1.y < 0)
-    {
-        offsetStart.y -= pt1.y;
-        pt1.y = 0;
-    }
-    if (pt2.x >= frame.cols)
-    {
-        offsetEnd.x -= pt2.x - frame.cols + 1;
-        pt2.x = frame.cols - 1;
-    }
-    if (pt2.y >= frame.rows)
-    {
-        offsetEnd.y -= pt2.y - frame.rows + 1;
-        pt2.y = frame.rows - 1;
+        return {};
     }
 
-    cv::Mat face(originalSize, CV_8UC3, cv::Scalar(0));
-    frame(cv::Rect(pt1, pt2)).copyTo(face(cv::Rect(offsetStart, offsetEnd)));
-    return face;
+    cv::Mat cropped(roi.size(), frame.type(), cv::Scalar::all(0));
+    cv::Rect const frameBounds(0, 0, frame.cols, frame.rows);
+    cv::Rect const intersection = roi & frameBounds;
+
+    if (intersection.empty())
+    {
+        return cropped;
+    }
+
+    cv::Point const destinationOffset = intersection.tl() - roi.tl();
+    cv::Rect const destinationRegion(destinationOffset, intersection.size());
+
+    frame(intersection).copyTo(cropped(destinationRegion));
+
+    return cropped;
 }
-
-//-------------------Private methods start here-------------------
 
 auto my::FaceDetection::calculateRoiFromDetection(
     const Detection& detection
 ) const -> cv::Rect
 {
-    int const origWidth = m_originImage.size().width;
-    int const origHeight = m_originImage.size().height;
+    if (originImage_.empty())
+    {
+        return {};
+    }
 
-    auto center = (detection.roi.tl() + detection.roi.br()) * 0.5f;
-    center.x *= origWidth;
-    center.y *= origHeight;
+    int const originalWidth = originImage_.cols;
+    int const originalHeight = originImage_.rows;
 
-    auto w = detection.roi.width * origWidth * 1.5f;
-    auto h = detection.roi.height * origHeight * 2.f;
+    auto const center = (detection.roi.tl() + detection.roi.br()) * 0.5f;
+
+    float const centerX = center.x * static_cast<float>(originalWidth);
+    float const centerY = center.y * static_cast<float>(originalHeight);
+    float const width = detection.roi.width * static_cast<float>(originalWidth) * 1.5f;
+    float const height = detection.roi.height * static_cast<float>(originalHeight) * 2.0f;
+
+    if (!std::isfinite(centerX) || !std::isfinite(centerY) || !std::isfinite(width) ||
+        !std::isfinite(height) || width < 1.0f || height < 1.0f)
+    {
+        return {};
+    }
 
     return {
-        static_cast<int>(static_cast<int>(center.x) - (w / 2)),
-        static_cast<int>(static_cast<int>(center.y) - (h / 2)),
-        static_cast<int>(w),
-        static_cast<int>(h)};
+        static_cast<int>(centerX - (width / 2.0f)),
+        static_cast<int>(centerY - (height / 2.0f)),
+        static_cast<int>(width),
+        static_cast<int>(height)};
 }

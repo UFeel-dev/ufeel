@@ -1,11 +1,17 @@
 #ifndef EYETRACKING_EYETRACKINGDETECTOR_HPP
 #define EYETRACKING_EYETRACKINGDETECTOR_HPP
 
+#include "EyeTracking/GazeCalibrationModel.hpp"
+#include "EyeTracking/GazeKalmanFilter.hpp"
 #include "EyeTracking/IrisDetection/IrisLandmark.hpp"
 
-#include <array>
-#include <map>
+#include <chrono>
+#include <cstddef>
+#include <cstdint>
+#include <deque>
+#include <optional>
 #include <string>
+#include <vector>
 
 namespace cv
 {
@@ -14,39 +20,90 @@ class Mat;
 
 } // namespace cv
 
-struct EyeDirections
+enum class GazeStatus : std::uint8_t
 {
-        bool left;
-        bool right;
-        bool up;
-        bool down;
-        bool center;
+    NotCalibrated = 0,
+    FaceUnavailable = 1,
+    Blinking = 2,
+    LowQuality = 3,
+    Calibrating = 4,
+    Valid = 5,
+    Disabled = 6,
+    FrameUnavailable = 7,
+};
+
+struct GazeResult
+{
+    float x = 0;
+    float y = 0;
+    float recordedX = 0;
+    float recordedY = 0;
+    float confidence = 0;
+    uint32_t directions = 0;
+    GazeStatus status = GazeStatus::NotCalibrated;
+};
+
+struct CalibrationProgress
+{
+    std::uint32_t targetsWithEnoughSamples = 0;
+    std::uint32_t targetCount = 0;
+    std::uint32_t samplesForCurrentTarget = 0;
+    std::uint32_t requiredSamplesPerTarget = 0;
+};
+
+enum GazeDirectionFlags : std::uint8_t
+{
+    GazeLeft = 1U << 0U,
+    GazeRight = 1U << 1U,
+    GazeUp = 1U << 2U,
+    GazeDown = 1U << 3U,
+    GazeCenter = 1U << 4U,
 };
 
 class EyeTrackingDetector
 {
-    public:
+public:
 
-        EyeTrackingDetector();
-        ~EyeTrackingDetector();
+    explicit EyeTrackingDetector(const std::string& modelDirectory);
+    ~EyeTrackingDetector();
 
-        EyeTrackingDetector(const EyeTrackingDetector&) = delete;
-        auto operator=(const EyeTrackingDetector&) -> EyeTrackingDetector& = delete;
-        EyeTrackingDetector(EyeTrackingDetector&&) = delete;
-        auto operator=(EyeTrackingDetector&&) -> EyeTrackingDetector& = delete;
+    EyeTrackingDetector(const EyeTrackingDetector&) = delete;
+    auto operator=(const EyeTrackingDetector&) -> EyeTrackingDetector& = delete;
+    EyeTrackingDetector(EyeTrackingDetector&&) = delete;
+    auto operator=(EyeTrackingDetector&&) -> EyeTrackingDetector& = delete;
 
-        auto process(const cv::Mat& frame) -> std::map<std::string, bool>;
-        void toggleEyeTrackingDetection(bool state);
-        void close();
+    auto process(const cv::Mat& frame) -> GazeResult;
+    void toggleEyeTrackingDetection(bool state);
+    void close();
+    void beginCalibration();
+    [[nodiscard]] auto setCalibrationTarget(float x, float y) -> bool;
+    [[nodiscard]] auto finishCalibration() -> bool;
+    void cancelCalibration();
+    [[nodiscard]] auto calibrationProgress() const -> CalibrationProgress;
+    [[nodiscard]] auto calibrationDiagnostics() const -> const CalibrationDiagnostics&;
+    [[nodiscard]] auto saveCalibrationProfile(const std::string& path) const -> bool;
+    [[nodiscard]] auto loadCalibrationProfile(const std::string& path) -> bool;
 
-    private:
+private:
 
-        bool processEnable_ = true;
+    [[nodiscard]] auto extractFeatures(const cv::Mat& frame, GazeStatus& status, float& quality)
+        -> std::optional<GazeFeatureVector>;
 
-        constexpr static std::array<int, 7> leftEyeIdx = {33, 133, 160, 159, 158, 157, 173};
-        constexpr static std::array<int, 7> rightEyeIdx = {362, 263, 387, 386, 385, 384, 398};
+    bool processEnable_ = true;
+    bool calibrationActive_ = false;
+    std::optional<std::size_t> calibrationTargetIndex_;
+    std::optional<std::chrono::steady_clock::time_point> calibrationTargetSetAt_;
+    std::vector<GazeCalibrationTarget> calibrationTargets_;
+    std::deque<double> eyeAspectHistory_;
+    GazeCalibrationModel calibrationModel_;
+    GazeKalmanFilter gazeEstimator_;
+    GazeResult result_;
 
-        my::IrisLandmark irisLandmarker_;
+    CalibrationDiagnostics lastCalibrationDiagnostics_{};
+
+    my::IrisLandmark irisLandmarker_;
 };
+
+// TODO: improve eye tracking to handle glasses and other bad inputs better
 
 #endif // EYETRACKING_EYETRACKINGDETECTOR_HPP

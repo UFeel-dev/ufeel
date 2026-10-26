@@ -111,7 +111,9 @@ add_library(ufeel_detection_library STATIC
     ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/FaceLandmark.cpp
     ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/IrisLandmark.cpp
     ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/ModelLoader.cpp
+    ${LIBRARY_DIR}/src/EyeTracking/GazeCalibrationModel.cpp
     ${LIBRARY_DIR}/src/EyeTracking/EyeTrackingDetector.cpp
+    ${LIBRARY_DIR}/src/EyeTracking/GazeKalmanFilter.cpp
 
     ${LIBRARY_DIR}/src/SpeechToText/AudioCapture.cpp
     ${LIBRARY_DIR}/src/SpeechToText/SpeechRecognizer.cpp
@@ -123,6 +125,9 @@ add_library(ufeel_detection_library STATIC
 target_include_directories(ufeel_detection_library
     PUBLIC
         ${LIBRARY_DIR}/include
+)
+
+target_include_directories(ufeel_detection_library
     SYSTEM PUBLIC
         ${OPENCV_DIR}/include/opencv4
         ${TORCH_INCLUDE_DIRS}
@@ -159,6 +164,9 @@ target_include_directories(ufeel_wrapper
     PUBLIC
         ${LIBRARY_DIR}/include
         ${WRAPPER_DIR}
+)
+
+target_include_directories(ufeel_wrapper
     SYSTEM PUBLIC
         ${OPENCV_DIR}/include/opencv4
         ${TORCH_INCLUDE_DIRS}
@@ -237,5 +245,3 @@ install(
     DIRECTORY ${MODELS_DIR}/
     DESTINATION models
 )
-
-# TODO: resolve the path for every single model accordingly (currently only vosk)
