@@ -156,7 +156,7 @@ target_compile_options(ufeel_detection_library
         ${TORCH_CXX_FLAGS}
 )
 
-option(UFEEL_ENABLE_COVERAGE "Enable LLVM source-based coverage" OFF) ## add
+option(UFEEL_ENABLE_COVERAGE "Enable LLVM source-based coverage" OFF)
 
 if(UFEEL_ENABLE_COVERAGE)
     target_compile_options(ufeel_detection_library PRIVATE
