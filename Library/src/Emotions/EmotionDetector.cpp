@@ -26,6 +26,7 @@
 #include <torch/types.h>
 #include <vector>
 
+
 EmotionDetector::EmotionDetector(
     const std::string& modelPath, const std::string& configPath, std::string device
 )
@@ -39,7 +40,7 @@ EmotionDetector::EmotionDetector(
     model_ = EmotionModel(model_cfg["backbone_name"].as<std::string>());
 
     model_ =
-        loadCheckpoint(model_, "models/Emotions/binary_affectnet_resnet34_pretrained.pt", device_);
+        loadCheckpoint(model_, "models/Emotions/model_weights.bin", device_);
 
     auto detector = std::make_shared<YuNetFaceDetector>(
         "models/EyeTracking/face_detection_yunet_2023mar.onnx", 0.9f, 0.3f, 5000
@@ -111,7 +112,6 @@ auto EmotionDetector::process(
 {
     if (image.empty())
     {
-        std::cerr << "[EmotionDetector] process() got EMPTY image" << std::endl;
         return {};
     }
 
@@ -119,20 +119,26 @@ auto EmotionDetector::process(
 
     if (out.binary.empty())
     {
-        std::cerr << "[EmotionDetector] pipeline->predict() got empty binary/heads" << std::endl;
         return {};
     }
 
-    std::vector<std::string> selected;
+    std::map<std::string, float> selected;
 
-    for (const auto& [emotion, enabled] : out.binary)
+    for (const auto& [emotion, value] : out.heads)
     {
-        if (enabled)
+        auto it = out.binary.find(emotion);
+
+        if (it != out.binary.end())
         {
-            selected.push_back(emotion);
+            const bool enabled = it->second;
+
+            if (enabled)
+            {
+                selected.emplace(emotion, value);
+            }
         }
     }
-    return {};
+    return selected;
 }
 
 void EmotionDetector::close() {}

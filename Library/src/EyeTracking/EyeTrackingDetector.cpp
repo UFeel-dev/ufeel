@@ -11,7 +11,7 @@
 #include <string>
 
 EyeTrackingDetector::EyeTrackingDetector()
-    : irisLandmarker_("./models")
+    : irisLandmarker_("./models/EyeTracking/")
 {
 }
 

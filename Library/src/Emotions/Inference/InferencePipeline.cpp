@@ -21,10 +21,10 @@ auto InferencePipeline::preprocess(
 {
     cv::Mat processed = image;
 
-    // if (faceCrop_)
-    // {
-    //     processed = (*faceCrop_)(processed);
-    // }
+    if (faceCrop_)
+    {
+        processed = (*faceCrop_)(processed);
+    }
 
     if (processed.empty())
     {

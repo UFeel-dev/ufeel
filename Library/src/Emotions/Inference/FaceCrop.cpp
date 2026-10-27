@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <filesystem>
 #include <stdexcept>
 
 MTCNNCropTransform::MTCNNCropTransform(
@@ -16,6 +17,8 @@ MTCNNCropTransform::MTCNNCropTransform(
         throw std::invalid_argument("MTCNN detector cannot be null");
     }
 }
+
+static int picture_id = 0;
 
 auto MTCNNCropTransform::alignAndCrop(
     const cv::Mat& image, const cv::Rect2f& box, const std::array<cv::Point2f, 5>& landmarks
@@ -56,6 +59,16 @@ auto MTCNNCropTransform::alignAndCrop(
     cv::Rect crop_rect(ix1, iy1, ix2 - ix1, iy2 - iy1);
 
     cv::Mat face_crop = image(crop_rect).clone();
+
+    // if (!face_crop.empty())
+    // {
+    //     if (!std::filesystem::exists("res"))
+    //         std::filesystem::create_directories("res");
+
+    //     const std::string outputPath = "res/faces_crop_" + std::to_string(picture_id) + ".jpg";
+    //     cv::imwrite(outputPath, face_crop);
+    //     picture_id++;
+    // }
 
     const cv::Point2f& left_eye = landmarks[0];
     const cv::Point2f& right_eye = landmarks[1];
@@ -117,14 +130,7 @@ auto MTCNNCropTransform::operator()(
 {
     try
     {
-        cv::Mat tmp = cv::imread("test.jpg", cv::IMREAD_COLOR);
-
-        if (tmp.empty())
-        {
-            throw std::runtime_error("Failed to load test.jpg");
-        }
-
-        auto detection = detector_->detect(tmp);
+        auto detection = detector_->detect(image);
 
         if (!detection.has_value())
         {
@@ -132,17 +138,17 @@ auto MTCNNCropTransform::operator()(
 
             cv::Mat result;
 
-            if (tmp.channels() == 3)
+            if (image.channels() == 3)
             {
-                result = tmp.clone();
+                result = image.clone();
             }
-            else if (tmp.channels() == 4)
+            else if (image.channels() == 4)
             {
-                cv::cvtColor(tmp, result, cv::COLOR_BGRA2BGR);
+                cv::cvtColor(image, result, cv::COLOR_BGRA2BGR);
             }
             else
             {
-                cv::cvtColor(tmp, result, cv::COLOR_GRAY2BGR);
+                cv::cvtColor(image, result, cv::COLOR_GRAY2BGR);
             }
 
             return result;
