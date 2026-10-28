@@ -28,84 +28,83 @@ This class is non-copyable.
 */
 class IrisLandmark : public my::FaceLandmark
 {
-    public:
+public:
 
-        /*
-        Users MUST provide the FOLDER contain ALL the face_detection_short.tflite,
-        face_landmark.tflite and iris_landmark.tflite
-        */
-        explicit IrisLandmark(const std::string& modelPath);
+    /*
+    Users MUST provide the FOLDER contain ALL the face_detection_short.tflite,
+    face_landmark.tflite and iris_landmark.tflite
+    */
+    explicit IrisLandmark(const std::string& modelPath);
 
-        using my::FaceLandmark::loadBytesToInput;
-        using my::FaceLandmark::loadImageToInput;
-        using my::FaceLandmark::loadOutput;
+    using my::FaceLandmark::loadBytesToInput;
+    using my::FaceLandmark::loadImageToInput;
+    using my::FaceLandmark::loadOutput;
 
-        /*
-        Override function from FaceLandmark
-        */
-        void runInference() override;
+    /*
+    Override function from FaceLandmark
+    */
+    void runInference() override;
 
-        /*
-        Get an eye/iris landmark from output.
-        If isIris == true: index must be in range 0-4
-        else index must be in range 0-70
-        The position is relative to the input image at InputTensor(0)
-        */
-        [[nodiscard]] virtual auto getEyeLandmarkAt(int index, bool isLeftEye, bool isIris) const
-            -> cv::Point;
+    /*
+    Get an eye/iris landmark from output.
+    If isIris == true: index must be in range 0-4
+    else index must be in range 0-70
+    The position is relative to the input image at InputTensor(0)
+    */
+    [[nodiscard]] virtual auto getEyeLandmarkAt(int index, bool isLeftEye, bool isIris) const
+        -> cv::Point;
 
-        /*
-        Get all eye/iris landmarks from output.
-        The positions is relative to the input image at InputTensor(0)
-        */
-        [[nodiscard]] virtual auto getAllEyeLandmarks(bool isLeftEye, bool isIris) const
-            -> std::vector<cv::Point>;
+    /*
+    Get all eye/iris landmarks from output.
+    The positions is relative to the input image at InputTensor(0)
+    */
+    [[nodiscard]] virtual auto getAllEyeLandmarks(bool isLeftEye, bool isIris) const
+        -> std::vector<cv::Point>;
 
-        /*
-        Get all landmarks from output (index = 0: Eye landmarks, index != 0: Iris landmarks)
-        Each landmark is represented by x, y, z(depth), which are raw outputs from Mediapipe Iris
-        Landmark model. If you want to get relative position to input image, use
-        getAllIrisLandmarks() or getAllIrisLandmark()
-        */
-        [[nodiscard]] virtual auto loadOutput(int index, bool isLeftEye) const
-            -> std::vector<float>;
+    /*
+    Get all landmarks from output (index = 0: Eye landmarks, index != 0: Iris landmarks)
+    Each landmark is represented by x, y, z(depth), which are raw outputs from Mediapipe Iris
+    Landmark model. If you want to get relative position to input image, use
+    getAllIrisLandmarks() or getAllIrisLandmark()
+    */
+    [[nodiscard]] virtual auto loadOutput(int index, bool isLeftEye) const -> std::vector<float>;
 
-        // Override 1-parameter virtual loadOutput from FaceLandmark
-        [[nodiscard]] auto loadOutput(
-            int index
-        ) const -> std::vector<float> override
-        {
-            return loadOutput(index, true);
-        }
+    // Override 1-parameter virtual loadOutput from FaceLandmark
+    [[nodiscard]] auto loadOutput(
+        int index
+    ) const -> std::vector<float> override
+    {
+        return loadOutput(index, true);
+    }
 
-        // Convenience 0-parameter overload
-        [[nodiscard]] auto loadOutput() const -> std::vector<float>
-        {
-            return loadOutput(0, true);
-        }
+    // Convenience 0-parameter overload
+    [[nodiscard]] auto loadOutput() const -> std::vector<float>
+    {
+        return loadOutput(0, true);
+    }
 
-        /*
-        Get eye Roi relative to input image at InputTensor(0)
-        */
-        [[nodiscard]] auto getEyeRoi(bool isLeftEye) const -> cv::Rect;
+    /*
+    Get eye Roi relative to input image at InputTensor(0)
+    */
+    [[nodiscard]] auto getEyeRoi(bool isLeftEye) const -> cv::Rect;
 
-    private:
+private:
 
-        /*
-        Calculate Eye Roi from the first and last EyeLower2 landmark
-        */
-        static auto calculateEyeRoi(cv::Point leftMoft, cv::Point rightMost) -> cv::Rect;
+    /*
+    Calculate Eye Roi from the first and last EyeLower2 landmark
+    */
+    static auto calculateEyeRoi(cv::Point leftMost, cv::Point rightMost) -> cv::Rect;
 
-        /*
-        Run inference on each eye (for multithread)
-        */
-        void runEyeInference(bool isLeftEye);
+    /*
+    Run inference on each eye (for multithread)
+    */
+    void runEyeInference(bool isLeftEye);
 
-        ModelLoader m_leftIrisLandmarker;
-        ModelLoader m_rightIrisLandmarker;
+    ModelLoader leftIrisLandmarker_;
+    ModelLoader rightIrisLandmarker_;
 
-        cv::Rect m_leftEyeRoi;
-        cv::Rect m_rightEyeRoi;
+    cv::Rect leftEyeRoi_;
+    cv::Rect rightEyeRoi_;
 };
 
 } // namespace my

@@ -4,9 +4,12 @@
 #include "CheckPointLoader.hpp"
 #include "EmotionModel.hpp"
 #include "Inference/InferencePipeline.hpp"
+#include "c10/core/Device.h"
+#include "opencv2/core/mat.hpp"
 
 #include <filesystem>
 #include <fstream>
+#include <map>
 #include <memory>
 #include <opencv2/opencv.hpp>
 #include <stdexcept>
@@ -14,32 +17,33 @@
 #include <torch/script.h>
 #include <unordered_map>
 #include <vector>
+#include <yaml-cpp/node/node.h>
 #include <yaml-cpp/yaml.h>
 
 class EmotionDetector
 {
-    public:
+public:
 
         EmotionDetector(
             const std::string& modelPath, const std::string& configPath, std::string device = "cpu"
         );
         ~EmotionDetector();
 
-        EmotionDetector(const EmotionDetector&) = delete;
-        auto operator=(const EmotionDetector&) -> EmotionDetector& = delete;
+    EmotionDetector(const EmotionDetector&) = delete;
+    auto operator=(const EmotionDetector&) -> EmotionDetector& = delete;
 
-        EmotionDetector(EmotionDetector&&) = delete;
-        auto operator=(EmotionDetector&&) -> EmotionDetector& = delete;
+    EmotionDetector(EmotionDetector&&) = delete;
+    auto operator=(EmotionDetector&&) -> EmotionDetector& = delete;
 
-        void toggleEmotionDetection(bool state);
-        auto process(const cv::Mat& image) -> std::map<std::string, float>;
-        void close();
+    void toggleEmotionDetection(bool state);
+    auto process(const cv::Mat& image) -> std::map<std::string, float>;
+    void close();
 
-    private:
+private:
 
         static auto loadConfig(const std::string& configPath) -> YAML::Node;
 
-        bool processEnable_ = false;
+    bool processEnable_ = false;
 
         torch::Device device_;
         EmotionModel model_ = nullptr;

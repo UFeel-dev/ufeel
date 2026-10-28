@@ -1,73 +1,144 @@
 #include "EyeTracking/IrisDetection/FaceLandmark.hpp"
 
 #include "EyeTracking/IrisDetection/FaceDetection.hpp"
-#include "opencv2/core/types.hpp"
 
+#include <cmath>
 #include <cstddef>
-#include <iostream>
+#include <opencv2/core/types.hpp>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
-enum
+namespace
 {
-    FACE_LANDMARKS = 468
-};
 
-/*
-Helper function
-*/
-static auto isFaceLandmarkIndexValid(
-    int idx
+constexpr int FACE_LANDMARKS = 468;
+
+auto isFaceLandmarkIndexValid(
+    int index
 ) -> bool
 {
-    if (idx < 0 || idx >= FACE_LANDMARKS)
-    {
-        std::cerr << "Index " << idx << " is out of range (" << FACE_LANDMARKS << ")." << '\n';
-        return false;
-    }
-    return true;
+    return index >= 0 && index < FACE_LANDMARKS;
 }
+
+auto hasValidInputShape(
+    const std::vector<int>& shape
+) -> bool
+{
+    return shape.size() >= 3 && shape.at(1) > 0 && shape.at(2) > 0;
+}
+
+} // namespace
 
 my::FaceLandmark::FaceLandmark(
     const std::string& modelPath
 )
     : FaceDetection(modelPath)
-    , m_landmarkModel(modelPath + std::string("/face_landmark.tflite"))
+    , landmarkModel_(modelPath + "/face_landmark.tflite")
 {
 }
 
 void my::FaceLandmark::runInference()
 {
     FaceDetection::runInference();
-    auto roi = FaceDetection::getFaceRoi();
+
+    auto const roi = FaceDetection::getFaceRoi();
     if (roi.empty())
     {
         return;
     }
 
-    auto face = FaceDetection::cropFrame(roi);
-    m_landmarkModel.loadImageToInput(face);
-    m_landmarkModel.runInference();
+    auto const face = FaceDetection::cropFrame(roi);
+    if (face.empty())
+    {
+        throw std::runtime_error("Unable to crop the detected face.");
+    }
+
+    landmarkModel_.loadImageToInput(face);
+    landmarkModel_.runInference();
 }
 
 auto my::FaceLandmark::getFaceLandmarkAt(
     int index
 ) const -> cv::Point
 {
-    if (isFaceLandmarkIndexValid(index))
+    if (!isFaceLandmarkIndexValid(index) || getFaceRoi().empty())
     {
-        auto roi = FaceDetection::getFaceRoi();
-
-        float const _x = m_landmarkModel.getOutputData()[static_cast<ptrdiff_t>(index * 3)];
-        float const _y = m_landmarkModel.getOutputData()[(index * 3) + 1];
-
-        int const x = static_cast<int>(_x / m_landmarkModel.getInputShape()[2] * roi.width) + roi.x;
-        int const y =
-            static_cast<int>(_y / m_landmarkModel.getInputShape()[1] * roi.height) + roi.y;
-
-        return {x, y};
+        return {};
     }
-    return {};
+
+    auto const requiredSize = static_cast<std::size_t>(index + 1) * 3 * sizeof(float);
+    if (landmarkModel_.getOutputSize() < requiredSize)
+    {
+        return {};
+    }
+
+    auto const roi = FaceDetection::getFaceRoi();
+    auto const inputShape = landmarkModel_.getInputShape();
+    auto const* output = landmarkModel_.getOutputData();
+
+    if (!hasValidInputShape(inputShape) || output == nullptr)
+    {
+        return {};
+    }
+
+    float const x = output[static_cast<ptrdiff_t>(index * 3)];
+    float const y = output[(index * 3) + 1];
+
+    if (!std::isfinite(x) || !std::isfinite(y))
+    {
+        return {};
+    }
+
+    int const imageX =
+        static_cast<int>(x / static_cast<float>(inputShape.at(2)) * roi.width) + roi.x;
+    int const imageY =
+        static_cast<int>(y / static_cast<float>(inputShape.at(1)) * roi.height) + roi.y;
+
+    return {imageX, imageY};
+}
+
+auto my::FaceLandmark::getFaceLandmark3DAt(
+    int index
+) const -> cv::Point3f
+{
+    if (!isFaceLandmarkIndexValid(index) || getFaceRoi().empty())
+    {
+        return {};
+    }
+
+    auto const requiredSize = static_cast<std::size_t>(index + 1) * 3 * sizeof(float);
+    if (landmarkModel_.getOutputSize() < requiredSize)
+    {
+        return {};
+    }
+
+    auto const roi = FaceDetection::getFaceRoi();
+    auto const inputShape = landmarkModel_.getInputShape();
+    auto const* output = landmarkModel_.getOutputData();
+
+    if (!hasValidInputShape(inputShape) || output == nullptr)
+    {
+        return {};
+    }
+
+    float const x = output[static_cast<ptrdiff_t>(index * 3)];
+    float const y = output[(index * 3) + 1];
+    float const z = output[(index * 3) + 2];
+
+    if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z))
+    {
+        return {};
+    }
+
+    auto const inputWidth = static_cast<float>(inputShape.at(2));
+    auto const inputHeight = static_cast<float>(inputShape.at(1));
+    float const depthScale = static_cast<float>(roi.width) / inputWidth;
+
+    return {
+        static_cast<float>(roi.x) + (x / inputWidth * static_cast<float>(roi.width)),
+        static_cast<float>(roi.y) + (y / inputHeight * static_cast<float>(roi.height)),
+        z * depthScale};
 }
 
 auto my::FaceLandmark::getAllFaceLandmarks() const -> std::vector<cv::Point>
@@ -77,11 +148,14 @@ auto my::FaceLandmark::getAllFaceLandmarks() const -> std::vector<cv::Point>
         return {};
     }
 
-    std::vector<cv::Point> landmarks(FACE_LANDMARKS);
-    for (int i = 0; i < FACE_LANDMARKS; ++i)
+    std::vector<cv::Point> landmarks;
+    landmarks.reserve(FACE_LANDMARKS);
+
+    for (int index = 0; index < FACE_LANDMARKS; ++index)
     {
-        landmarks[i] = getFaceLandmarkAt(i);
+        landmarks.push_back(getFaceLandmarkAt(index));
     }
+
     return landmarks;
 }
 
@@ -89,5 +163,5 @@ auto my::FaceLandmark::loadOutput(
     int /*index*/
 ) const -> std::vector<float>
 {
-    return m_landmarkModel.loadOutput();
+    return landmarkModel_.loadOutput();
 }

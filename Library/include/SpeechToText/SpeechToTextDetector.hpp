@@ -13,44 +13,44 @@
 
 class SpeechToTextDetector
 {
-    public:
+public:
 
-        explicit SpeechToTextDetector(const std::string& modelPath);
+    explicit SpeechToTextDetector(const std::string& modelPath);
 
-        ~SpeechToTextDetector();
+    ~SpeechToTextDetector();
 
-        SpeechToTextDetector(const SpeechToTextDetector&) = delete;
-        auto operator=(const SpeechToTextDetector&) -> SpeechToTextDetector& = delete;
+    SpeechToTextDetector(const SpeechToTextDetector&) = delete;
+    auto operator=(const SpeechToTextDetector&) -> SpeechToTextDetector& = delete;
 
-        SpeechToTextDetector(SpeechToTextDetector&&) = delete;
-        auto operator=(SpeechToTextDetector&&) -> SpeechToTextDetector& = delete;
+    SpeechToTextDetector(SpeechToTextDetector&&) = delete;
+    auto operator=(SpeechToTextDetector&&) -> SpeechToTextDetector& = delete;
 
-        void toggle(bool state);
+    void toggle(bool state);
 
-        [[nodiscard]]
-        auto process() const -> std::string;
+    [[nodiscard]]
+    auto process() const -> std::string;
 
-    private:
+private:
 
-        AudioCapture audioCapture_;
-        SpeechRecognizer recognizer_;
+    AudioCapture audioCapture_;
+    SpeechRecognizer recognizer_;
 
-        std::thread worker_;
-        std::atomic<bool> running_{false};
+    std::thread worker_;
+    std::atomic<bool> running_{false};
 
-        mutable std::mutex textMutex_;
-        std::string currentText_;
+    mutable std::mutex textMutex_;
+    std::string currentText_;
 
-        void start();
-        void stop();
-        void run();
+    void start();
+    void stop();
+    void run();
 
-        void processAudio(const std::vector<int16_t>& buffer);
+    void processAudio(const std::vector<int16_t>& buffer);
 
-        void setText(std::string text);
+    void setText(std::string text);
 
-        [[nodiscard]]
-        auto getText() const -> std::string;
+    [[nodiscard]]
+    auto getText() const -> std::string;
 };
 
 #endif // SPEECHTOTEXT_SPEECHTOTEXTDETECTOR_HPP

@@ -6,6 +6,7 @@
 #include <iostream>
 #include <portaudio.h>
 #include <string>
+#include <utility>
 #include <vector>
 
 AudioCapture::AudioCapture()
@@ -60,7 +61,7 @@ auto AudioCapture::findInputDevice() -> PaDeviceIndex
 
         const PaDeviceInfo* info = Pa_GetDeviceInfo(device);
 
-        if (info == nullptr || info->maxInputChannels < channelCount)
+        if (info == nullptr || std::cmp_less(info->maxInputChannels, channelCount))
         {
             continue;
         }
@@ -83,12 +84,12 @@ auto AudioCapture::findInputDevice() -> PaDeviceIndex
             score += 100;
         }
 
-        if (std::string(info->name).find("(hw:") != std::string::npos)
+        if (std::string(info->name).contains("(hw:"))
         {
             score += 50;
         }
 
-        if (std::string(info->name).find("default") == std::string::npos)
+        if (!std::string(info->name).contains("default"))
         {
             score += 10;
         }
@@ -245,7 +246,7 @@ auto AudioCapture::push(
 
         const int32_t right = samples[index + 1];
 
-        pendingBuffer_[pendingSize_] = static_cast<int16_t>((left + right) / 2);
+        pendingBuffer_.at(pendingSize_) = static_cast<int16_t>((left + right) / 2);
 
         ++pendingSize_;
 
@@ -264,7 +265,7 @@ auto AudioCapture::push(
             continue;
         }
 
-        buffers_[writeIndex % bufferCount] = pendingBuffer_;
+        buffers_.at(writeIndex % bufferCount) = pendingBuffer_;
 
         writeIndex_.store(writeIndex + 1, std::memory_order_release);
 
@@ -292,7 +293,7 @@ auto AudioCapture::pop(
 
         if (readIndex != writeIndex)
         {
-            const AudioBuffer& source = buffers_[readIndex % bufferCount];
+            const AudioBuffer& source = buffers_.at(readIndex % bufferCount);
 
             buffer.assign(source.begin(), source.end());
 

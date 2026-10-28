@@ -12,9 +12,9 @@
 #include <vector>
 
 BasicBlockImpl::BasicBlockImpl(
-    int64_t inplanes, int64_t planes, int64_t stride, torch::nn::Sequential downsample_
+    int64_t inplanes, int64_t planes, int64_t stride, torch::nn::Sequential downsample
 )
-    : downsample(std::move(std::move(downsample_)))
+    : downsample(std::move(std::move(downsample)))
 {
     conv1 = register_module(
         "conv1",
@@ -62,7 +62,7 @@ auto BasicBlockImpl::forward(
 }
 
 ResNetImpl::ResNetImpl(
-    const std::vector<int64_t>& layers, int64_t num_classes
+    const std::vector<int64_t>& layers, int64_t numClasses
 )
 {
     conv1 = register_module(
@@ -71,15 +71,15 @@ ResNetImpl::ResNetImpl(
     );
     bn1 = register_module("bn1", torch::nn::BatchNorm2d(64));
 
-    layer1 = register_module("layer1", make_layer(64, layers[0], 1));
-    layer2 = register_module("layer2", make_layer(128, layers[1], 2));
-    layer3 = register_module("layer3", make_layer(256, layers[2], 2));
-    layer4 = register_module("layer4", make_layer(512, layers[3], 2));
+    layer1 = register_module("layer1", makeLayer(64, layers.at(0), 1));
+    layer2 = register_module("layer2", makeLayer(128, layers.at(1), 2));
+    layer3 = register_module("layer3", makeLayer(256, layers.at(2), 2));
+    layer4 = register_module("layer4", makeLayer(512, layers.at(3), 2));
 
-    fc = register_module("fc", torch::nn::Linear(512, num_classes));
+    fc = register_module("fc", torch::nn::Linear(512, numClasses));
 }
 
-auto ResNetImpl::make_layer(
+auto ResNetImpl::makeLayer(
     int64_t planes, int64_t blocks, int64_t stride
 ) -> torch::nn::Sequential
 {
