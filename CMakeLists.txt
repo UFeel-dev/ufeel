@@ -66,10 +66,14 @@ set(OPENCV_LIBRARIES
     ${OPENCV_DIR}/lib/libopencv_videoio.so
 )
 
+file(GLOB_RECURSE TFLITE_DEPENDENCY_LIBRARIES
+    CONFIGURE_DEPENDS
+    "${TFLITE_DIR}/lib/deps/*.a"
+)
+
 set(TFLITE_STATIC_LIBRARIES
-    ${TFLITE_DIR}/lib/libtensorflow-lite.a
-    ${TFLITE_DIR}/lib/flatbuffers/libflatbuffers.a
-    ${TFLITE_DIR}/lib/ruy/libruy_combined.a
+    "${TFLITE_DIR}/lib/libtensorflow-lite.a"
+    ${TFLITE_DEPENDENCY_LIBRARIES}
 )
 
 set(VOSK_KALDI_LIBRARIES
@@ -92,10 +96,10 @@ set(VOSK_KALDI_LIBRARIES
     ${VOSK_DIR}/lib/kaldi/base/kaldi-base.a
     ${VOSK_DIR}/lib/openfst/libfst.a
     ${VOSK_DIR}/lib/openfst/libfstngram.a
-    ${VOSK_DIR}/lib/openblas/libopenblas-r0.3.20.a
-    ${VOSK_DIR}/lib/openblas/libblas.a
     ${VOSK_DIR}/lib/openblas/liblapack.a
     ${VOSK_DIR}/lib/openblas/libf2c.a
+    ${VOSK_DIR}/lib/openblas/libblas.a
+    ${VOSK_DIR}/lib/openblas/libopenblas-r0.3.20.a
 )
 
 add_library(ufeel_detection_library STATIC
@@ -142,9 +146,11 @@ target_link_libraries(ufeel_detection_library
     PUBLIC
         ${OPENCV_LIBRARIES}
         ${TORCH_LIBRARIES}
-        ${TFLITE_STATIC_LIBRARIES}
-        ${VOSK_DIR}/lib/libvosk.a
         "-Wl,--start-group"
+        ${TFLITE_STATIC_LIBRARIES}
+        "-Wl,--end-group"
+        "-Wl,--start-group"
+        ${VOSK_DIR}/lib/libvosk.a
         ${VOSK_KALDI_LIBRARIES}
         "-Wl,--end-group"
         ${PORTAUDIO_DIR}/lib/libportaudio.so
@@ -175,6 +181,10 @@ target_include_directories(ufeel_wrapper
 target_link_libraries(ufeel_wrapper
     PRIVATE
         ufeel_detection_library
+)
+
+target_link_options(ufeel_wrapper PRIVATE
+    "-Wl,--no-undefined"
 )
 
 set_target_properties(ufeel_wrapper PROPERTIES
