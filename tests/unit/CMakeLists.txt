@@ -1,7 +1,9 @@
 add_executable(
     run_unit_tests
-    Emotions/TestResNetImpl.cpp
-    Emotions/TestModel.cpp
+    # Emotions/TestResNetImpl.cpp
+    # Emotions/TestModel.cpp
+
+    HeartRate/TestHeartRateDetector.cpp
 )
 
 target_link_libraries(
