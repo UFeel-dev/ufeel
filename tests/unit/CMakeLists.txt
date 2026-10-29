@@ -3,6 +3,8 @@ add_executable(
     # Emotions/TestResNetImpl.cpp
     # Emotions/TestModel.cpp
 
+    SpeechToText/TestAudioCapture.cpp
+
     HeartRate/TestHeartRateDetector.cpp
 )
 
