@@ -116,4 +116,43 @@ TEST(
     EXPECT_EQ(result.status, HeartRateStatus::Valid);
 }
 
+TEST(
+    HeartRateDetectorTest, ProcessReturnsRequestFailedForHttpError
+)
+{
+    LocalHttpServer server(500, R"({"error": "internal server error"})");
+    ASSERT_TRUE(server.isReady());
+
+    const HeartRateResult result = HeartRateSensorDetector::process();
+
+    EXPECT_EQ(result.bpm, 0U);
+    EXPECT_EQ(result.status, HeartRateStatus::RequestFailed);
+}
+
+TEST(
+    HeartRateDetectorTest, ProcessReturnsJsonParseErrorForMalformedJson
+)
+{
+    LocalHttpServer server(200, R"({"bpm": )");
+    ASSERT_TRUE(server.isReady());
+
+    const HeartRateResult result = HeartRateSensorDetector::process();
+
+    EXPECT_EQ(result.bpm, 0U);
+    EXPECT_EQ(result.status, HeartRateStatus::JsonParseError);
+}
+
+TEST(
+    HeartRateDetectorTest, ProcessReturnsJsonParseOutOfRangeForMissingBpm
+)
+{
+    LocalHttpServer server(200, R"({"heart_rate": 72})");
+    ASSERT_TRUE(server.isReady());
+
+    const HeartRateResult result = HeartRateSensorDetector::process();
+
+    EXPECT_EQ(result.bpm, 0U);
+    EXPECT_EQ(result.status, HeartRateStatus::JsonParseOutOfRange);
+}
+
 } // namespace
