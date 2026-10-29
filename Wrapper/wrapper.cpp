@@ -121,6 +121,20 @@ void ufeel_destroy(
 }
 
 auto ufeel_update(
+    UFeelProcessor* processor, int32_t detectionType
+) -> int32_t
+{
+    if (!isValidProcessor(processor))
+    {
+        return 0;
+    }
+
+    return guarded("ufeel_update", int32_t{0}, [processor, detectionType] -> int32_t {
+        return static_cast<int32_t>(processor->processor.update(detectionType));
+    });
+}
+
+auto ufeel_update_frame(
     UFeelProcessor* processor
 ) -> int32_t
 {
@@ -129,11 +143,52 @@ auto ufeel_update(
         return 0;
     }
 
-    return guarded("ufeel_update", int32_t{0}, [processor] -> int32_t {
-        return static_cast<int32_t>(processor->processor.update());
+    return guarded("ufeel_update_frame", int32_t{0}, [processor] -> int32_t {
+        return static_cast<int32_t>(processor->processor.updateFrame());
     });
 }
 
+auto ufeel_update_emotions(
+    UFeelProcessor* processor
+) -> int32_t
+{
+    if (!isValidProcessor(processor))
+    {
+        return 0;
+    }
+
+    return guarded("ufeel_update_emotions", int32_t{0}, [processor] -> int32_t {
+        return static_cast<int32_t>(processor->processor.updateEmotions());
+    });
+}
+
+auto ufeel_update_gaze(
+    UFeelProcessor* processor
+) -> int32_t
+{
+    if (!isValidProcessor(processor))
+    {
+        return 0;
+    }
+
+    return guarded("ufeel_update_gaze", int32_t{0}, [processor] -> int32_t {
+        return static_cast<int32_t>(processor->processor.updateGaze());
+    });
+}
+
+auto ufeel_update_speech(
+    UFeelProcessor* processor
+) -> int32_t
+{
+    if (!isValidProcessor(processor))
+    {
+        return 0;
+    }
+
+    return guarded("ufeel_update_speech_to_text", int32_t{0}, [processor] -> int32_t {
+        return static_cast<int32_t>(processor->processor.updateSpeech());
+    });
+}
 auto ufeel_get_frame(
     UFeelProcessor* processor
 ) -> UFeelFrame*

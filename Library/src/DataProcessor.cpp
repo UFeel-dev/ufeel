@@ -32,26 +32,16 @@ DataProcessor::DataProcessor(
     // heartRateSensorDetector_ = std::make_unique<HeartRateSensorDetector>();
 }
 
-auto DataProcessor::update() -> bool
+auto DataProcessor::updateFrame() -> bool
 {
     cap_ >> frame_;
 
-    if (frame_.empty())
-    {
-        emotions_.clear();
-        gaze_ = {};
-        gaze_.status = GazeStatus::FrameUnavailable;
-        return false;
-    }
+    return !frame_.empty();
+}
 
-    emotions_ = emotionDetector_->process(frame_);
-
-    gaze_ = eyeTrackingDetector_->process(frame_);
-
-    speech_ = speechToTextDetector_->process();
-
-    heartrate_ = HeartRateSensorDetector::process();
-
+// TODO: add logic to be able to send a frame here from the compiled library
+auto DataProcessor::setFrame() -> bool
+{
     return true;
 }
 
@@ -60,14 +50,53 @@ auto DataProcessor::getFrame() const -> cv::Mat
     return frame_;
 }
 
+auto DataProcessor::update(uint32_t detectionType) -> bool
+{
+    if ((detectionType & Emotions) != 0)
+    {
+        emotions_ = emotionDetector_->process(frame_);
+    }
+    if ((detectionType & Gaze) != 0)
+    {
+        gaze_ = eyeTrackingDetector_->process(frame_);
+    }
+    if ((detectionType & Speech) != 0)
+    {
+        speech_ = speechToTextDetector_->process();
+    }
+    // if ((detectionType & HeartRate) != 0)
+    // {
+    //     heartrate_ = heartRateDetector_->process();
+    // }
+    return true;
+}
+
+auto DataProcessor::updateEmotions() -> bool
+{
+    emotions_ = emotionDetector_->process(frame_);
+    return true;
+}
+
 auto DataProcessor::getEmotions() const -> const std::map<std::string, float>&
 {
     return emotions_;
 }
 
+auto DataProcessor::updateGaze() -> bool
+{
+    gaze_ = eyeTrackingDetector_->process(frame_);
+    return true;
+}
+
 auto DataProcessor::getGaze() const -> GazeResult
 {
     return gaze_;
+}
+
+auto DataProcessor::updateSpeech() -> bool
+{
+    speech_ = speechToTextDetector_->process();
+    return true;
 }
 
 auto DataProcessor::getSpeech() const -> const std::string&
@@ -121,6 +150,12 @@ auto DataProcessor::loadEyeTrackingCalibrationProfile(
     return eyeTrackingDetector_->loadCalibrationProfile(path);
 }
 
+// auto DataProcessor::updateHeartRate() -> bool
+// {
+
+//     heartrate_ = heartRateDetector_->process();
+// }
+
 auto DataProcessor::getHeartRate() const -> HeartRateResult
 {
     return heartrate_;
@@ -139,9 +174,4 @@ DataProcessor::~DataProcessor()
     {
         cap_.release();
     }
-
-    // emotionDetector_->close();
-    // eyeTrackingDetector_->close();
-    // speechToTextDetector_->close();
-    // heartRateSensorDetector_->close();
 }

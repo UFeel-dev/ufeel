@@ -10,6 +10,8 @@ public sealed class UFeelProcessor : IDisposable
     private IntPtr handle;
     private bool disposed;
 
+    private const DetectionType allDetection = DetectionType.Emotions | DetectionType.Gaze | DetectionType.Speech | DetectionType.HeartRate;
+
     public UFeelProcessor(
         string modelDirectory,
         string speechModelPath,
@@ -28,8 +30,11 @@ public sealed class UFeelProcessor : IDisposable
                 "Failed to create the native UFeel processor.");
     }
 
-    public bool Update() =>
-        UFeelNative.ufeel_update(Handle) != 0;
+    public bool Update()
+    {
+        _ = UFeelNative.ufeel_update_frame(Handle);
+        return UFeelNative.ufeel_update(Handle, (int)allDetection) != 0;
+    }
 
     public FrameData? GetFrame()
     {

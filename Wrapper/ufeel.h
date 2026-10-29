@@ -141,7 +141,19 @@ ufeel_create(const char* utf8ModelDirectory, const char* utf8SpeechModelPath);
 UFEEL_API void ufeel_destroy(UFeelProcessor* processor);
 
 /** Processes the next input frame. Returns 1 when processing succeeds, otherwise 0. */
-UFEEL_API int32_t ufeel_update(UFeelProcessor* processor);
+UFEEL_API int32_t ufeel_update(UFeelProcessor* processor, int32_t detectionType);
+
+/** Processes the next input frame. Returns 1 when processing succeeds, otherwise 0. */
+UFEEL_API int32_t ufeel_update_frame(UFeelProcessor* processor);
+
+/** Processes the next input frame for emotions. Returns 1 when processing succeeds, otherwise 0. */
+UFEEL_API int32_t ufeel_update_emotions(UFeelProcessor* processor);
+
+/** Processes the next input frame for gaze. Returns 1 when processing succeeds, otherwise 0.*/
+UFEEL_API int32_t ufeel_update_gaze(UFeelProcessor* processor);
+
+/** Processes the next input frame for speech. Returns 1 when processing succeeds, otherwise 0. */
+UFEEL_API int32_t ufeel_update_speech(UFeelProcessor* processor);
 
 /** Returns a copy of the latest processed image, or NULL if no frame is available. */
 UFEEL_API UFeelFrame* ufeel_get_frame(UFeelProcessor* processor);

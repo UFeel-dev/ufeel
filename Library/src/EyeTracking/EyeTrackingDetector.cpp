@@ -3,6 +3,7 @@
 #include "EyeTracking/GazeCalibrationModel.hpp"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/core/types.hpp"
+#include "Utils/FrameChecker.hpp"
 
 #include <algorithm>
 #include <array>
@@ -233,6 +234,11 @@ auto EyeTrackingDetector::process(
     const cv::Mat& frame
 ) -> GazeResult
 {
+    if (frameChecker_.isFrameIdentical(frame))
+    {
+        return frameChecker_.getResult();
+    }
+
     result_ = {};
     if (!processEnable_)
     {
@@ -328,6 +334,8 @@ auto EyeTrackingDetector::process(
     {
         result_.directions |= GazeCenter;
     }
+    frameChecker_.setFrame(frame);
+    frameChecker_.setResult(result_);
     return result_;
 }
 

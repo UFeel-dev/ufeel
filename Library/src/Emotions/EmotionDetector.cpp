@@ -9,6 +9,7 @@
 #include "opencv2/core/hal/interface.h"
 #include "opencv2/core/mat.hpp"
 #include "torch/headeronly/core/DeviceType.h"
+#include "Utils/FrameChecker.hpp"
 
 #include <filesystem>
 #include <map>
@@ -71,10 +72,14 @@ auto EmotionDetector::process(
     const cv::Mat& image
 ) -> std::map<std::string, float>
 {
-    if (image.empty() || image.type() != CV_8UC3)
+    if (frameChecker_.isFrameIdentical(image))
     {
-        return {};
+        return frameChecker_.getResult();
     }
 
-    return calibration_.select(pipeline_->predict(image));
+    auto result = calibration_.select(pipeline_->predict(image));
+
+    frameChecker_.setFrame(image);
+    frameChecker_.setResult(result);
+    return result;
 }

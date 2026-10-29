@@ -4,6 +4,7 @@
 #include "EyeTracking/GazeCalibrationModel.hpp"
 #include "EyeTracking/GazeKalmanFilter.hpp"
 #include "EyeTracking/IrisDetection/IrisLandmark.hpp"
+#include "Utils/FrameChecker.hpp"
 
 #include <chrono>
 #include <cstddef>
@@ -102,6 +103,8 @@ private:
     CalibrationDiagnostics lastCalibrationDiagnostics_{};
 
     my::IrisLandmark irisLandmarker_;
+
+    FrameChecker<GazeResult> frameChecker_;
 };
 
 // TODO: improve eye tracking to handle glasses and other bad inputs better

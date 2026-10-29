@@ -15,6 +15,14 @@ class EmotionDetector;
 class SpeechToTextDetector;
 class HeartRateSensorDetector;
 
+enum DetectionType : std::uint8_t
+{
+    Emotions = 1U << 0U,
+    Gaze = 1U << 1U,
+    Speech = 1U << 2U,
+    HeartRate = 1U << 3U,
+};
+
 class DataProcessor
 {
 public:
@@ -29,16 +37,22 @@ public:
     DataProcessor(DataProcessor&&) = delete;
     auto operator=(DataProcessor&&) -> DataProcessor& = delete;
 
-    auto update() -> bool;
-
+    auto updateFrame() -> bool;
+    auto setFrame() -> bool;
     [[nodiscard]] auto getFrame() const -> cv::Mat;
 
+    auto update(uint32_t detectionType) -> bool;
+
+    auto updateEmotions() -> bool;
     [[nodiscard]] auto getEmotions() const -> const std::map<std::string, float>&;
 
+    auto updateGaze() -> bool;
     [[nodiscard]] auto getGaze() const -> GazeResult;
 
+    auto updateSpeech() -> bool;
     [[nodiscard]] auto getSpeech() const -> const std::string&;
 
+    // auto updateHeartRate() -> bool;
     [[nodiscard]] auto getHeartRate() const -> HeartRateResult;
 
     void beginEyeTrackingCalibration();
