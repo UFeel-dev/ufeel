@@ -1,11 +1,12 @@
 #ifndef SPEECHTOTEXT_AUDIOCAPTURE_HPP
 #define SPEECHTOTEXT_AUDIOCAPTURE_HPP
 
+#include "portaudio.h"
+
 #include <array>
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
-#include <portaudio.h>
 #include <vector>
 
 class AudioCapture

@@ -1,43 +1,54 @@
 #include "Emotions/Inference/HeadCalibration.hpp"
 
+#include "Emotions/EmotionLabels.hpp"
+
+#include <algorithm>
+#include <cstddef>
+#include <map>
+#include <stdexcept>
+#include <string>
+
+namespace
+{
+
+constexpr float kDefaultThreshold = 0.5F;
+
+} // namespace
+
+HeadCalibration::HeadCalibration()
+{
+    thresholds_.fill(kDefaultThreshold);
+}
+
 HeadCalibration::HeadCalibration(
-    Probabilities thresholds
+    const std::map<std::string, float>& thresholds
 )
-    : thresholds_(std::move(thresholds))
+    : HeadCalibration()
 {
+    for (const auto& [label, threshold] : thresholds)
+    {
+        const auto* const it = std::ranges::find(kEmotionLabels, label);
+        if (it == kEmotionLabels.end())
+        {
+            throw std::invalid_argument("Unknown emotion in thresholds: " + label);
+        }
+        thresholds_.at(static_cast<std::size_t>(it - kEmotionLabels.begin())) = threshold;
+    }
 }
 
-auto HeadCalibration::apply(
-    const Probabilities& probs
-) const -> HeadCalibration::Decisions
+auto HeadCalibration::select(
+    const EmotionScores& scores
+) const -> std::map<std::string, float>
 {
-    Decisions result;
+    std::map<std::string, float> selected;
 
-    for (const auto& [name, probability] : probs)
+    for (std::size_t i = 0; i < scores.size(); ++i)
     {
-        auto it = thresholds_.find(name);
-
-        float threshold = (it != thresholds_.end()) ? it->second : 0.5f;
-
-        result[name] = probability > threshold;
-    }
-    return result;
-}
-
-auto HeadCalibration::applySoft(
-    const Probabilities& probs
-) const -> HeadCalibration::Probabilities
-{
-    Probabilities result;
-
-    for (const auto& [name, probability] : probs)
-    {
-        auto it = thresholds_.find(name);
-
-        float threshold = (it != thresholds_.end()) ? it->second : 0.5f;
-
-        result[name] = probability - threshold;
+        if (scores.at(i) > thresholds_.at(i))
+        {
+            selected.emplace(std::string(kEmotionLabels.at(i)), scores.at(i));
+        }
     }
 
-    return result;
+    return selected;
 }

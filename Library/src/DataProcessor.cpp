@@ -6,7 +6,6 @@
 #include "HeartRate/HeartRateDetector.hpp"
 #include "SpeechToText/SpeechToTextDetector.hpp"
 
-#include <filesystem>
 #include <iostream>
 #include <map>
 #include <memory>
@@ -24,8 +23,7 @@ DataProcessor::DataProcessor(
         std::cerr << "[ERROR] Cannot open camera capture_id=0\n";
     }
 
-    auto const modelPath = std::filesystem::path(modelDirectory);
-    emotionDetector_ = std::make_unique<EmotionDetector>(emotionModelPath, emotionConfigPath);
+    emotionDetector_ = std::make_unique<EmotionDetector>(modelDirectory);
 
     eyeTrackingDetector_ = std::make_unique<EyeTrackingDetector>(modelDirectory);
 

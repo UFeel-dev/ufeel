@@ -68,11 +68,6 @@ private:
     std::unique_ptr<EyeTrackingDetector> eyeTrackingDetector_;
     std::unique_ptr<SpeechToTextDetector> speechToTextDetector_;
     // std::unique_ptr<HeartRateSensorDetector> heartRateSensorDetector_;
-
-    const std::string emotionModelPath =
-        "models/Emotions/binary_affectnet_resnet34_pretrained_scripted.pt";
-    const std::string emotionConfigPath =
-        "models/Emotions/binary_affectnet_resnet34_pretrained.yaml";
 };
 
 #endif // DATAPROCESSOR_HPP

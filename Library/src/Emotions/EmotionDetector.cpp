@@ -1,144 +1,80 @@
 #include "Emotions/EmotionDetector.hpp"
 
 #include "Emotions/CheckPointLoader.hpp"
-#include "opencv2/core.hpp"
+#include "Emotions/EmotionModel.hpp"
+#include "Emotions/Inference/FaceCrop.hpp"
+#include "Emotions/Inference/FaceDetector.hpp"
+#include "Emotions/Inference/HeadCalibration.hpp"
+#include "Emotions/Inference/InferencePipeline.hpp"
 #include "opencv2/core/hal/interface.h"
 #include "opencv2/core/mat.hpp"
-#include "opencv2/core/types.hpp"
-#include "opencv2/dnn/dnn.hpp"
-#include "opencv2/imgproc.hpp"
-#include "opencv2/objdetect/face.hpp"
+#include "torch/headeronly/core/DeviceType.h"
 
-#include <ATen/core/TensorBody.h>
-#include <algorithm>
-#include <c10/util/Exception.h>
-#include <cmath>
-#include <cstddef>
 #include <filesystem>
-#include <iostream>
 #include <map>
-#include <opencv2/core/cvstd_wrapper.hpp>
-#include <stdexcept>
+#include <memory>
 #include <string>
-#include <torch/csrc/autograd/generated/variable_factories.h>
-#include <torch/csrc/jit/serialization/import.h>
-#include <torch/csrc/jit/serialization/pickler.h>
-#include <torch/types.h>
-#include <vector>
+#include <utility>
+#include <yaml-cpp/node/node.h>
+#include <yaml-cpp/node/parse.h>
+#include <yaml-cpp/yaml.h> // ! needs to be included for templates to compile
 
+namespace
+{
+
+constexpr auto kDevice = torch::kCPU;
+
+struct EmotionConfig
+{
+    std::string backboneName;
+    int imageSize;
+    std::map<std::string, float> thresholds;
+};
+
+auto loadConfig(
+    const std::filesystem::path& path
+) -> EmotionConfig
+{
+    const auto root = YAML::LoadFile(path.string());
+    const auto model = root["model"];
+
+    return {
+        .backboneName = model["backbone_name"].as<std::string>(),
+        .imageSize = root["data"]["img_size"].as<int>(),
+        .thresholds = model["thresholds"].as<std::map<std::string, float>>(),
+    };
+}
+
+} // namespace
 
 EmotionDetector::EmotionDetector(
-    const std::string& modelPath, const std::string& configPath, std::string device
-)
-    : device_(torch::Device(device))
-{
-    YAML::Node config = loadConfig(configPath);
-
-    auto model_cfg = config["model"];
-    auto data_cfg = config["data"];
-
-    model_ = EmotionModel(model_cfg["backbone_name"].as<std::string>());
-
-    model_ =
-        loadCheckpoint(model_, "models/Emotions/model_weights.bin", device_);
-
-    auto detector = std::make_shared<YuNetFaceDetector>(
-        "models/EyeTracking/face_detection_yunet_2023mar.onnx", 0.9f, 0.3f, 5000
-    );
-
-    auto face_crop = std::make_shared<MTCNNCropTransform>(data_cfg["img_size"].as<int>(), detector);
-
-    pipeline_ = std::make_shared<InferencePipeline>(
-        model_, device_, face_crop, data_cfg["img_size"].as<int>()
-    );
-
-    std::unordered_map<std::string, float> thresholds;
-
-    const auto thresholds_node = model_cfg["thresholds"];
-
-    for (const auto& node : thresholds_node)
-    {
-        const auto emotion = node.first.as<std::string>();
-        const auto threshold = node.second.as<float>();
-
-        thresholds[emotion] = threshold;
-    }
-    pipeline_->set_calibration(HeadCalibration(thresholds));
-
-    processEnable_ = false;
-}
-
-EmotionDetector::~EmotionDetector()
-{
-    close();
-}
-
-auto EmotionDetector::loadConfig(
-    const std::string& configPath
-) -> YAML::Node
-{
-    namespace fs = std::filesystem;
-
-    fs::path path(configPath);
-
-    if (!fs::exists(path))
-    {
-        std::cerr << "Configuration file not found: " << path << '\n';
-
-        throw std::runtime_error("Configuration file not found: " + path.string());
-    }
-
-    try
-    {
-        return YAML::LoadFile(path.string());
-    }
-    catch (const YAML::Exception& e)
-    {
-        throw std::runtime_error("Failed to parse configuration file: " + std::string(e.what()));
-    }
-}
-
-void EmotionDetector::toggleEmotionDetection(
-    bool state
+    const std::filesystem::path& modelDirectory
 )
 {
-    processEnable_ = state;
-    std::cout << "[EmotionDetector] Emotion detection " << (state ? "enabled" : "disabled") << '\n';
+    const auto directory = modelDirectory / "Emotions";
+    const auto config = loadConfig(directory / "binary_affectnet_resnet34_pretrained.yaml");
+
+    EmotionModel model(config.backboneName);
+    loadCheckpoint(model, directory / "model_weights.bin");
+
+    FaceCrop faceCrop(
+        FaceDetector((directory / "face_detection_yunet_2023mar.onnx").string()), config.imageSize
+    );
+
+    pipeline_ = std::make_unique<InferencePipeline>(std::move(model), kDevice, std::move(faceCrop));
+    calibration_ = HeadCalibration(config.thresholds);
 }
+
+EmotionDetector::~EmotionDetector() = default;
 
 auto EmotionDetector::process(
     const cv::Mat& image
 ) -> std::map<std::string, float>
 {
-    if (image.empty())
+    if (image.empty() || image.type() != CV_8UC3)
     {
         return {};
     }
 
-    auto out = pipeline_->predict(image);
-
-    if (out.binary.empty())
-    {
-        return {};
-    }
-
-    std::map<std::string, float> selected;
-
-    for (const auto& [emotion, value] : out.heads)
-    {
-        auto it = out.binary.find(emotion);
-
-        if (it != out.binary.end())
-        {
-            const bool enabled = it->second;
-
-            if (enabled)
-            {
-                selected.emplace(emotion, value);
-            }
-        }
-    }
-    return selected;
+    return calibration_.select(pipeline_->predict(image));
 }
-
-void EmotionDetector::close() {}

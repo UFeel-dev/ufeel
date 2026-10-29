@@ -1,15 +1,28 @@
 #include "Emotions/Inference/InferencePipeline.hpp"
 
+#include "ATen/ops/sigmoid.h"
+#include "Emotions/EmotionLabels.hpp"
+#include "Emotions/EmotionModel.hpp"
+#include "Emotions/Inference/FaceCrop.hpp"
+#include "c10/core/Device.h"
+#include "opencv2/core/hal/interface.h"
+#include "opencv2/core/mat.hpp"
+#include "opencv2/imgproc.hpp"
+#include "torch/csrc/autograd/generated/variable_factories.h"
+#include "torch/headeronly/core/DeviceType.h"
+#include "torch/optim/optimizer.h"
+
+#include <algorithm>
+#include <torch/types.h>
+#include <torch/utils.h>
+#include <utility>
+
 InferencePipeline::InferencePipeline(
-    EmotionModel model,
-    torch::Device device,
-    std::shared_ptr<MTCNNCropTransform> face_crop,
-    int img_size
+    EmotionModel model, torch::Device device, FaceCrop faceCrop
 )
     : model_(std::move(model))
     , device_(device)
-    , faceCrop_(std::move(face_crop))
-    , imgSize_(img_size)
+    , faceCrop_(std::move(faceCrop))
 {
     model_->to(device_);
     model_->eval();
@@ -19,92 +32,29 @@ auto InferencePipeline::preprocess(
     const cv::Mat& image
 ) -> torch::Tensor
 {
-    cv::Mat processed = image;
-
-    if (faceCrop_)
-    {
-        processed = (*faceCrop_)(processed);
-    }
-
-    if (processed.empty())
-    {
-        throw std::runtime_error("Preprocessing produced an empty image");
-    }
-
-    cv::Mat resized;
-
-    cv::resize(processed, resized, cv::Size(imgSize_, imgSize_), 0.0, 0.0, cv::INTER_LINEAR);
-
     cv::Mat rgb;
-
-    if (resized.channels() == 3)
-    {
-        cv::cvtColor(resized, rgb, cv::COLOR_BGR2RGB);
-    }
-    else if (resized.channels() == 4)
-    {
-        cv::cvtColor(resized, rgb, cv::COLOR_BGRA2RGB);
-    }
-    else
-    {
-        throw std::runtime_error("Expected 3 or 4 channel image");
-    }
-
+    cv::cvtColor(faceCrop_(image), rgb, cv::COLOR_BGR2RGB);
     rgb.convertTo(rgb, CV_32FC3, 1.0 / 255.0);
 
-    auto tensor = torch::from_blob(
-        rgb.data, {rgb.rows, rgb.cols, 3}, torch::TensorOptions().dtype(torch::kFloat32)
-    );
+    const auto mean = torch::tensor({0.485F, 0.456F, 0.406F}).view({1, 3, 1, 1});
+    const auto std = torch::tensor({0.229F, 0.224F, 0.225F}).view({1, 3, 1, 1});
 
-    tensor = tensor.permute({2, 0, 1}).contiguous().clone().unsqueeze(0);
+    const auto pixels = torch::from_blob(rgb.data, {1, rgb.rows, rgb.cols, 3}, torch::kFloat32)
+                            .permute({0, 3, 1, 2});
 
-    const auto mean =
-        torch::tensor({0.485f, 0.456f, 0.406f}, torch::TensorOptions().dtype(torch::kFloat32))
-            .view({1, 3, 1, 1});
-
-    const auto std =
-        torch::tensor({0.229f, 0.224f, 0.225f}, torch::TensorOptions().dtype(torch::kFloat32))
-            .view({1, 3, 1, 1});
-
-    tensor = (tensor - mean) / std;
-
-    return tensor;
-}
-
-void InferencePipeline::set_calibration(
-    const HeadCalibration& calibration
-)
-{
-    calibration_ = std::make_unique<HeadCalibration>(calibration);
+    return ((pixels - mean) / std).contiguous();
 }
 
 auto InferencePipeline::predict(
-    const cv::Mat& image, int topk
-) -> PredictionResult
+    const cv::Mat& image
+) -> EmotionScores
 {
-    (void)topk;
+    const torch::NoGradGuard noGrad;
 
-    torch::NoGradGuard no_grad;
-    cv::Mat rgb;
-    cv::cvtColor(image, rgb, cv::COLOR_BGR2RGB);
+    const auto probabilities =
+        torch::sigmoid(model_->forward(preprocess(image).to(device_))).to(torch::kCPU).contiguous();
 
-    auto x = preprocess(image).to(device_);
-
-    auto logits = model_->forward(x);
-
-    PredictionResult result;
-
-    for (const auto& [name, value] : logits)
-    {
-        auto probability = torch::sigmoid(value);
-
-        result.heads[name] = probability[0].item<float>();
-    }
-
-    if (calibration_)
-    {
-        result.binary = calibration_->apply(result.heads);
-    }
-
-    return result;
+    EmotionScores scores{};
+    std::copy_n(probabilities.data_ptr<float>(), scores.size(), scores.begin());
+    return scores;
 }

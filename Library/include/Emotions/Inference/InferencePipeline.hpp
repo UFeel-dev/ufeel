@@ -1,46 +1,28 @@
-#ifndef INFERENCEPIPELINE_HPP_
-#define INFERENCEPIPELINE_HPP_
+#ifndef EMOTIONS_INFERENCE_INFERENCEPIPELINE_HPP
+#define EMOTIONS_INFERENCE_INFERENCEPIPELINE_HPP
 
+#include "Emotions/EmotionLabels.hpp"
 #include "Emotions/EmotionModel.hpp"
 #include "FaceCrop.hpp"
-#include "HeadCalibration.hpp"
-
-#include <memory>
-#include <string>
-#include <torch/torch.h>
-#include <unordered_map>
-#include <vector>
-
-struct PredictionResult
-{
-        std::unordered_map<std::string, float> heads;
-        std::unordered_map<std::string, bool> binary;
-};
+#include "c10/core/Device.h"
+#include "opencv2/core/mat.hpp"
+#include "torch/optim/optimizer.h"
 
 class InferencePipeline
 {
-    public:
+public:
 
-        InferencePipeline(
-            EmotionModel model,
-            torch::Device device,
-            std::shared_ptr<MTCNNCropTransform> face_crop,
-            int img_size
-        );
+    InferencePipeline(EmotionModel model, torch::Device device, FaceCrop faceCrop);
 
-        auto preprocess(const cv::Mat& image) -> torch::Tensor;
-        void set_calibration(const HeadCalibration& calibration);
-        auto predict(const cv::Mat& image, int topk = 3) -> PredictionResult;
+    [[nodiscard]] auto predict(const cv::Mat& image) -> EmotionScores;
 
-    private:
+private:
 
-        EmotionModel model_{nullptr};
-        torch::Device device_;
+    [[nodiscard]] auto preprocess(const cv::Mat& image) -> torch::Tensor;
 
-        std::shared_ptr<MTCNNCropTransform> faceCrop_;
-        int imgSize_;
-
-        std::unique_ptr<HeadCalibration> calibration_;
+    EmotionModel model_;
+    torch::Device device_;
+    FaceCrop faceCrop_;
 };
 
-#endif /* !INFERENCEPIPELINE_HPP_ */
+#endif // EMOTIONS_INFERENCE_INFERENCEPIPELINE_HPP

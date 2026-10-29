@@ -1,25 +1,24 @@
-#ifndef HEADCALIBRATION_HPP_
-#define HEADCALIBRATION_HPP_
+#ifndef EMOTIONS_INFERENCE_HEADCALIBRATION_HPP
+#define EMOTIONS_INFERENCE_HEADCALIBRATION_HPP
 
+#include "Emotions/EmotionLabels.hpp"
+
+#include <map>
 #include <string>
-#include <unordered_map>
 
 class HeadCalibration
 {
-    public:
+public:
 
-        using Probabilities = std::unordered_map<std::string, float>;
-        using Decisions = std::unordered_map<std::string, bool>;
+    HeadCalibration();
 
-        HeadCalibration() = default;
+    explicit HeadCalibration(const std::map<std::string, float>& thresholds);
 
-        explicit HeadCalibration(Probabilities thresholds);
-        auto apply(const Probabilities& probs) const -> Decisions;
-        auto applySoft(const Probabilities& probs) const -> Probabilities;
+    [[nodiscard]] auto select(const EmotionScores& scores) const -> std::map<std::string, float>;
 
-    private:
+private:
 
-        Probabilities thresholds_;
+    EmotionScores thresholds_{};
 };
 
-#endif /* !HEADCALIBRATION_HPP_ */
+#endif // EMOTIONS_INFERENCE_HEADCALIBRATION_HPP

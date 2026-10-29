@@ -1,11 +1,10 @@
-#ifndef CHECKPOINTLOADER_HPP_
-#define CHECKPOINTLOADER_HPP_
+#ifndef EMOTIONS_CHECKPOINTLOADER_HPP
+#define EMOTIONS_CHECKPOINTLOADER_HPP
 
 #include "EmotionModel.hpp"
 
-#include <torch/torch.h>
+#include <filesystem>
 
-auto loadCheckpoint(EmotionModel model, const std::string& path, torch::Device device = torch::kCPU)
-    -> EmotionModel;
+void loadCheckpoint(EmotionModel& model, const std::filesystem::path& path);
 
-#endif /* !CHECKPOINTLOADER_HPP_ */
+#endif // EMOTIONS_CHECKPOINTLOADER_HPP

@@ -1,83 +1,67 @@
 #include "Emotions/EmotionModel.hpp"
 
+#include "ATen/ops/cat.h"
+#include "Emotions/EmotionLabels.hpp"
+#include "Emotions/ResNet.hpp"
+#include "torch/nn/module.h"
+#include "torch/nn/modules/container/moduledict.h"
+#include "torch/nn/modules/linear.h"
+#include "torch/optim/optimizer.h"
+
+#include <cstdint>
+#include <memory>
 #include <stdexcept>
 #include <string>
-#include <torch/torch.h>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
 BinaryHeadImpl::BinaryHeadImpl(
-    int64_t in_features
+    int64_t inFeatures
 )
 {
-    linear = register_module("linear", torch::nn::Linear(in_features, 1));
+    linear_ = register_module("linear", torch::nn::Linear(inFeatures, 1));
 }
 
 auto BinaryHeadImpl::forward(
-    torch::Tensor x
+    const torch::Tensor& x
 ) -> torch::Tensor
 {
-    return linear->forward(x);
+    return linear_->forward(x);
 }
 
 EmotionModelImpl::EmotionModelImpl(
-    const std::string& backbone_name
+    const std::string& backboneName
 )
 {
-    int64_t in_features = 0;
-
-    if (backbone_name == "resnet34")
+    if (backboneName != "resnet34")
     {
-        backbone = resnet34();
-        in_features = 512;
-    }
-    else
-    {
-        throw std::runtime_error("Unsupported backbone: " + backbone_name);
+        throw std::invalid_argument("Unsupported backbone: " + backboneName);
     }
 
-    register_module("backbone", backbone);
+    backbone_ = register_module("backbone", resnet34());
 
-    heads = EmotionHeads(in_features);
-    register_module("heads", heads);
-}
-
-auto EmotionModelImpl::extract_features(
-    torch::Tensor x
-) -> torch::Tensor
-{
-    x = backbone->conv1->forward(x);
-    x = backbone->bn1->forward(x);
-    x = torch::relu(x);
-
-    x = torch::max_pool2d(x, 3, 2, 1);
-
-    x = backbone->layer1->forward(x);
-    x = backbone->layer2->forward(x);
-    x = backbone->layer3->forward(x);
-    x = backbone->layer4->forward(x);
-
-    x = torch::adaptive_avg_pool2d(x, {1, 1});
-
-    x = torch::flatten(x, 1);
-
-    return x;
+    std::vector<std::pair<std::string, std::shared_ptr<torch::nn::Module>>> modules;
+    modules.reserve(kEmotionLabels.size());
+    for (const auto label : kEmotionLabels)
+    {
+        modules.emplace_back(label, BinaryHead(ResNetImpl::kFeatureCount).ptr());
+    }
+    heads_ = register_module("heads", torch::nn::ModuleDict(modules));
 }
 
 auto EmotionModelImpl::forward(
-    torch::Tensor x
-) -> std::unordered_map<std::string, torch::Tensor>
+    const torch::Tensor& x
+) -> torch::Tensor
 {
-    auto features = extract_features(std::move(x));
+    const auto features = backbone_->forward(x);
 
-    return {
-        {"angry", heads->angry->forward(features).squeeze(1)},
-        {"contemptuous", heads->contemptuous->forward(features).squeeze(1)},
-        {"disgusted", heads->disgusted->forward(features).squeeze(1)},
-        {"fearful", heads->fearful->forward(features).squeeze(1)},
-        {"happy", heads->happy->forward(features).squeeze(1)},
-        {"neutral", heads->neutral->forward(features).squeeze(1)},
-        {"sad", heads->sad->forward(features).squeeze(1)},
-        {"surprised", heads->surprised->forward(features).squeeze(1)}};
+    std::vector<torch::Tensor> logits;
+    logits.reserve(kEmotionLabels.size());
+
+    for (const auto label : kEmotionLabels)
+    {
+        logits.push_back(heads_->at<BinaryHeadImpl>(std::string(label)).forward(features));
+    }
+
+    return torch::cat(logits, 1);
 }

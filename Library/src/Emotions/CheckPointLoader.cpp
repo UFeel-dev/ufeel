@@ -1,159 +1,106 @@
 #include "Emotions/CheckPointLoader.hpp"
 
 #include "Emotions/EmotionModel.hpp"
+#include "torch/optim/optimizer.h"
+#include "torch/utils.h"
 
-#include <c10/core/Device.h>
+#include <bit>
 #include <cstdint>
+#include <filesystem>
 #include <fstream>
+#include <ios>
+#include <istream>
 #include <stdexcept>
 #include <string>
-#include <torch/headeronly/core/DeviceType.h>
-#include <torch/serialize/input-archive.h>
-#include <torch/torch.h>
 #include <unordered_map>
 #include <vector>
 
-auto loadCheckpoint(
-    EmotionModel model, const std::string& path, torch::Device device
-) -> EmotionModel
+namespace
 {
-    if (!model)
-    {
-        std::cout << "EmotionModel is null." << std::endl;
-    }
 
+static_assert(std::endian::native == std::endian::little, "Weights are stored little-endian");
+
+template <typename T>
+auto read(
+    std::istream& in
+) -> T
+{
+    T value{};
+    in.read(reinterpret_cast<char*>(&value), sizeof(T));
+    if (!in)
+    {
+        throw std::runtime_error("Truncated weights file");
+    }
+    return value;
+}
+
+} // namespace
+
+void loadCheckpoint(
+    EmotionModel& model, const std::filesystem::path& path
+)
+{
     std::ifstream file(path, std::ios::binary);
     if (!file)
     {
-        std::cout << "Unable to open checkpoint: " <<  path << std::endl;
+        throw std::runtime_error("Unable to open weights file: " + path.string());
     }
 
-    auto readExact = [&file](char* data, std::streamsize size) {
-        file.read(data, size);
-        if (!file)
-        {
-            std::cout << "Invalid or truncated weights file." << std::endl;
-        }
-    };
+    std::unordered_map<std::string, torch::Tensor> pending;
 
-    auto readU32 = [&]() -> std::uint32_t {
-        unsigned char b[4];
-        readExact(reinterpret_cast<char*>(b), 4);
-
-        return static_cast<std::uint32_t>(b[0]) | (static_cast<std::uint32_t>(b[1]) << 8) |
-               (static_cast<std::uint32_t>(b[2]) << 16) | (static_cast<std::uint32_t>(b[3]) << 24);
-    };
-
-    auto readU64 = [&]() -> std::uint64_t {
-        unsigned char b[8];
-        readExact(reinterpret_cast<char*>(b), 8);
-
-        std::uint64_t value = 0;
-        for (int i = 0; i < 8; ++i)
-        {
-            value |= static_cast<std::uint64_t>(b[i]) << (8 * i);
-        }
-        return value;
-    };
-
-    auto readI64 = [&]() -> std::int64_t { return static_cast<std::int64_t>(readU64()); };
-
-    // Paramètres et buffers enregistrés dans le module C++.
-    std::unordered_map<std::string, torch::Tensor> targets;
-
-    for (const auto& item : model->named_parameters(true))
+    for (const auto& item : model->named_parameters())
     {
-        targets.emplace(item.key(), item.value());
+        pending.emplace(item.key(), item.value());
     }
-
-    for (const auto& item : model->named_buffers(true))
+    for (const auto& item : model->named_buffers())
     {
-        targets.emplace(item.key(), item.value());
+        if (!item.key().ends_with("num_batches_tracked"))
+        {
+            pending.emplace(item.key(), item.value());
+        }
     }
 
-    const auto count = readU32();
+    const torch::NoGradGuard noGrad;
 
-    torch::NoGradGuard noGrad;
-
+    const auto count = read<std::uint32_t>(file);
     for (std::uint32_t i = 0; i < count; ++i)
     {
-        const auto nameLength = readU32();
+        std::string name(read<std::uint32_t>(file), '\0');
+        file.read(name.data(), static_cast<std::streamsize>(name.size()));
 
-        if (nameLength == 0 || nameLength > 4096)
+        std::vector<std::int64_t> shape(read<std::uint32_t>(file));
+        for (auto& dim : shape)
         {
-            std::cout << "Invalid tensor name." << std::endl;
+            dim = read<std::int64_t>(file);
+        }
+        const auto numel = read<std::uint64_t>(file);
+
+        const auto it = pending.find(name);
+        if (it == pending.end())
+        {
+            throw std::runtime_error("Unexpected tensor in weights file: " + name);
         }
 
-        std::string name(nameLength, '\0');
-        readExact(name.data(), static_cast<std::streamsize>(nameLength));
-
-        const auto rank = readU32();
-        if (rank > 16)
+        auto& target = it->second;
+        if (target.sizes().vec() != shape || static_cast<std::uint64_t>(target.numel()) != numel)
         {
-            std::cout << "Invalid tensor dimensions." << std::endl;
+            throw std::runtime_error("Shape mismatch for tensor: " + name);
         }
 
-        std::vector<std::int64_t> shape;
-        shape.reserve(rank);
-
-        for (std::uint32_t d = 0; d < rank; ++d)
-        {
-            shape.push_back(readI64());
-        }
-
-        const auto numel = readU64();
-
-        std::uint64_t expected = 1;
-        for (const auto dim : shape)
-        {
-            if (dim < 0 || (dim != 0 && expected > UINT64_MAX / static_cast<std::uint64_t>(dim)))
-            {
-                std::cout << "Invalid dimensions: " <<  name << std::endl;
-            }
-            expected *= static_cast<std::uint64_t>(dim);
-        }
-
-        if (expected != numel ||
-            numel >
-                static_cast<std::uint64_t>(std::numeric_limits<std::size_t>::max() / sizeof(float)))
-        {
-            std::cout << "Invalid tensor size: " <<  name << std::endl;
-        }
-
-        auto it = targets.find(name);
-
-        if (it == targets.end())
-        {
-            // Équivalent à l'ignorance d'une clé inattendue avec strict=False.
-            file.seekg(static_cast<std::streamoff>(numel * sizeof(float)), std::ios::cur);
-            if (!file)
-            {
-                std::cout << "rruncated file: " <<  name << std::endl;
-            }
-            continue;
-        }
-
-        auto target = it->second;
-
-        if (target.sizes().vec() != shape)
-        {
-            std::cout << "Incompatible dimensions for " <<  name << std::endl;
-        }
-
-        std::vector<float> values(static_cast<std::size_t>(numel));
-        readExact(
-            reinterpret_cast<char*>(values.data()),
+        file.read(
+            reinterpret_cast<char*>(target.data_ptr<float>()),
             static_cast<std::streamsize>(numel * sizeof(float))
         );
+        if (!file)
+        {
+            throw std::runtime_error("Truncated weights file at tensor: " + name);
+        }
 
-        auto source =
-            torch::from_blob(values.data(), shape, torch::TensorOptions().dtype(torch::kFloat32));
-
-        target.copy_(source.to(target.device(), target.scalar_type()));
+        pending.erase(it);
     }
 
-    model->to(device);
-    model->eval();
-
-    return model;
+    if (!pending.empty())
+    {
+        throw std::runtime_error("Tensor missing from weights file: " + pending.begin()->first);
+    }
 }

@@ -1,43 +1,52 @@
 #include "Emotions/Inference/FaceDetector.hpp"
 
-#include <filesystem>
-#include <iostream>
+#include "opencv2/core/mat.hpp"
+#include "opencv2/core/types.hpp"
+#include "opencv2/dnn/dnn.hpp"
+#include "opencv2/objdetect/face.hpp"
+
+#include <optional>
 #include <stdexcept>
+#include <string>
+#include <utility>
 
-YuNetFaceDetector::YuNetFaceDetector(
-    const std::string& model_path, float score_threshold, float nms_threshold, int top_k
-)
+namespace
 {
-    detector_ = cv::FaceDetectorYN::create(
-        model_path,
-        "",
-        cv::Size(320, 320),
-        score_threshold,
-        nms_threshold,
-        top_k,
-        cv::dnn::DNN_BACKEND_OPENCV,
-        cv::dnn::DNN_TARGET_CPU
-    );
 
-    if (!detector_)
+constexpr int kFirstEyeColumn = 4;
+constexpr int kSecondEyeColumn = 6;
+
+} // namespace
+
+FaceDetector::FaceDetector(
+    const std::string& modelPath, float scoreThreshold, float nmsThreshold, int topK
+)
+    : detector_(
+          cv::FaceDetectorYN::create(
+              modelPath,
+              "",
+              cv::Size(320, 320),
+              scoreThreshold,
+              nmsThreshold,
+              topK,
+              cv::dnn::DNN_BACKEND_OPENCV,
+              cv::dnn::DNN_TARGET_CPU
+          )
+      )
+{
+    if (detector_.empty())
     {
-        throw std::runtime_error("Failed to create YuNet detector");
+        throw std::runtime_error("Failed to load face detector: " + modelPath);
     }
 }
 
-auto YuNetFaceDetector::detect(
+auto FaceDetector::detect(
     const cv::Mat& image
 ) -> std::optional<FaceDetection>
 {
-    if (image.empty())
-    {
-        return std::nullopt;
-    }
-
-    detector_->setInputSize(cv::Size(image.cols, image.rows));
+    detector_->setInputSize(image.size());
 
     cv::Mat faces;
-
     detector_->detect(image, faces);
 
     if (faces.empty())
@@ -45,60 +54,30 @@ auto YuNetFaceDetector::detect(
         return std::nullopt;
     }
 
-    int best_idx = 0;
-    float best_area = 0.0f;
-
-    for (int i = 0; i < faces.rows; ++i)
+    int largest = 0;
+    float largestArea = 0.0F;
+    for (int row = 0; row < faces.rows; ++row)
     {
-        const float w = faces.at<float>(i, 2);
-        const float h = faces.at<float>(i, 3);
-
-        const float area = w * h;
-
-        if (area > best_area)
+        const float area = faces.at<float>(row, 2) * faces.at<float>(row, 3);
+        if (area > largestArea)
         {
-            best_area = area;
-            best_idx = i;
+            largestArea = area;
+            largest = row;
         }
     }
 
-    FaceDetection detection;
+    const auto* face = faces.ptr<float>(largest);
 
-    detection.box =
-        cv::Rect2f(
-            faces.at<float>(best_idx, 0),
-            faces.at<float>(best_idx, 1),
-            faces.at<float>(best_idx, 2),
-            faces.at<float>(best_idx, 3)
-        );
-
-    detection.landmarks =
+    cv::Point2f first(face[kFirstEyeColumn], face[kFirstEyeColumn + 1]);
+    cv::Point2f second(face[kSecondEyeColumn], face[kSecondEyeColumn + 1]);
+    if (first.x > second.x)
     {
-        cv::Point2f(
-            faces.at<float>(best_idx, 6),
-            faces.at<float>(best_idx, 7)
-        ),
+        std::swap(first, second);
+    }
 
-        cv::Point2f(
-            faces.at<float>(best_idx, 4),
-            faces.at<float>(best_idx, 5)
-        ),
-
-        cv::Point2f(
-            faces.at<float>(best_idx, 8),
-            faces.at<float>(best_idx, 9)
-        ),
-
-        cv::Point2f(
-            faces.at<float>(best_idx, 12),
-            faces.at<float>(best_idx, 13)
-        ),
-
-        cv::Point2f(
-            faces.at<float>(best_idx, 10),
-            faces.at<float>(best_idx, 11)
-        )
+    return FaceDetection{
+        .box = cv::Rect2f(face[0], face[1], face[2], face[3]),
+        .leftEye = first,
+        .rightEye = second,
     };
-
-    return detection;
 }

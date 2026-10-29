@@ -1,41 +1,24 @@
-#ifndef FACECROP_HPP_
-#define FACECROP_HPP_
+#ifndef EMOTIONS_INFERENCE_FACECROP_HPP
+#define EMOTIONS_INFERENCE_FACECROP_HPP
 
 #include "FaceDetector.hpp"
+#include "opencv2/core/mat.hpp"
 
-#include <array>
-#include <memory>
-#include <opencv2/opencv.hpp>
-#include <optional>
-#include <vector>
-
-class MTCNNCropTransform
+class FaceCrop
 {
-    public:
+public:
 
-        MTCNNCropTransform(
-            int image_detection_size, std::shared_ptr<IFaceDetector> detector, float margin = 0.1f
-        );
+    FaceCrop(FaceDetector detector, int size, float margin = 0.1F);
 
-        auto operator()(const cv::Mat& image) -> cv::Mat;
+    [[nodiscard]] auto operator()(const cv::Mat& image) -> cv::Mat;
 
-        [[nodiscard]] auto getLastFaceBox() const -> std::optional<cv::Rect2f>;
+private:
 
-        auto operator()(const std::vector<cv::Mat>& images) -> std::vector<cv::Mat>;
+    [[nodiscard]] auto resizeAndPad(const cv::Mat& image) const -> cv::Mat;
 
-    private:
-
-        [[nodiscard]] auto alignAndCrop(
-            const cv::Mat& image, const cv::Rect2f& box, const std::array<cv::Point2f, 5>& landmarks
-        ) const -> cv::Mat;
-        [[nodiscard]] auto resizeAndPad(const cv::Mat& image) const -> cv::Mat;
-
-        int imageDetectionSize_;
-        float margin_;
-
-        std::shared_ptr<IFaceDetector> detector_;
-
-        std::optional<cv::Rect2f> lastFaceBox_;
+    FaceDetector detector_;
+    int size_;
+    float margin_;
 };
 
-#endif /* !FACECROP_HPP_ */
+#endif // EMOTIONS_INFERENCE_FACECROP_HPP

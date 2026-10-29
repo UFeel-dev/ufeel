@@ -1,39 +1,39 @@
 #include "Emotions/ResNet.hpp"
 
-#include <ATen/ops/adaptive_avg_pool2d.h>
-#include <ATen/ops/flatten.h>
-#include <ATen/ops/max_pool2d.h>
-#include <ATen/ops/relu.h>
+#include "ATen/ops/adaptive_avg_pool2d.h"
+#include "ATen/ops/flatten.h"
+#include "ATen/ops/max_pool2d.h"
+#include "ATen/ops/relu.h"
+#include "torch/nn/modules/batchnorm.h"
+#include "torch/nn/modules/container/sequential.h"
+#include "torch/nn/modules/conv.h"
+#include "torch/nn/options/conv.h"
+#include "torch/optim/optimizer.h"
+
+#include <array>
 #include <cstdint>
-#include <string>
-#include <torch/nn/modules/container/sequential.h>
-#include <torch/optim/optimizer.h>
 #include <utility>
-#include <vector>
 
 BasicBlockImpl::BasicBlockImpl(
-    int64_t inplanes, int64_t planes, int64_t stride, torch::nn::Sequential downsample
+    int64_t inPlanes, int64_t planes, int64_t stride, torch::nn::Sequential downsampleLayers
 )
-    : downsample(std::move(std::move(downsample)))
 {
-    conv1 = register_module(
+    conv1_ = register_module(
         "conv1",
         torch::nn::Conv2d(
-            torch::nn::Conv2dOptions(inplanes, planes, 3).stride(stride).padding(1).bias(false)
+            torch::nn::Conv2dOptions(inPlanes, planes, 3).stride(stride).padding(1).bias(false)
         )
     );
-    bn1 = register_module("bn1", torch::nn::BatchNorm2d(planes));
-    conv2 = register_module(
+    bn1_ = register_module("bn1", torch::nn::BatchNorm2d(planes));
+    conv2_ = register_module(
         "conv2",
-        torch::nn::Conv2d(
-            torch::nn::Conv2dOptions(planes, planes, 3).stride(1).padding(1).bias(false)
-        )
+        torch::nn::Conv2d(torch::nn::Conv2dOptions(planes, planes, 3).padding(1).bias(false))
     );
-    bn2 = register_module("bn2", torch::nn::BatchNorm2d(planes));
+    bn2_ = register_module("bn2", torch::nn::BatchNorm2d(planes));
 
-    if (downsample)
+    if (!downsampleLayers.is_empty())
     {
-        register_module("downsample", downsample);
+        downsample_ = register_module("downsample", std::move(downsampleLayers));
     }
 }
 
@@ -41,102 +41,74 @@ auto BasicBlockImpl::forward(
     const torch::Tensor& x
 ) -> torch::Tensor
 {
-    auto identity = x;
+    auto out = torch::relu(bn1_->forward(conv1_->forward(x)));
+    out = bn2_->forward(conv2_->forward(out));
 
-    auto out = conv1->forward(x);
-    out = bn1->forward(out);
-    out = torch::relu(out);
+    const auto identity = downsample_.is_empty() ? x : downsample_->forward(x);
 
-    out = conv2->forward(out);
-    out = bn2->forward(out);
-
-    if (downsample)
-    {
-        identity = downsample->forward(x);
-    }
-
-    out += identity;
-    out = torch::relu(out);
-
-    return out;
+    return torch::relu(out + identity);
 }
 
 ResNetImpl::ResNetImpl(
-    const std::vector<int64_t>& layers, int64_t numClasses
+    const std::array<int64_t, 4>& blocksPerStage
 )
 {
-    conv1 = register_module(
+    conv1_ = register_module(
         "conv1",
         torch::nn::Conv2d(torch::nn::Conv2dOptions(3, 64, 7).stride(2).padding(3).bias(false))
     );
-    bn1 = register_module("bn1", torch::nn::BatchNorm2d(64));
+    bn1_ = register_module("bn1", torch::nn::BatchNorm2d(64));
 
-    layer1 = register_module("layer1", makeLayer(64, layers.at(0), 1));
-    layer2 = register_module("layer2", makeLayer(128, layers.at(1), 2));
-    layer3 = register_module("layer3", makeLayer(256, layers.at(2), 2));
-    layer4 = register_module("layer4", makeLayer(512, layers.at(3), 2));
-
-    fc = register_module("fc", torch::nn::Linear(512, numClasses));
+    layer1_ = register_module("layer1", makeStage(64, blocksPerStage.at(0), 1));
+    layer2_ = register_module("layer2", makeStage(128, blocksPerStage.at(1), 2));
+    layer3_ = register_module("layer3", makeStage(256, blocksPerStage.at(2), 2));
+    layer4_ = register_module("layer4", makeStage(kFeatureCount, blocksPerStage.at(3), 2));
 }
 
-auto ResNetImpl::makeLayer(
+auto ResNetImpl::makeStage(
     int64_t planes, int64_t blocks, int64_t stride
 ) -> torch::nn::Sequential
 {
-    torch::nn::Sequential layers;
+    torch::nn::Sequential downsample = nullptr;
 
-    if (stride != 1 || inplanes != planes)
+    if (stride != 1 || inPlanes_ != planes)
     {
-        torch::nn::Sequential downsample;
-
-        downsample->push_back(
+        downsample = torch::nn::Sequential(
             torch::nn::Conv2d(
-                torch::nn::Conv2dOptions(inplanes, planes, 1).stride(stride).bias(false)
-            )
+                torch::nn::Conv2dOptions(inPlanes_, planes, 1).stride(stride).bias(false)
+            ),
+            torch::nn::BatchNorm2d(planes)
         );
-        downsample->push_back(torch::nn::BatchNorm2d(planes));
-        layers->push_back(BasicBlock(inplanes, planes, stride, downsample));
+    }
 
-        inplanes = planes;
-    }
-    else
-    {
-        layers->push_back(BasicBlock(inplanes, planes));
-    }
+    torch::nn::Sequential stage;
+    stage->push_back(BasicBlock(inPlanes_, planes, stride, downsample));
+    inPlanes_ = planes;
 
     for (int64_t i = 1; i < blocks; ++i)
     {
-        layers->push_back(BasicBlock(inplanes, planes));
+        stage->push_back(BasicBlock(planes, planes));
     }
 
-    return layers;
+    return stage;
 }
 
 auto ResNetImpl::forward(
     torch::Tensor x
 ) -> torch::Tensor
 {
-    x = conv1->forward(x);
-    x = bn1->forward(x);
-    x = torch::relu(x);
+    x = torch::relu(bn1_->forward(conv1_->forward(x)));
+    x = torch::max_pool2d(x, {3, 3}, {2, 2}, {1, 1});
 
-    x = torch::max_pool2d(x, 3, 2, 1);
+    x = layer1_->forward(x);
+    x = layer2_->forward(x);
+    x = layer3_->forward(x);
+    x = layer4_->forward(x);
 
-    x = layer1->forward(x);
-    x = layer2->forward(x);
-    x = layer3->forward(x);
-    x = layer4->forward(x);
-
-    x = torch::adaptive_avg_pool2d(x, {1, 1});
-    x = torch::flatten(x, 1);
-    x = fc->forward(x);
-
-    return x;
+    return torch::flatten(torch::adaptive_avg_pool2d(x, {1, 1}), 1);
 }
 
 auto resnet34() -> ResNet
 {
-    std::vector<int64_t> layers = {3, 4, 6, 3};
-
-    return ResNet(layers, 1000);
+    return ResNet(std::array<int64_t, 4>{3, 4, 6, 3});
 }
