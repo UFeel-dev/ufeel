@@ -53,6 +53,7 @@ Manual installation:
 - `git-lfs` >= 3.4.1
 - `clang-tidy` >= 22.0
 - `clang-format` >= 22.0
+- `yaml` >= 0.8
 - `iwyu` >= 0.26
 
 In case some dependencies are missing for your system, we would be grateful if you can open an appropriate issue. You might be able to find some of the dependencies in the [Dockerfile](docker/Dockerfile).

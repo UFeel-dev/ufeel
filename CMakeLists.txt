@@ -56,6 +56,7 @@ endif()
 set(Torch_DIR ${LIBTORCH_DIR}/share/cmake/Torch)
 find_package(Torch REQUIRED)
 find_program(PATCHELF_EXECUTABLE NAMES patchelf REQUIRED)
+find_package(yaml-cpp REQUIRED)
 
 set(OPENCV_LIBRARIES
     ${OPENCV_DIR}/lib/libopencv_core.so
@@ -105,9 +106,13 @@ set(VOSK_KALDI_LIBRARIES
 add_library(ufeel_detection_library STATIC
     ${LIBRARY_DIR}/src/DataProcessor.cpp
 
+    ${LIBRARY_DIR}/src/Emotions/ResNet.cpp
+    ${LIBRARY_DIR}/src/Emotions/EmotionModel.cpp
     ${LIBRARY_DIR}/src/Emotions/CheckPointLoader.cpp
-    ${LIBRARY_DIR}/src/Emotions/ResNetImpl.cpp
-    ${LIBRARY_DIR}/src/Emotions/Model.cpp
+    ${LIBRARY_DIR}/src/Emotions/Inference/HeadCalibration.cpp
+    ${LIBRARY_DIR}/src/Emotions/Inference/FaceDetector.cpp
+    ${LIBRARY_DIR}/src/Emotions/Inference/FaceCrop.cpp
+    ${LIBRARY_DIR}/src/Emotions/Inference/InferencePipeline.cpp
     ${LIBRARY_DIR}/src/Emotions/EmotionDetector.cpp
 
     ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/DetectionPostProcess.cpp
@@ -154,6 +159,7 @@ target_link_libraries(ufeel_detection_library
         ${VOSK_KALDI_LIBRARIES}
         "-Wl,--end-group"
         ${PORTAUDIO_DIR}/lib/libportaudio.so
+        yaml-cpp
         ${CPR_DIR}/lib/libcpr.so
 )
 

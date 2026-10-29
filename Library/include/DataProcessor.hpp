@@ -54,7 +54,7 @@ public:
 
     // auto processHeartRateSensor() -> int;
 
-protected:
+private:
 
     cv::VideoCapture cap_;
     cv::Mat frame_;
