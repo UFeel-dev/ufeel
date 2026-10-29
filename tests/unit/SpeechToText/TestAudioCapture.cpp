@@ -56,3 +56,17 @@ TEST(
     EXPECT_FALSE(capture.read(buffer));
     EXPECT_FALSE(capture.read(buffer));
 }
+
+TEST(
+    AudioCaptureIntegrationTest, StartsAndStopsWhenDeviceIsAvailable
+)
+{
+    AudioCapture capture;
+
+    if (!capture.start())
+    {
+        GTEST_SKIP() << "No compatible audio input device or stream available";
+    }
+
+    EXPECT_NO_THROW(capture.stop());
+}
