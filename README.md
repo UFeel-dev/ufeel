@@ -66,7 +66,9 @@ The generated compilation database from CMake is not always directly usable by a
 Manual builds are supported but require compatible versions of all third-party dependencies.
 
 - Linux x86-64
-- GLIBC compatible with the build environment and bundled dependencies
+- GLIBC >= 2.35
+- libstdc++ providing GLIBCXX_3.4.30
+- ALSA runtime libraries
 - .NET SDK 10.0
 - Clang >= 22.0
 - CMake >= 3.20
