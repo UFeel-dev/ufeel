@@ -67,6 +67,8 @@ public partial class MainWindow : Window
             packageDirectory,
             "models/SpeechToText/",
             "vosk-model-small-fr-0.22");
+            // "vosk-model-small-en-us-0.15");
+            // "vosk-model-small-de-0.15");
         string modelDirectory = Path.Combine(packageDirectory, "models");
 
         if (!Directory.Exists(modelDirectory))

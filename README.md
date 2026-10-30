@@ -8,111 +8,109 @@
 ![Linux](https://img.shields.io/badge/Linux-FCC624?logo=linux&logoColor=black)
 
 ![C++](https://img.shields.io/badge/c++-%2300599C.svg?style=for-the-badge&logo=c%2B%2B&logoColor=white)
-![C#](https://img.shields.io/badge/c%23-%23239120.svg?style=for-the-badge&logo=csharp&logoColor=white)![Espressif](https://img.shields.io/badge/espressif-E7352C.svg?style=for-the-badge&logo=espressif&logoColor=white)
+![C#](https://img.shields.io/badge/c%23-%23239120.svg?style=for-the-badge&logo=csharp&logoColor=white)
+![Espressif](https://img.shields.io/badge/espressif-E7352C.svg?style=for-the-badge&logo=espressif&logoColor=white)
 
 This project provides the **UFEEL native library**, a tool to handle emotion recognition, eye tracking, speech to text and heart rate sensing.
 
 ## Quick Start
 
-1. Make sure you have git lfs installed and setup. If not, refer to the [instructions to install Git LFS](#download-third-party-libraries).
-
-2. Clone the [repository](https://github.com/UFeel-dev/ufeel).
-
-3. Setup the docker environment: [Docker-based setup documentation](docker/README.md) (or install dependencies).
-
-4. Use the `build.sh` script to build and run the project:
-
-```bash
-./build.sh all
-```
-
-Note: you will need appropriate input devices to test some of the features, such as a camera and a microphone.
-
-To use clang-related tools (e.g. linting, formatting, or even some IDE features), you should setup the compile database:
-
-- Install `bear`.
-- Remove the `build` directory if it exists.
-- Run `bear -- ./build.sh all`.
-
-This is because the compile database auto-generated from `cmake` is not always usable as-is.
-
-## Requirements
-
-Docker installation:
-
-- Docker >= 20.0
-
-Manual installation:
-
-- Linux
-- GLIBC >= 2.36
-- `dotnet` == 10.0
-- `clang` >= 22.0
-- `cmake` >= 3.20
-- `ninja-build` >= 1.13.2
-- `git-lfs` >= 3.4.1
-- `clang-tidy` >= 22.0
-- `clang-format` >= 22.0
-- `yaml` >= 0.8
-- `iwyu` >= 0.26
-
-In case some dependencies are missing for your system, we would be grateful if you can open an appropriate issue. You might be able to find some of the dependencies in the [Dockerfile](docker/Dockerfile).
-
-## Third-Party Libraries (Git LFS Required)
-
-This project uses **Git LFS** to store large third-party libraries located in the `3rdparty/` folder (e.g. `.so`, `.a` files).
-
-After cloning the repository, you may need to install Git LFS and pull the required files.
-
-### Install Git LFS (Ubuntu / Debian)
-
-```bash
-sudo apt update
-sudo apt install git-lfs
-```
-
-Then enable it:
-
-```bash
-git lfs install
-```
-
-### Download third-party libraries
-
-After cloning the repository, run:
-
-```bash
-git lfs pull
-```
-
-This will download all required libraries inside the `3rdparty/` folder.
-
-### Full setup example
+1. Install and configure Git LFS. See [Third-Party Libraries](#third-party-libraries).
+2. Clone the repository.
+3. Initialize the third-party submodules and download Git LFS files.
+4. Set up Docker using the [Docker documentation](docker/README.md).
+5. Build and run the project:
 
 ```bash
 git clone https://github.com/UFeel-dev/ufeel
+cd ufeel
+
 git lfs install
+git submodule update --init --recursive
+git lfs pull
+
+cd docker
+docker build -t ufeeldocker .
+cd ..
+./docker/run.sh
+
+./build.sh all
+```
+
+Docker is the recommended build environment. It provides a reproducible toolchain and avoids requiring the native build dependencies on the host.
+
+Note: you will need appropriate input devices to test some features, such as a camera and a microphone.
+
+To use clang-related tools (e.g. linting, formatting, or IDE features), set up the compilation database:
+
+- Install `bear`.
+- Remove the `build` directory if it exists.
+- Run:
+
+```bash
+bear -- ./build.sh all
+```
+
+The generated compilation database from CMake is not always directly usable by all tooling.
+
+## Requirements
+
+### Docker build
+
+- Docker >= 20.0
+- Git
+- Git LFS >= 3.4.1
+
+### Manual build
+
+Manual builds are supported but require compatible versions of all third-party dependencies.
+
+- Linux x86-64
+- GLIBC compatible with the build environment and bundled dependencies
+- .NET SDK 10.0
+- Clang >= 22.0
+- CMake >= 3.20
+- Ninja >= 1.13.2
+- Git LFS >= 3.4.1
+- clang-tidy >= 22.0
+- clang-format >= 22.0
+- patchelf
+- IWYU >= 0.26
+
+The native package still relies on some operating-system libraries, including glibc, libstdc++, audio libraries and other system dependencies.
+
+If some dependencies are missing for your system, please open an issue. The [Dockerfile](docker/Dockerfile) documents the build environment.
+
+## Third-Party Libraries
+
+This project uses Git LFS to store large third-party libraries in `3rdparty/`, including prebuilt `.so` and `.a` files.
+
+yaml-cpp is maintained as a Git submodule.
+
+After cloning, initialize all submodules and download the Git LFS files:
+
+```bash
+git lfs install
+git submodule update --init --recursive
 git lfs pull
 ```
 
-You can now build the project normally.
-
 ## Project Structure
 
-```
+```text
 .
 ├── build.sh
 ├── csharp/        # C# test project
-├── Library/       # native sources
-├── Wrapper/       # C++ Wrapper
-├── 3rdparty/      # external dependencies
-├── build/         # generated (created by script)
+├── Library/       # Native sources
+├── Wrapper/       # C++ wrapper
+├── 3rdparty/      # External dependencies
+├── build/         # Generated build files
 └── docker/        # Docker environment
 ```
 
-## Manual build (optional)
+## Manual Build
 
-If you prefer running steps manually:
+If you prefer running the steps manually:
 
 ```bash
 ./build.sh configure
