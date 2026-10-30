@@ -153,3 +153,25 @@ TEST_F(
 {
     EXPECT_NO_THROW(SpeechRecognizer recognizer("fake-model-path"));
 }
+
+TEST_F(
+    TestSpeechRecognizer, ConstructorThrowsWhenModelCreationFails
+)
+{
+    FakeVosk::modelCreationSucceeds = false;
+
+    EXPECT_THROW(SpeechRecognizer recognizer("invalid-model-path"), std::runtime_error);
+
+    EXPECT_FALSE(FakeVosk::modelFree);
+}
+
+TEST_F(
+    TestSpeechRecognizer, ConstructorThrowsWhenRecognizerCreationFails
+)
+{
+    FakeVosk::recognizerCreationSucceeds = false;
+
+    EXPECT_THROW(SpeechRecognizer recognizer("fake-model-path"), std::runtime_error);
+
+    EXPECT_TRUE(FakeVosk::modelFree);
+}
