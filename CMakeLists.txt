@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH FALSE)
 
 option(CLANG_TIDY_COLOR "Force colored clang-tidy diagnostics" ON)
 option(ENABLE_CLANG_TIDY "Run clang-tidy as part of the compilation" OFF)
@@ -36,74 +37,114 @@ if(ENABLE_CLANG_TIDY)
     endif()
 endif()
 
-set(THIRDPARTY_DIR ${CMAKE_SOURCE_DIR}/3rdparty)
-set(LIBRARY_DIR ${CMAKE_SOURCE_DIR}/Library)
-set(WRAPPER_DIR ${CMAKE_SOURCE_DIR}/Wrapper)
-set(MODELS_DIR ${CMAKE_SOURCE_DIR}/models)
+set(THIRDPARTY_DIR "${CMAKE_SOURCE_DIR}/3rdparty")
+set(LIBRARY_DIR "${CMAKE_SOURCE_DIR}/Library")
+set(WRAPPER_DIR "${CMAKE_SOURCE_DIR}/Wrapper")
+set(MODELS_DIR "${CMAKE_SOURCE_DIR}/models")
 
-set(OPENCV_DIR ${THIRDPARTY_DIR}/opencv)
-set(LIBTORCH_DIR ${THIRDPARTY_DIR}/libtorch)
-set(TFLITE_DIR ${THIRDPARTY_DIR}/tensorflowlite)
-set(VOSK_DIR ${THIRDPARTY_DIR}/vosk)
-set(PORTAUDIO_DIR ${THIRDPARTY_DIR}/portaudio)
-set(CPR_DIR ${THIRDPARTY_DIR}/cpr)
-set(JSON_DIR ${THIRDPARTY_DIR}/json)
+set(OPENCV_DIR "${THIRDPARTY_DIR}/opencv")
+set(LIBTORCH_DIR "${THIRDPARTY_DIR}/libtorch")
+set(TFLITE_DIR "${THIRDPARTY_DIR}/tensorflowlite")
+set(VOSK_DIR "${THIRDPARTY_DIR}/vosk")
+set(PORTAUDIO_DIR "${THIRDPARTY_DIR}/portaudio")
+set(CPR_DIR "${THIRDPARTY_DIR}/cpr")
+set(JSON_DIR "${THIRDPARTY_DIR}/json")
+set(YAML_CPP_DIR "${THIRDPARTY_DIR}/yaml-cpp")
 
-if(NOT IS_DIRECTORY ${MODELS_DIR})
-    message(FATAL_ERROR "Models directory not found: ${MODELS_DIR}")
+foreach(DIR IN ITEMS
+    "${MODELS_DIR}"
+    "${OPENCV_DIR}"
+    "${LIBTORCH_DIR}"
+    "${TFLITE_DIR}"
+    "${VOSK_DIR}"
+    "${PORTAUDIO_DIR}"
+    "${CPR_DIR}"
+    "${JSON_DIR}"
+    "${YAML_CPP_DIR}"
+)
+    if(NOT IS_DIRECTORY "${DIR}")
+        message(FATAL_ERROR "Required directory not found: ${DIR}")
+    endif()
+endforeach()
+
+if(NOT EXISTS "${YAML_CPP_DIR}/CMakeLists.txt")
+    message(FATAL_ERROR "yaml-cpp submodule is not initialized. Run git submodule update --init --recursive")
 endif()
 
-set(Torch_DIR ${LIBTORCH_DIR}/share/cmake/Torch)
+set(Torch_DIR "${LIBTORCH_DIR}/share/cmake/Torch")
 find_package(Torch REQUIRED)
+
 find_program(PATCHELF_EXECUTABLE NAMES patchelf REQUIRED)
 
+set(YAML_BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE)
+set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+set(YAML_CPP_BUILD_CONTRIB OFF CACHE BOOL "" FORCE)
+
+add_subdirectory(
+    "${YAML_CPP_DIR}"
+    "${CMAKE_BINARY_DIR}/yaml-cpp"
+)
+
+if(NOT TARGET yaml-cpp::yaml-cpp)
+    message(FATAL_ERROR "yaml-cpp::yaml-cpp target was not created")
+endif()
+
 set(OPENCV_LIBRARIES
-    ${OPENCV_DIR}/lib/libopencv_core.so
-    ${OPENCV_DIR}/lib/libopencv_imgproc.so
-    ${OPENCV_DIR}/lib/libopencv_imgcodecs.so
-    ${OPENCV_DIR}/lib/libopencv_dnn.so
-    ${OPENCV_DIR}/lib/libopencv_objdetect.so
-    ${OPENCV_DIR}/lib/libopencv_videoio.so
+    "${OPENCV_DIR}/lib/libopencv_core.so"
+    "${OPENCV_DIR}/lib/libopencv_imgproc.so"
+    "${OPENCV_DIR}/lib/libopencv_imgcodecs.so"
+    "${OPENCV_DIR}/lib/libopencv_dnn.so"
+    "${OPENCV_DIR}/lib/libopencv_objdetect.so"
+    "${OPENCV_DIR}/lib/libopencv_videoio.so"
+)
+
+file(GLOB_RECURSE TFLITE_DEPENDENCY_LIBRARIES
+    CONFIGURE_DEPENDS
+    "${TFLITE_DIR}/lib/deps/*.a"
 )
 
 set(TFLITE_STATIC_LIBRARIES
-    ${TFLITE_DIR}/lib/libtensorflow-lite.a
-    ${TFLITE_DIR}/lib/flatbuffers/libflatbuffers.a
-    ${TFLITE_DIR}/lib/ruy/libruy_combined.a
+    "${TFLITE_DIR}/lib/libtensorflow-lite.a"
+    ${TFLITE_DEPENDENCY_LIBRARIES}
 )
 
 set(VOSK_KALDI_LIBRARIES
-    ${VOSK_DIR}/lib/kaldi/online2/kaldi-online2.a
-    ${VOSK_DIR}/lib/kaldi/decoder/kaldi-decoder.a
-    ${VOSK_DIR}/lib/kaldi/ivector/kaldi-ivector.a
-    ${VOSK_DIR}/lib/kaldi/gmm/kaldi-gmm.a
-    ${VOSK_DIR}/lib/kaldi/tree/kaldi-tree.a
-    ${VOSK_DIR}/lib/kaldi/feat/kaldi-feat.a
-    ${VOSK_DIR}/lib/kaldi/lat/kaldi-lat.a
-    ${VOSK_DIR}/lib/kaldi/lm/kaldi-lm.a
-    ${VOSK_DIR}/lib/kaldi/rnnlm/kaldi-rnnlm.a
-    ${VOSK_DIR}/lib/kaldi/hmm/kaldi-hmm.a
-    ${VOSK_DIR}/lib/kaldi/nnet3/kaldi-nnet3.a
-    ${VOSK_DIR}/lib/kaldi/transform/kaldi-transform.a
-    ${VOSK_DIR}/lib/kaldi/cudamatrix/kaldi-cudamatrix.a
-    ${VOSK_DIR}/lib/kaldi/matrix/kaldi-matrix.a
-    ${VOSK_DIR}/lib/kaldi/fstext/kaldi-fstext.a
-    ${VOSK_DIR}/lib/kaldi/util/kaldi-util.a
-    ${VOSK_DIR}/lib/kaldi/base/kaldi-base.a
-    ${VOSK_DIR}/lib/openfst/libfst.a
-    ${VOSK_DIR}/lib/openfst/libfstngram.a
-    ${VOSK_DIR}/lib/openblas/libopenblas-r0.3.20.a
-    ${VOSK_DIR}/lib/openblas/libblas.a
-    ${VOSK_DIR}/lib/openblas/liblapack.a
-    ${VOSK_DIR}/lib/openblas/libf2c.a
+    "${VOSK_DIR}/lib/kaldi/online2/kaldi-online2.a"
+    "${VOSK_DIR}/lib/kaldi/decoder/kaldi-decoder.a"
+    "${VOSK_DIR}/lib/kaldi/ivector/kaldi-ivector.a"
+    "${VOSK_DIR}/lib/kaldi/gmm/kaldi-gmm.a"
+    "${VOSK_DIR}/lib/kaldi/tree/kaldi-tree.a"
+    "${VOSK_DIR}/lib/kaldi/feat/kaldi-feat.a"
+    "${VOSK_DIR}/lib/kaldi/lat/kaldi-lat.a"
+    "${VOSK_DIR}/lib/kaldi/lm/kaldi-lm.a"
+    "${VOSK_DIR}/lib/kaldi/rnnlm/kaldi-rnnlm.a"
+    "${VOSK_DIR}/lib/kaldi/hmm/kaldi-hmm.a"
+    "${VOSK_DIR}/lib/kaldi/nnet3/kaldi-nnet3.a"
+    "${VOSK_DIR}/lib/kaldi/transform/kaldi-transform.a"
+    "${VOSK_DIR}/lib/kaldi/cudamatrix/kaldi-cudamatrix.a"
+    "${VOSK_DIR}/lib/kaldi/matrix/kaldi-matrix.a"
+    "${VOSK_DIR}/lib/kaldi/fstext/kaldi-fstext.a"
+    "${VOSK_DIR}/lib/kaldi/util/kaldi-util.a"
+    "${VOSK_DIR}/lib/kaldi/base/kaldi-base.a"
+    "${VOSK_DIR}/lib/openfst/libfst.a"
+    "${VOSK_DIR}/lib/openfst/libfstngram.a"
+    "${VOSK_DIR}/lib/openblas/liblapack.a"
+    "${VOSK_DIR}/lib/openblas/libf2c.a"
+    "${VOSK_DIR}/lib/openblas/libblas.a"
+    "${VOSK_DIR}/lib/openblas/libopenblas-r0.3.20.a"
 )
 
 add_library(ufeel_detection_library STATIC
     ${LIBRARY_DIR}/src/DataProcessor.cpp
 
+    ${LIBRARY_DIR}/src/Emotions/ResNet.cpp
+    ${LIBRARY_DIR}/src/Emotions/EmotionModel.cpp
     ${LIBRARY_DIR}/src/Emotions/CheckPointLoader.cpp
-    ${LIBRARY_DIR}/src/Emotions/ResNetImpl.cpp
-    ${LIBRARY_DIR}/src/Emotions/Model.cpp
+    ${LIBRARY_DIR}/src/Emotions/Inference/HeadCalibration.cpp
+    ${LIBRARY_DIR}/src/Emotions/Inference/FaceDetector.cpp
+    ${LIBRARY_DIR}/src/Emotions/Inference/FaceCrop.cpp
+    ${LIBRARY_DIR}/src/Emotions/Inference/InferencePipeline.cpp
     ${LIBRARY_DIR}/src/Emotions/EmotionDetector.cpp
 
     ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/DetectionPostProcess.cpp
@@ -124,31 +165,34 @@ add_library(ufeel_detection_library STATIC
 
 target_include_directories(ufeel_detection_library
     PUBLIC
-        ${LIBRARY_DIR}/include
+        "${LIBRARY_DIR}/include"
 )
 
 target_include_directories(ufeel_detection_library
     SYSTEM PUBLIC
-        ${OPENCV_DIR}/include/opencv4
+        "${OPENCV_DIR}/include/opencv4"
         ${TORCH_INCLUDE_DIRS}
-        ${TFLITE_DIR}/include
-        ${VOSK_DIR}/include
-        ${PORTAUDIO_DIR}/include
-        ${CPR_DIR}/include
-        ${JSON_DIR}/include
+        "${TFLITE_DIR}/include"
+        "${VOSK_DIR}/include"
+        "${PORTAUDIO_DIR}/include"
+        "${CPR_DIR}/include"
+        "${JSON_DIR}/include"
 )
 
 target_link_libraries(ufeel_detection_library
     PUBLIC
         ${OPENCV_LIBRARIES}
         ${TORCH_LIBRARIES}
-        ${TFLITE_STATIC_LIBRARIES}
-        ${VOSK_DIR}/lib/libvosk.a
         "-Wl,--start-group"
+        ${TFLITE_STATIC_LIBRARIES}
+        "-Wl,--end-group"
+        "-Wl,--start-group"
+        "${VOSK_DIR}/lib/libvosk.a"
         ${VOSK_KALDI_LIBRARIES}
         "-Wl,--end-group"
-        ${PORTAUDIO_DIR}/lib/libportaudio.so
-        ${CPR_DIR}/lib/libcpr.so
+        "${PORTAUDIO_DIR}/lib/libportaudio.so"
+        yaml-cpp::yaml-cpp
+        "${CPR_DIR}/lib/libcpr.so"
 )
 
 target_compile_options(ufeel_detection_library
@@ -157,18 +201,18 @@ target_compile_options(ufeel_detection_library
 )
 
 add_library(ufeel_wrapper SHARED
-    ${WRAPPER_DIR}/wrapper.cpp
+    "${WRAPPER_DIR}/wrapper.cpp"
 )
 
 target_include_directories(ufeel_wrapper
     PUBLIC
-        ${LIBRARY_DIR}/include
-        ${WRAPPER_DIR}
+        "${LIBRARY_DIR}/include"
+        "${WRAPPER_DIR}"
 )
 
 target_include_directories(ufeel_wrapper
     SYSTEM PUBLIC
-        ${OPENCV_DIR}/include/opencv4
+        "${OPENCV_DIR}/include/opencv4"
         ${TORCH_INCLUDE_DIRS}
 )
 
@@ -177,11 +221,16 @@ target_link_libraries(ufeel_wrapper
         ufeel_detection_library
 )
 
+target_link_options(ufeel_wrapper PRIVATE
+    "-Wl,--no-undefined"
+)
+
 set_target_properties(ufeel_wrapper PROPERTIES
     BUILD_RPATH
         "${OPENCV_DIR}/lib;${LIBTORCH_DIR}/lib;${PORTAUDIO_DIR}/lib;${CPR_DIR}/lib"
     INSTALL_RPATH
         "$ORIGIN/dependencies"
+    INSTALL_RPATH_USE_LINK_PATH FALSE
 )
 
 if(CLANG_TIDY_COMMAND)
@@ -197,51 +246,57 @@ install(
 
 install(
     FILES
-        ${OPENCV_DIR}/lib/libopencv_core.so.4.8.1
-        ${OPENCV_DIR}/lib/libopencv_imgproc.so.4.8.1
-        ${OPENCV_DIR}/lib/libopencv_imgcodecs.so.4.8.1
-        ${OPENCV_DIR}/lib/libopencv_dnn.so.4.8.1
-        ${OPENCV_DIR}/lib/libopencv_objdetect.so.4.8.1
-        ${OPENCV_DIR}/lib/libopencv_videoio.so.4.8.1
-        ${OPENCV_DIR}/lib/libopencv_calib3d.so.4.8.1
-        ${OPENCV_DIR}/lib/libopencv_features2d.so.4.8.1
-        ${OPENCV_DIR}/lib/libopencv_flann.so.4.8.1
+        "${OPENCV_DIR}/lib/libopencv_core.so.4.8.1"
+        "${OPENCV_DIR}/lib/libopencv_imgproc.so.4.8.1"
+        "${OPENCV_DIR}/lib/libopencv_imgcodecs.so.4.8.1"
+        "${OPENCV_DIR}/lib/libopencv_dnn.so.4.8.1"
+        "${OPENCV_DIR}/lib/libopencv_objdetect.so.4.8.1"
+        "${OPENCV_DIR}/lib/libopencv_videoio.so.4.8.1"
+        "${OPENCV_DIR}/lib/libopencv_calib3d.so.4.8.1"
+        "${OPENCV_DIR}/lib/libopencv_features2d.so.4.8.1"
+        "${OPENCV_DIR}/lib/libopencv_flann.so.4.8.1"
     DESTINATION dependencies
 )
 
 install(
     FILES
-        ${LIBTORCH_DIR}/lib/libtorch.so
-        ${LIBTORCH_DIR}/lib/libtorch_cpu.so
-        ${LIBTORCH_DIR}/lib/libc10.so
-        ${LIBTORCH_DIR}/lib/libgomp-98b21ff3.so.1
+        "${LIBTORCH_DIR}/lib/libtorch.so"
+        "${LIBTORCH_DIR}/lib/libtorch_cpu.so"
+        "${LIBTORCH_DIR}/lib/libc10.so"
+        "${LIBTORCH_DIR}/lib/libgomp-98b21ff3.so.1"
     DESTINATION dependencies
 )
 
 install(
     FILES
-        ${PORTAUDIO_DIR}/lib/libportaudio.so.2.0.0
+        "${PORTAUDIO_DIR}/lib/libportaudio.so.2.0.0"
     DESTINATION dependencies
 )
 
 install(
     FILES
-        ${CPR_DIR}/lib/libcpr.so.1.15.1
+        "${CPR_DIR}/lib/libcpr.so.1.15.1"
     DESTINATION dependencies
     RENAME libcpr.so.1
 )
 
+install(
+    TARGETS yaml-cpp
+    LIBRARY DESTINATION dependencies
+    RUNTIME DESTINATION dependencies
+)
+
 configure_file(
-    ${CMAKE_SOURCE_DIR}/cmake/ConfigureDependencies.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/ConfigureDependencies.cmake
+    "${CMAKE_SOURCE_DIR}/cmake/ConfigureDependencies.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/ConfigureDependencies.cmake"
     @ONLY
 )
 
 install(
-    SCRIPT ${CMAKE_CURRENT_BINARY_DIR}/ConfigureDependencies.cmake
+    SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/ConfigureDependencies.cmake"
 )
 
 install(
-    DIRECTORY ${MODELS_DIR}/
+    DIRECTORY "${MODELS_DIR}/"
     DESTINATION models
 )
