@@ -175,3 +175,26 @@ TEST_F(
 
     EXPECT_TRUE(FakeVosk::modelFree);
 }
+
+TEST_F(
+    TestSpeechRecognizer, DestructorFreesRecognizerAndModel
+)
+{
+    {
+        SpeechRecognizer recognizer("fake-model-path");
+    }
+
+    EXPECT_TRUE(FakeVosk::recognizerFree);
+    EXPECT_TRUE(FakeVosk::modelFree);
+}
+
+TEST_F(
+    TestSpeechRecognizer, ResetCallsVoskReset
+)
+{
+    SpeechRecognizer recognizer("fake-model-path");
+
+    recognizer.reset();
+
+    EXPECT_TRUE(FakeVosk::recognizerReset);
+}
