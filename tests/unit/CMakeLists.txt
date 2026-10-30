@@ -4,6 +4,7 @@ add_executable(
     # Emotions/TestModel.cpp
 
     SpeechToText/TestAudioCapture.cpp
+    SpeechToText/TestSpeechRecognizer.cpp
 
     HeartRate/TestHeartRateDetector.cpp
 )
