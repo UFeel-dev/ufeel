@@ -198,3 +198,57 @@ TEST_F(
 
     EXPECT_TRUE(FakeVosk::recognizerReset);
 }
+
+TEST_F(
+    TestSpeechRecognizer, ProcessReturnsPartialText
+)
+{
+    const int16_t samples[] = {100, 200, 300};
+
+    SpeechRecognizer recognizer("fake-model-path");
+
+    FakeVosk::waveformResult = 0;
+
+    EXPECT_EQ(recognizer.process(samples, 3), "hello");
+
+    EXPECT_EQ(FakeVosk::lastSampleCount, 3 * sizeof(int16_t));
+}
+
+TEST_F(
+    TestSpeechRecognizer, ProcessReturnsFinalText
+)
+{
+    const int16_t samples[] = {100, 200, 300};
+
+    SpeechRecognizer recognizer("fake-model-path");
+
+    FakeVosk::waveformResult = 1;
+
+    EXPECT_EQ(recognizer.process(samples, 3), "hello world");
+}
+
+TEST_F(
+    TestSpeechRecognizer, ProcessReturnsEmptyTextWhenJsonKeyIsMissing
+)
+{
+    FakeVosk::partialResult = R"({"other": "value"})";
+
+    const int16_t samples[] = {100};
+
+    SpeechRecognizer recognizer("fake-model-path");
+
+    FakeVosk::waveformResult = 0;
+
+    EXPECT_TRUE(recognizer.process(samples, 1).empty());
+}
+
+TEST_F(
+    TestSpeechRecognizer, FinalizeReturnsEmptyTextWhenJsonIsNull
+)
+{
+    FakeVosk::finalizedResultIsNull = true;
+
+    SpeechRecognizer recognizer("fake-model-path");
+
+    EXPECT_TRUE(recognizer.finalize().empty());
+}
