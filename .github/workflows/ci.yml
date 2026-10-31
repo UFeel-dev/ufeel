@@ -1,3 +1,4 @@
+
 name: CI
 
 on:
@@ -12,9 +13,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           lfs: true
+          submodules: recursive
 
       - name: Add .NET repository
         run: |
@@ -33,12 +35,10 @@ jobs:
             ninja-build \
             portaudio19-dev \
             dotnet-sdk-10.0 \
-            ninja-build \
             libasound2 \
             libfontconfig1 \
             libice6 \
             libsm6 \
-            libyaml-cpp-dev \
             patchelf \
             iwyu
 
@@ -66,11 +66,11 @@ jobs:
       - name: Build Docker image
         uses: docker/build-push-action@v7
         with:
-           context: ./docker
-           load: true
-           tags: ufeeldocker:latest
-           cache-from: type=gha
-           cache-to: type=gha,mode=max 
+          context: ./docker
+          load: true
+          tags: ufeeldocker:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Build project in Docker
         run: |
