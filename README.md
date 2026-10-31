@@ -1,4 +1,4 @@
-# UFEEL Library
+# UFeel Library
 
 [![Discord](https://dcbadge.limes.pink/api/server/https://discord.gg/TxYTDXMJkM)](https://discord.gg/TxYTDXMJkM)
 
@@ -107,7 +107,8 @@ git lfs pull
 ├── Wrapper/       # C++ wrapper
 ├── 3rdparty/      # External dependencies
 ├── build/         # Generated build files
-└── docker/        # Docker environment
+├── docker/        # Docker environment
+└── docs/          # Feature documentation
 ```
 
 ## Manual Build
@@ -127,6 +128,7 @@ If you prefer running the steps manually:
 | [Contributing](CONTRIBUTING.md) | Contribution guidelines |
 | [Disclaimer](DISCLAIMER.md) | Limitations and prohibited use |
 | [Docker](docker/README.md) | Docker setup instructions |
+| [Heart rate](docs/heart-rate.md) | Heart-rate sources: sensor and smartwatch |
 
 ## License
 
