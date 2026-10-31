@@ -11,7 +11,7 @@
 ![C#](https://img.shields.io/badge/c%23-%23239120.svg?style=for-the-badge&logo=csharp&logoColor=white)
 ![Espressif](https://img.shields.io/badge/espressif-E7352C.svg?style=for-the-badge&logo=espressif&logoColor=white)
 
-This project provides the **UFEEL native library**, a tool to handle emotion recognition, eye tracking, speech to text and heart rate sensing.
+This project provides the **UFeel native library**, a tool to handle emotion recognition, eye tracking, speech to text and heart rate sensing.
 
 ## Quick Start
 
