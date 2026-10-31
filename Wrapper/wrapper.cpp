@@ -91,6 +91,44 @@ auto duplicateUtf8(
     return result;
 }
 
+// TODO: Do we need to make a deep copy here to prevent any issue because we use the UFeelFrame data ?
+auto convertUFeelFrameToMat(
+    const UFeelFrame* frame
+) -> cv::Mat
+{
+    if (frame == nullptr || frame->data == nullptr)
+    {
+        return {};
+    }
+
+    if (frame->width <= 0 ||
+        frame->height <= 0 ||
+        frame->channels <= 0 ||
+        frame->stride <= 0)
+    {
+        return {};
+    }
+
+    const size_t minStride =
+        static_cast<size_t>(frame->width) *
+        static_cast<size_t>(frame->channels);
+
+    if (static_cast<size_t>(frame->stride) < minStride)
+    {
+        return {};
+    }
+
+    const int type = CV_MAKETYPE(CV_8U, frame->channels);
+
+    return cv::Mat(
+        frame->height,
+        frame->width,
+        type,
+        frame->data,
+        static_cast<size_t>(frame->stride)
+    );
+}
+
 } // namespace
 
 extern "C" {
@@ -134,6 +172,28 @@ auto ufeel_update(
     });
 }
 
+auto ufeel_update_from_frame(
+    UFeelProcessor* processor, int32_t detectionType, const UFeelFrame* frame
+) -> int32_t
+{
+    if (!isValidProcessor(processor))
+    {
+        return 0;
+    }
+
+    const cv::Mat frameConverted = convertUFeelFrameToMat(frame);
+
+    if (frameConverted.empty())
+    {
+        return 0;
+    }
+
+
+    return guarded("ufeel_update_from_frame", int32_t{0}, [processor, detectionType, frameConverted] -> int32_t {
+        return static_cast<int32_t>(processor->processor.updateFromFrame(detectionType, frameConverted));
+    });
+}
+
 auto ufeel_update_frame(
     UFeelProcessor* processor
 ) -> int32_t
@@ -162,6 +222,27 @@ auto ufeel_update_emotions(
     });
 }
 
+auto ufeel_update_emotions_from_frame(
+    UFeelProcessor* processor, const UFeelFrame* frame
+) -> int32_t
+{
+    if (!isValidProcessor(processor))
+    {
+        return 0;
+    }
+
+    const cv::Mat frameConverted = convertUFeelFrameToMat(frame);
+
+    if (frameConverted.empty())
+    {
+        return 0;
+    }
+
+    return guarded("ufeel_update_emotions_from_frame", int32_t{0}, [processor, frameConverted] -> int32_t {
+        return static_cast<int32_t>(processor->processor.updateEmotionsFromFrame(frameConverted));
+    });
+}
+
 auto ufeel_update_gaze(
     UFeelProcessor* processor
 ) -> int32_t
@@ -176,6 +257,28 @@ auto ufeel_update_gaze(
     });
 }
 
+auto ufeel_update_gaze_from_frame(
+    UFeelProcessor* processor, const UFeelFrame* frame
+) -> int32_t
+{
+    if (!isValidProcessor(processor))
+    {
+        return 0;
+    }
+
+    const cv::Mat frameConverted = convertUFeelFrameToMat(frame);
+
+    if (frameConverted.empty())
+    {
+        return 0;
+    }
+
+    return guarded("ufeel_update_gaze_from_frame", int32_t{0}, [processor, frameConverted] -> int32_t {
+        return static_cast<int32_t>(processor->processor.updateGazeFromFrame(frameConverted));
+    });
+}
+
+
 auto ufeel_update_speech(
     UFeelProcessor* processor
 ) -> int32_t
@@ -189,6 +292,41 @@ auto ufeel_update_speech(
         return static_cast<int32_t>(processor->processor.updateSpeech());
     });
 }
+
+auto ufeel_update_heart_rate(
+    UFeelProcessor* processor
+) -> int32_t
+{
+    if (!isValidProcessor(processor))
+    {
+        return 0;
+    }
+
+    return guarded("ufeel_update_heart_rate", int32_t{0}, [processor] -> int32_t {
+        return static_cast<int32_t>(processor->processor.updateHeartRate());
+    });
+}
+
+auto ufeel_set_frame(
+    UFeelProcessor* processor, const UFeelFrame* frame
+) -> int32_t
+{
+    if (!isValidProcessor(processor))
+    {
+        return 0;
+    }
+
+    const cv::Mat frameConverted = convertUFeelFrameToMat(frame);
+
+    if (frameConverted.empty())
+    {
+        return 0;
+    }
+    return guarded("ufeel_set_frame", int32_t{0}, [processor, frameConverted] -> int32_t {
+        return static_cast<int32_t>(processor->processor.setFrame(frameConverted));
+    });
+}
+
 auto ufeel_get_frame(
     UFeelProcessor* processor
 ) -> UFeelFrame*

@@ -38,21 +38,24 @@ public:
     auto operator=(DataProcessor&&) -> DataProcessor& = delete;
 
     auto updateFrame() -> bool;
-    auto setFrame() -> bool;
+    auto setFrame(const cv::Mat& frame) -> bool;
     [[nodiscard]] auto getFrame() const -> cv::Mat;
 
+    auto updateFromFrame(uint32_t detectionType, const cv::Mat& image) -> bool;
     auto update(uint32_t detectionType) -> bool;
 
     auto updateEmotions() -> bool;
+    auto updateEmotionsFromFrame(const cv::Mat& image) -> bool;
     [[nodiscard]] auto getEmotions() const -> const std::map<std::string, float>&;
 
     auto updateGaze() -> bool;
+    auto updateGazeFromFrame(const cv::Mat& image) -> bool;
     [[nodiscard]] auto getGaze() const -> GazeResult;
 
     auto updateSpeech() -> bool;
     [[nodiscard]] auto getSpeech() const -> const std::string&;
 
-    // auto updateHeartRate() -> bool;
+    auto updateHeartRate() -> bool;
     [[nodiscard]] auto getHeartRate() const -> HeartRateResult;
 
     void beginEyeTrackingCalibration();
@@ -65,8 +68,6 @@ public:
     [[nodiscard]] auto loadEyeTrackingCalibrationProfile(const std::string& path) -> bool;
 
     void toggleSpeechToText(bool state);
-
-    // auto processHeartRateSensor() -> int;
 
 private:
 
@@ -81,7 +82,7 @@ private:
     std::unique_ptr<EmotionDetector> emotionDetector_;
     std::unique_ptr<EyeTrackingDetector> eyeTrackingDetector_;
     std::unique_ptr<SpeechToTextDetector> speechToTextDetector_;
-    // std::unique_ptr<HeartRateSensorDetector> heartRateSensorDetector_;
+    std::unique_ptr<HeartRateSensorDetector> heartRateDetector_;
 };
 
 #endif // DATAPROCESSOR_HPP

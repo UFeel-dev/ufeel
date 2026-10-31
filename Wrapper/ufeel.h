@@ -144,16 +144,31 @@ UFEEL_API void ufeel_destroy(UFeelProcessor* processor);
 UFEEL_API int32_t ufeel_update(UFeelProcessor* processor, int32_t detectionType);
 
 /** Processes the next input frame. Returns 1 when processing succeeds, otherwise 0. */
+UFEEL_API int32_t ufeel_update_from_frame(UFeelProcessor* processor, int32_t detectionType, const UFeelFrame* frame);
+
+/** Processes the next input frame. Returns 1 when processing succeeds, otherwise 0. */
 UFEEL_API int32_t ufeel_update_frame(UFeelProcessor* processor);
 
 /** Processes the next input frame for emotions. Returns 1 when processing succeeds, otherwise 0. */
 UFEEL_API int32_t ufeel_update_emotions(UFeelProcessor* processor);
 
+/** Processes the next input frame for emotions. Returns 1 when processing succeeds, otherwise 0. */
+UFEEL_API int32_t ufeel_update_emotions_from_frame(UFeelProcessor* processor, const UFeelFrame* frame);
+
 /** Processes the next input frame for gaze. Returns 1 when processing succeeds, otherwise 0.*/
 UFEEL_API int32_t ufeel_update_gaze(UFeelProcessor* processor);
 
+/** Processes the next input frame for gaze. Returns 1 when processing succeeds, otherwise 0.*/
+UFEEL_API int32_t ufeel_update_gaze_from_frame(UFeelProcessor* processor, const UFeelFrame* frame);
+
 /** Processes the next input frame for speech. Returns 1 when processing succeeds, otherwise 0. */
 UFEEL_API int32_t ufeel_update_speech(UFeelProcessor* processor);
+
+/** Processes the next input frame for heartrate. Returns 1 when processing succeeds, otherwise 0. */
+UFEEL_API int32_t ufeel_update_heart_rate(UFeelProcessor* processor);
+
+/** Set the lasted processed image to the one you gave. */
+UFEEL_API int32_t ufeel_set_frame(UFeelProcessor* processor, const  UFeelFrame* frame);
 
 /** Returns a copy of the latest processed image, or NULL if no frame is available. */
 UFEEL_API UFeelFrame* ufeel_get_frame(UFeelProcessor* processor);

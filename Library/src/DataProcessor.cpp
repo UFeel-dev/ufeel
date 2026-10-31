@@ -29,7 +29,7 @@ DataProcessor::DataProcessor(
 
     speechToTextDetector_ = std::make_unique<SpeechToTextDetector>(speechModelPath);
 
-    heartRateSensorDetector_ = std::make_unique<HeartRateSensorDetector>();
+    heartRateDetector_ = std::make_unique<HeartRateSensorDetector>();
 }
 
 auto DataProcessor::updateFrame() -> bool
@@ -39,9 +39,9 @@ auto DataProcessor::updateFrame() -> bool
     return !frame_.empty();
 }
 
-// TODO: add logic to be able to send a frame here from the compiled library
-auto DataProcessor::setFrame() -> bool
+auto DataProcessor::setFrame(const cv::Mat& frame) -> bool
 {
+    frame_ = frame;
     return true;
 }
 
@@ -50,8 +50,9 @@ auto DataProcessor::getFrame() const -> cv::Mat
     return frame_;
 }
 
-auto DataProcessor::update(uint32_t detectionType) -> bool
+auto DataProcessor::updateFromFrame(uint32_t detectionType, const cv::Mat& image) -> bool
 {
+    frame_ = image;
     if ((detectionType & Emotions) != 0)
     {
         emotions_ = emotionDetector_->process(frame_);
@@ -71,8 +72,26 @@ auto DataProcessor::update(uint32_t detectionType) -> bool
     return true;
 }
 
+auto DataProcessor::update(uint32_t detectionType) -> bool
+{
+    if ((detectionType & Emotions) != 0 || (detectionType & Gaze) != 0)
+    {
+        updateFrame();
+    }
+    return updateFromFrame(detectionType, frame_);
+}
+
 auto DataProcessor::updateEmotions() -> bool
 {
+    updateFrame();
+    emotions_ = emotionDetector_->process(frame_);
+    return true;
+}
+
+// TODO: Do we set the frame_ value in the Class to frame or we keep the current value
+auto DataProcessor::updateEmotionsFromFrame(const cv::Mat& frame) -> bool
+{
+    frame_ = frame;
     emotions_ = emotionDetector_->process(frame_);
     return true;
 }
@@ -84,6 +103,14 @@ auto DataProcessor::getEmotions() const -> const std::map<std::string, float>&
 
 auto DataProcessor::updateGaze() -> bool
 {
+    updateFrame();
+    gaze_ = eyeTrackingDetector_->process(frame_);
+    return true;
+}
+
+auto DataProcessor::updateGazeFromFrame(const cv::Mat& frame) -> bool
+{
+    frame_ = frame;
     gaze_ = eyeTrackingDetector_->process(frame_);
     return true;
 }
@@ -152,8 +179,8 @@ auto DataProcessor::loadEyeTrackingCalibrationProfile(
 
 auto DataProcessor::updateHeartRate() -> bool
 {
-
     heartrate_ = heartRateDetector_->process();
+    return true;
 }
 
 auto DataProcessor::getHeartRate() const -> HeartRateResult
