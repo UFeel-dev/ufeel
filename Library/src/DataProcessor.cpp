@@ -4,6 +4,7 @@
 #include "EyeTracking/EyeTrackingDetector.hpp"
 #include "EyeTracking/GazeCalibrationModel.hpp"
 #include "HeartRate/HeartRateDetector.hpp"
+#include "HeartRate/HeartRateSource.hpp"
 #include "SpeechToText/SpeechToTextDetector.hpp"
 
 #include <iostream>
@@ -29,7 +30,7 @@ DataProcessor::DataProcessor(
 
     speechToTextDetector_ = std::make_unique<SpeechToTextDetector>(speechModelPath);
 
-    // heartRateSensorDetector_ = std::make_unique<HeartRateSensorDetector>();
+    heartRateSensorDetector_ = std::make_unique<HeartRateSensorDetector>();
 }
 
 auto DataProcessor::update() -> bool
@@ -50,7 +51,7 @@ auto DataProcessor::update() -> bool
 
     speech_ = speechToTextDetector_->process();
 
-    heartrate_ = HeartRateSensorDetector::process();
+    heartrate_ = heartRateSensorDetector_->process();
 
     return true;
 }

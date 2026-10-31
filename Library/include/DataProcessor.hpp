@@ -4,6 +4,7 @@
 #include "EyeTracking/EyeTrackingDetector.hpp"
 #include "EyeTracking/GazeCalibrationModel.hpp"
 #include "HeartRate/HeartRateDetector.hpp"
+#include "HeartRate/HeartRateSource.hpp"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/videoio.hpp"
 
@@ -52,8 +53,6 @@ public:
 
     void toggleSpeechToText(bool state);
 
-    // auto processHeartRateSensor() -> int;
-
 private:
 
     cv::VideoCapture cap_;
@@ -67,7 +66,7 @@ private:
     std::unique_ptr<EmotionDetector> emotionDetector_;
     std::unique_ptr<EyeTrackingDetector> eyeTrackingDetector_;
     std::unique_ptr<SpeechToTextDetector> speechToTextDetector_;
-    // std::unique_ptr<HeartRateSensorDetector> heartRateSensorDetector_;
+    std::unique_ptr<HeartRateSensorDetector> heartRateSensorDetector_;
 };
 
 #endif // DATAPROCESSOR_HPP

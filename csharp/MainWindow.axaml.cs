@@ -382,6 +382,7 @@ public partial class MainWindow : Window
                 HeartRateStatus.JsonParseError => "JSON parse error",
                 HeartRateStatus.JsonParseOutOfRange => "JSON parse - out of range",
                 HeartRateStatus.RequestFailed => "Request failed",
+                HeartRateStatus.NoData => "No data",
                 _ => "Heartrate unavailable"
             };
         }
