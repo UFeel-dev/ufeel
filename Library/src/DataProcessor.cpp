@@ -29,7 +29,7 @@ DataProcessor::DataProcessor(
 
     speechToTextDetector_ = std::make_unique<SpeechToTextDetector>(speechModelPath);
 
-    // heartRateSensorDetector_ = std::make_unique<HeartRateSensorDetector>();
+    heartRateSensorDetector_ = std::make_unique<HeartRateSensorDetector>();
 }
 
 auto DataProcessor::updateFrame() -> bool
@@ -64,10 +64,10 @@ auto DataProcessor::update(uint32_t detectionType) -> bool
     {
         speech_ = speechToTextDetector_->process();
     }
-    // if ((detectionType & HeartRate) != 0)
-    // {
-    //     heartrate_ = heartRateDetector_->process();
-    // }
+    if ((detectionType & HeartRate) != 0)
+    {
+        heartrate_ = heartRateDetector_->process();
+    }
     return true;
 }
 
@@ -150,11 +150,11 @@ auto DataProcessor::loadEyeTrackingCalibrationProfile(
     return eyeTrackingDetector_->loadCalibrationProfile(path);
 }
 
-// auto DataProcessor::updateHeartRate() -> bool
-// {
+auto DataProcessor::updateHeartRate() -> bool
+{
 
-//     heartrate_ = heartRateDetector_->process();
-// }
+    heartrate_ = heartRateDetector_->process();
+}
 
 auto DataProcessor::getHeartRate() const -> HeartRateResult
 {
