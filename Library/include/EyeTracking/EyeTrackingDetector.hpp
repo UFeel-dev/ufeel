@@ -1,8 +1,8 @@
 #ifndef EYETRACKING_EYETRACKINGDETECTOR_HPP
 #define EYETRACKING_EYETRACKINGDETECTOR_HPP
 
-#include "EyeTracking/GazeCalibrationModel.hpp"
-#include "EyeTracking/GazeKalmanFilter.hpp"
+#include "EyeTracking/EyeTrackingCalibrationModel.hpp"
+#include "EyeTracking/EyeTrackingKalmanFilter.hpp"
 #include "EyeTracking/IrisDetection/IrisLandmark.hpp"
 #include "Utils/FrameChecker.hpp"
 
@@ -21,7 +21,7 @@ class Mat;
 
 } // namespace cv
 
-enum class GazeStatus : std::uint8_t
+enum class EyeTrackingStatus : std::uint8_t
 {
     NotCalibrated = 0,
     FaceUnavailable = 1,
@@ -33,7 +33,7 @@ enum class GazeStatus : std::uint8_t
     FrameUnavailable = 7,
 };
 
-struct GazeResult
+struct EyeTrackingResult
 {
     float x = 0;
     float y = 0;
@@ -41,7 +41,7 @@ struct GazeResult
     float recordedY = 0;
     float confidence = 0;
     uint32_t directions = 0;
-    GazeStatus status = GazeStatus::NotCalibrated;
+    EyeTrackingStatus status = EyeTrackingStatus::NotCalibrated;
 };
 
 struct CalibrationProgress
@@ -52,13 +52,13 @@ struct CalibrationProgress
     std::uint32_t requiredSamplesPerTarget = 0;
 };
 
-enum GazeDirectionFlags : std::uint8_t
+enum EyeTrackingDirectionFlags : std::uint8_t
 {
-    GazeLeft = 1U << 0U,
-    GazeRight = 1U << 1U,
-    GazeUp = 1U << 2U,
-    GazeDown = 1U << 3U,
-    GazeCenter = 1U << 4U,
+    EyeTrackingLeft = 1U << 0U,
+    EyeTrackingRight = 1U << 1U,
+    EyeTrackingUp = 1U << 2U,
+    EyeTrackingDown = 1U << 3U,
+    EyeTrackingCenter = 1U << 4U,
 };
 
 class EyeTrackingDetector
@@ -73,7 +73,7 @@ public:
     EyeTrackingDetector(EyeTrackingDetector&&) = delete;
     auto operator=(EyeTrackingDetector&&) -> EyeTrackingDetector& = delete;
 
-    auto process(const cv::Mat& frame) -> GazeResult;
+    auto process(const cv::Mat& frame) -> EyeTrackingResult;
     void toggleEyeTrackingDetection(bool state);
     void close();
     void beginCalibration();
@@ -87,24 +87,24 @@ public:
 
 private:
 
-    [[nodiscard]] auto extractFeatures(const cv::Mat& frame, GazeStatus& status, float& quality)
-        -> std::optional<GazeFeatureVector>;
+    [[nodiscard]] auto extractFeatures(const cv::Mat& frame, EyeTrackingStatus& status, float& quality)
+        -> std::optional<EyeTrackingFeatureVector>;
 
     bool processEnable_ = true;
     bool calibrationActive_ = false;
     std::optional<std::size_t> calibrationTargetIndex_;
     std::optional<std::chrono::steady_clock::time_point> calibrationTargetSetAt_;
-    std::vector<GazeCalibrationTarget> calibrationTargets_;
+    std::vector<EyeTrackingCalibrationTarget> calibrationTargets_;
     std::deque<double> eyeAspectHistory_;
-    GazeCalibrationModel calibrationModel_;
-    GazeKalmanFilter gazeEstimator_;
-    GazeResult result_;
+    EyeTrackingCalibrationModel calibrationModel_;
+    EyeTrackingKalmanFilter gazeEstimator_;
+    EyeTrackingResult result_;
 
     CalibrationDiagnostics lastCalibrationDiagnostics_{};
 
     my::IrisLandmark irisLandmarker_;
 
-    FrameChecker<GazeResult> frameChecker_;
+    FrameChecker<EyeTrackingResult> frameChecker_;
 };
 
 // TODO: improve eye tracking to handle glasses and other bad inputs better

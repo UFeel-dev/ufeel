@@ -16,12 +16,12 @@ inline constexpr std::size_t GAZE_MINIMUM_SAMPLES_PER_TARGET = 15;
 inline constexpr std::size_t GAZE_MAXIMUM_SAMPLES_PER_TARGET = 120;
 inline constexpr std::size_t GAZE_MAXIMUM_CALIBRATION_TARGETS = 64;
 
-using GazeFeatureVector = std::array<double, GAZE_FEATURE_COUNT>;
+using EyeTrackingFeatureVector = std::array<double, GAZE_FEATURE_COUNT>;
 
-struct GazeCalibrationTarget
+struct EyeTrackingCalibrationTarget
 {
     cv::Point2f target;
-    std::vector<GazeFeatureVector> samples;
+    std::vector<EyeTrackingFeatureVector> samples;
 };
 
 enum class CalibrationFailureReason : std::uint8_t
@@ -69,15 +69,15 @@ struct CalibrationDiagnostics
 
 [[nodiscard]] auto calibrationFailureReasonToString(CalibrationFailureReason reason) -> const char*;
 
-class GazeCalibrationModel
+class EyeTrackingCalibrationModel
 {
 public:
 
     [[nodiscard]] static auto
-    fit(const std::vector<GazeCalibrationTarget>& targets,
-        CalibrationDiagnostics* diagnostics = nullptr) -> std::optional<GazeCalibrationModel>;
+    fit(const std::vector<EyeTrackingCalibrationTarget>& targets,
+        CalibrationDiagnostics* diagnostics = nullptr) -> std::optional<EyeTrackingCalibrationModel>;
 
-    [[nodiscard]] auto predict(const GazeFeatureVector& features) const
+    [[nodiscard]] auto predict(const EyeTrackingFeatureVector& features) const
         -> std::optional<cv::Point2f>;
 
     [[nodiscard]] auto isValid() const -> bool;
@@ -89,14 +89,14 @@ private:
 
     using Coefficients = std::array<std::array<double, GAZE_FEATURE_COUNT + 1>, 2>;
 
-    [[nodiscard]] static auto fitRegression(const std::vector<GazeCalibrationTarget>& targets)
-        -> std::optional<GazeCalibrationModel>;
+    [[nodiscard]] static auto fitRegression(const std::vector<EyeTrackingCalibrationTarget>& targets)
+        -> std::optional<EyeTrackingCalibrationModel>;
 
-    [[nodiscard]] auto predictCoordinate(const GazeFeatureVector& features, int coordinate) const
+    [[nodiscard]] auto predictCoordinate(const EyeTrackingFeatureVector& features, int coordinate) const
         -> double;
 
-    GazeFeatureVector means_{};
-    GazeFeatureVector scales_{};
+    EyeTrackingFeatureVector means_{};
+    EyeTrackingFeatureVector scales_{};
     Coefficients coefficients_{};
     double crossValidationError_ = 0.0;
     bool valid_ = false;

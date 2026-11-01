@@ -2,7 +2,7 @@
 
 #include "Emotions/EmotionDetector.hpp"
 #include "EyeTracking/EyeTrackingDetector.hpp"
-#include "EyeTracking/GazeCalibrationModel.hpp"
+#include "EyeTracking/EyeTrackingCalibrationModel.hpp"
 #include "HeartRate/HeartRateDetector.hpp"
 #include "SpeechToText/SpeechToTextDetector.hpp"
 
@@ -57,13 +57,13 @@ auto DataProcessor::updateFromFrame(uint32_t detectionType, const cv::Mat& image
     {
         emotions_ = emotionDetector_->process(frame_);
     }
-    if ((detectionType & Gaze) != 0)
+    if ((detectionType & EyeTracking) != 0)
     {
-        gaze_ = eyeTrackingDetector_->process(frame_);
+        eyetracking_ = eyeTrackingDetector_->process(frame_);
     }
     if ((detectionType & Speech) != 0)
     {
-        speech_ = speechToTextDetector_->process();
+        speechtotext_ = speechToTextDetector_->process();
     }
     if ((detectionType & HeartRate) != 0)
     {
@@ -74,7 +74,7 @@ auto DataProcessor::updateFromFrame(uint32_t detectionType, const cv::Mat& image
 
 auto DataProcessor::update(uint32_t detectionType) -> bool
 {
-    if ((detectionType & Emotions) != 0 || (detectionType & Gaze) != 0)
+    if ((detectionType & Emotions) != 0 || (detectionType & EyeTracking) != 0)
     {
         updateFrame();
     }
@@ -88,7 +88,6 @@ auto DataProcessor::updateEmotions() -> bool
     return true;
 }
 
-// TODO: Do we set the frame_ value in the Class to frame or we keep the current value
 auto DataProcessor::updateEmotionsFromFrame(const cv::Mat& frame) -> bool
 {
     frame_ = frame;
@@ -101,34 +100,45 @@ auto DataProcessor::getEmotions() const -> const std::map<std::string, float>&
     return emotions_;
 }
 
-auto DataProcessor::updateGaze() -> bool
+auto DataProcessor::getEmotionsFromFrame(const cv::Mat& frame) const -> const std::map<std::string, float>
+{
+    return emotionDetector_->process(frame);
+}
+
+auto DataProcessor::updateEyeTracking() -> bool
 {
     updateFrame();
-    gaze_ = eyeTrackingDetector_->process(frame_);
+    eyetracking_ = eyeTrackingDetector_->process(frame_);
     return true;
 }
 
-auto DataProcessor::updateGazeFromFrame(const cv::Mat& frame) -> bool
+auto DataProcessor::updateEyeTrackingFromFrame(const cv::Mat& frame) -> bool
 {
     frame_ = frame;
-    gaze_ = eyeTrackingDetector_->process(frame_);
+    eyetracking_ = eyeTrackingDetector_->process(frame_);
     return true;
 }
 
-auto DataProcessor::getGaze() const -> GazeResult
+auto DataProcessor::getEyeTracking() const -> EyeTrackingResult
 {
-    return gaze_;
+    return eyetracking_;
 }
 
-auto DataProcessor::updateSpeech() -> bool
+auto DataProcessor::getEyeTrackingFromFrame(const cv::Mat& frame) const -> EyeTrackingResult
 {
-    speech_ = speechToTextDetector_->process();
+    return eyeTrackingDetector_->process(frame);
+}
+
+
+auto DataProcessor::updateSpeechToText() -> bool
+{
+    speechtotext_ = speechToTextDetector_->process();
     return true;
 }
 
-auto DataProcessor::getSpeech() const -> const std::string&
+auto DataProcessor::getSpeechToText() const -> const std::string&
 {
-    return speech_;
+    return speechtotext_;
 }
 
 void DataProcessor::beginEyeTrackingCalibration()

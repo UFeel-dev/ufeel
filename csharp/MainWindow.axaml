@@ -120,7 +120,7 @@
                                     TextWrapping="Wrap"
                                     FontFamily="Monospace" />
                                 <TextBlock
-                                    x:Name="GazeText"
+                                    x:Name="EyeTrackingText"
                                     Text="Calibrate to estimate gaze"
                                     TextWrapping="Wrap"
                                     FontFamily="Monospace" />
@@ -218,12 +218,12 @@
         </Grid>
 
         <Grid
-            x:Name="GazeOverlay"
+            x:Name="EyeTrackingOverlay"
             IsVisible="False"
             IsHitTestVisible="False">
-            <Canvas x:Name="GazeCanvas">
+            <Canvas x:Name="EyeTrackingCanvas">
                 <Ellipse
-                    x:Name="GazeMarker"
+                    x:Name="EyeTrackingMarker"
                     Width="24"
                     Height="24"
                     Fill="#F2C94C"

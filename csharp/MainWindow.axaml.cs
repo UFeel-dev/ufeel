@@ -23,21 +23,21 @@ public partial class MainWindow : Window
     private readonly Task processTask;
     private Task? calibrationTask;
     private CancellationTokenSource? calibrationCancellation;
-    private GazeResultData lastGaze = new(
-        GazeStatus.NotCalibrated,
+    private EyeTrackingResultData lastEyeTracking = new(
+        EyeTrackingStatus.NotCalibrated,
         0.0F,
         0.0F,
         0.0F,
         0.0F,
         0.0F,
-        GazeDirection.None);
+        EyeTrackingDirection.None);
 
-    private const double GazeSmoothingTimeConstant = 0.08;
-    private const double GazeResetGapSeconds = 0.5;
+    private const double EyeTrackingSmoothingTimeConstant = 0.08;
+    private const double EyeTrackingResetGapSeconds = 0.5;
 
-    private double? smoothedGazeX;
-    private double? smoothedGazeY;
-    private long? lastGazeTimestamp;
+    private double? smoothedEyeTrackingX;
+    private double? smoothedEyeTrackingY;
+    private long? lastEyeTrackingTimestamp;
 
     private readonly string calibrationProfilePath;
     private float calibrationTargetX;
@@ -82,12 +82,12 @@ public partial class MainWindow : Window
             Environment.SpecialFolder.LocalApplicationData);
         if (string.IsNullOrWhiteSpace(localDataDirectory))
             throw new InvalidOperationException(
-                "Cannot determine the per-user application data directory for the gaze profile.");
+                "Cannot determine the per-user application data directory for the eyeTracking profile.");
 
         calibrationProfilePath = Path.Combine(
             localDataDirectory,
             "UFeel",
-            "gaze-profile-v3.txt");
+            "eyeTracking-profile-v3.txt");
 
         processor = new UFeelProcessor(
             modelDirectory,
@@ -110,10 +110,10 @@ public partial class MainWindow : Window
 
         CalibrationCanvas.SizeChanged += (_, _) =>
             UpdateCalibrationMarker(calibrationTargetX, calibrationTargetY);
-        GazeCanvas.SizeChanged += (_, _) =>
+        EyeTrackingCanvas.SizeChanged += (_, _) =>
         {
-            if (GazeOverlay.IsVisible)
-                UpdateGazeMarker(lastGaze);
+            if (EyeTrackingOverlay.IsVisible)
+                UpdateEyeTrackingMarker(lastEyeTracking);
         };
         KeyDown += MainWindow_OnKeyDown;
         Closed += OnClosed;
@@ -130,9 +130,9 @@ public partial class MainWindow : Window
             {
                 bool updated;
                 Dictionary<string, float> emotions;
-                GazeResultData gaze;
-                string speech;
-                HeartRateResultData heartrate;
+                EyeTrackingResultData eyeTracking;
+                string speechToText;
+                HeartRateResultData heartRate;
 
                 await processorGate.WaitAsync(token);
 
@@ -143,19 +143,19 @@ public partial class MainWindow : Window
                     if (!updated)
                     {
                         emotions = [];
-                        gaze = new(
-                            GazeStatus.FrameUnavailable,
+                        eyeTracking = new(
+                            EyeTrackingStatus.FrameUnavailable,
                             0.0F,
                             0.0F,
                             0.0F,
                             0.0F,
                             0.0F,
-                            GazeDirection.None);
-                        smoothedGazeX = null;
-                        smoothedGazeY = null;
-                        lastGazeTimestamp = null;
-                        speech = string.Empty;
-                        heartrate = new HeartRateResultData(
+                            EyeTrackingDirection.None);
+                        smoothedEyeTrackingX = null;
+                        smoothedEyeTrackingY = null;
+                        lastEyeTrackingTimestamp = null;
+                        speechToText = string.Empty;
+                        heartRate = new HeartRateResultData(
                             HeartRateStatus.RequestFailed,
                             0);
                     }
@@ -167,11 +167,11 @@ public partial class MainWindow : Window
                             bitmap = FrameBitmapFactory.Create(frame);
 
                         emotions = processor.GetEmotions();
-                        gaze = SmoothGaze(processor.GetGaze());
-                        speech = speechEnabled
+                        eyeTracking = SmoothEyeTracking(processor.GetEyeTracking());
+                        speechToText = speechEnabled
                             ? processor.GetSpeechToText()
                             : string.Empty;
-                        heartrate = processor.GetHeartRate();
+                        heartRate = processor.GetHeartRate();
                     }
                 }
                 finally
@@ -186,10 +186,10 @@ public partial class MainWindow : Window
                         if (closing)
                             return;
 
-                        DirectionsText.Text = FormatDirections(gaze);
-                        GazeText.Text = FormatGaze(gaze: gaze);
-                        lastGaze = gaze;
-                        GazeOverlay.IsVisible = false;
+                        DirectionsText.Text = FormatDirections(eyeTracking);
+                        EyeTrackingText.Text = FormatEyeTracking(eyeTracking: eyeTracking);
+                        lastEyeTracking = eyeTracking;
+                        EyeTrackingOverlay.IsVisible = false;
                     });
                     await Task.Delay(50, token);
                     continue;
@@ -214,16 +214,16 @@ public partial class MainWindow : Window
                     }
 
                     EmotionsText.Text = FormatEmotions(emotions);
-                    DirectionsText.Text = FormatDirections(gaze);
-                    GazeText.Text = FormatGaze(gaze);
-                    lastGaze = gaze;
-                    GazeOverlay.IsVisible = gaze.IsValid && !CalibrationOverlay.IsVisible;
-                    if (GazeOverlay.IsVisible)
-                        UpdateGazeMarker(gaze);
-                    SpeechText.Text = string.IsNullOrWhiteSpace(speech)
+                    DirectionsText.Text = FormatDirections(eyeTracking);
+                    EyeTrackingText.Text = FormatEyeTracking(eyeTracking);
+                    lastEyeTracking = eyeTracking;
+                    EyeTrackingOverlay.IsVisible = eyeTracking.IsValid && !CalibrationOverlay.IsVisible;
+                    if (EyeTrackingOverlay.IsVisible)
+                        UpdateEyeTrackingMarker(eyeTracking);
+                    SpeechText.Text = string.IsNullOrWhiteSpace(speechToText)
                         ? "No speech detected"
-                        : speech;
-                    HeartRate.Text = FormatHeartRate(heartrate);
+                        : speechToText;
+                    HeartRate.Text = FormatHeartRate(heartRate);
                 });
 
                 await Task.Delay(33, token);
@@ -270,33 +270,33 @@ public partial class MainWindow : Window
                 .Select(pair => $"{pair.Key}: {pair.Value:F3}"));
     }
 
-    private static string FormatDirections(GazeResultData gaze)
+    private static string FormatDirections(EyeTrackingResultData eyeTracking)
     {
-        if (!gaze.IsValid)
+        if (!eyeTracking.IsValid)
         {
-            return gaze.Status switch
+            return eyeTracking.Status switch
             {
-                GazeStatus.NotCalibrated => "Not calibrated",
-                GazeStatus.FaceUnavailable => "Face not detected",
-                GazeStatus.Blinking => "Blink detected",
-                GazeStatus.LowQuality => "Eye landmarks are low quality",
-                GazeStatus.Calibrating => "Calibration in progress",
-                GazeStatus.Disabled => "Eye tracking is disabled",
-                GazeStatus.FrameUnavailable => "Camera frame unavailable",
-                _ => "Gaze unavailable"
+                EyeTrackingStatus.NotCalibrated => "Not calibrated",
+                EyeTrackingStatus.FaceUnavailable => "Face not detected",
+                EyeTrackingStatus.Blinking => "Blink detected",
+                EyeTrackingStatus.LowQuality => "Eye landmarks are low quality",
+                EyeTrackingStatus.Calibrating => "Calibration in progress",
+                EyeTrackingStatus.Disabled => "Eye tracking is disabled",
+                EyeTrackingStatus.FrameUnavailable => "Camera frame unavailable",
+                _ => "EyeTracking unavailable"
             };
         }
 
         var directions = new List<string>();
-        if (gaze.Directions.HasFlag(GazeDirection.Left))
+        if (eyeTracking.Directions.HasFlag(EyeTrackingDirection.Left))
             directions.Add("left");
-        if (gaze.Directions.HasFlag(GazeDirection.Right))
+        if (eyeTracking.Directions.HasFlag(EyeTrackingDirection.Right))
             directions.Add("right");
-        if (gaze.Directions.HasFlag(GazeDirection.Up))
+        if (eyeTracking.Directions.HasFlag(EyeTrackingDirection.Up))
             directions.Add("up");
-        if (gaze.Directions.HasFlag(GazeDirection.Down))
+        if (eyeTracking.Directions.HasFlag(EyeTrackingDirection.Down))
             directions.Add("down");
-        if (gaze.Directions.HasFlag(GazeDirection.Center))
+        if (eyeTracking.Directions.HasFlag(EyeTrackingDirection.Center))
             directions.Add("center");
 
         return directions.Count == 0
@@ -304,80 +304,80 @@ public partial class MainWindow : Window
             : string.Join(", ", directions);
     }
 
-    private static string FormatGaze(GazeResultData gaze)
+    private static string FormatEyeTracking(EyeTrackingResultData eyeTracking)
     {
-        return gaze.IsValid
-            ? $"Recorded: ({gaze.RecordedX:F3}, {gaze.RecordedY:F3})" +
+        return eyeTracking.IsValid
+            ? $"Recorded: ({eyeTracking.RecordedX:F3}, {eyeTracking.RecordedY:F3})" +
             Environment.NewLine +
-            $"Estimated: ({gaze.EstimatedX:F3}, {gaze.EstimatedY:F3})" +
+            $"Estimated: ({eyeTracking.EstimatedX:F3}, {eyeTracking.EstimatedY:F3})" +
             Environment.NewLine +
-            $"Confidence: {gaze.Confidence:P0}"
+            $"Confidence: {eyeTracking.Confidence:P0}"
             : "Screen position unavailable";
     }
 
-    private GazeResultData SmoothGaze(GazeResultData gaze)
+    private EyeTrackingResultData SmoothEyeTracking(EyeTrackingResultData eyeTracking)
     {
-        if (!gaze.IsValid)
+        if (!eyeTracking.IsValid)
         {
-            smoothedGazeX = null;
-            smoothedGazeY = null;
-            lastGazeTimestamp = null;
-            return gaze;
+            smoothedEyeTrackingX = null;
+            smoothedEyeTrackingY = null;
+            lastEyeTrackingTimestamp = null;
+            return eyeTracking;
         }
 
         long timestamp = Stopwatch.GetTimestamp();
 
-        double dt = lastGazeTimestamp is null
+        double dt = lastEyeTrackingTimestamp is null
             ? 0.0
-            : (timestamp - lastGazeTimestamp.Value) /
+            : (timestamp - lastEyeTrackingTimestamp.Value) /
                 (double)Stopwatch.Frequency;
 
-        lastGazeTimestamp = timestamp;
+        lastEyeTrackingTimestamp = timestamp;
 
-        if (smoothedGazeX is null ||
-            smoothedGazeY is null ||
+        if (smoothedEyeTrackingX is null ||
+            smoothedEyeTrackingY is null ||
             dt <= 0.0 ||
-            dt > GazeResetGapSeconds)
+            dt > EyeTrackingResetGapSeconds)
         {
-            smoothedGazeX = gaze.EstimatedX;
-            smoothedGazeY = gaze.EstimatedY;
-            return gaze;
+            smoothedEyeTrackingX = eyeTracking.EstimatedX;
+            smoothedEyeTrackingY = eyeTracking.EstimatedY;
+            return eyeTracking;
         }
 
         double alpha =
-            1.0 - Math.Exp(-dt / GazeSmoothingTimeConstant);
+            1.0 - Math.Exp(-dt / EyeTrackingSmoothingTimeConstant);
 
-        smoothedGazeX += alpha * (gaze.EstimatedX - smoothedGazeX.Value);
-        smoothedGazeY += alpha * (gaze.EstimatedY - smoothedGazeY.Value);
+        smoothedEyeTrackingX += alpha * (eyeTracking.EstimatedX - smoothedEyeTrackingX.Value);
+        smoothedEyeTrackingY += alpha * (eyeTracking.EstimatedY - smoothedEyeTrackingY.Value);
 
-        return gaze with
+        return eyeTracking with
         {
-            EstimatedX = (float)smoothedGazeX.Value,
-            EstimatedY = (float)smoothedGazeY.Value
+            EstimatedX = (float)smoothedEyeTrackingX.Value,
+            EstimatedY = (float)smoothedEyeTrackingY.Value
         };
     }
 
-    private void UpdateGazeMarker(GazeResultData gaze)
+    private void UpdateEyeTrackingMarker(EyeTrackingResultData eyeTracking)
     {
-        double width = GazeCanvas.Bounds.Width;
-        double height = GazeCanvas.Bounds.Height;
+        double width = EyeTrackingCanvas.Bounds.Width;
+        double height = EyeTrackingCanvas.Bounds.Height;
         if (width <= 0 || height <= 0)
             return;
 
         Canvas.SetLeft(
-            GazeMarker,
-            gaze.EstimatedX * width - GazeMarker.Width / 2);
+            EyeTrackingMarker,
+            eyeTracking.EstimatedX * width - EyeTrackingMarker.Width / 2);
 
         Canvas.SetTop(
-            GazeMarker,
-            gaze.EstimatedY * height - GazeMarker.Height / 2);
+            EyeTrackingMarker,
+            eyeTracking.EstimatedY * height - EyeTrackingMarker.Height / 2);
     }
 
-    private static string FormatHeartRate(HeartRateResultData heartrate)
+    private static string FormatHeartRate(HeartRateResultData heartRate)
     {
-        if (!heartrate.IsValid)
+        if (!heartRate.IsValid)
         {
-            return heartrate.Status switch
+            return heartRate.Status switch
             {
                 HeartRateStatus.JsonParseError => "JSON parse error",
                 HeartRateStatus.JsonParseOutOfRange => "JSON parse - out of range",
@@ -386,7 +386,7 @@ public partial class MainWindow : Window
             };
         }
 
-        return heartrate.Bpm.ToString();
+        return heartRate.Bpm.ToString();
     }
 
     private async void SpeechButton_OnClick(
@@ -616,9 +616,9 @@ public partial class MainWindow : Window
             finally
             {
                 CalibrationOverlay.IsVisible = false;
-                GazeOverlay.IsVisible = lastGaze.IsValid;
-                if (GazeOverlay.IsVisible)
-                    UpdateGazeMarker(lastGaze);
+                EyeTrackingOverlay.IsVisible = lastEyeTracking.IsValid;
+                if (EyeTrackingOverlay.IsVisible)
+                    UpdateEyeTrackingMarker(lastEyeTracking);
             }
         }
     }
@@ -631,7 +631,7 @@ public partial class MainWindow : Window
         {
             token.ThrowIfCancellationRequested();
 
-            if (lastGaze.Status == GazeStatus.Calibrating)
+            if (lastEyeTracking.Status == EyeTrackingStatus.Calibrating)
             {
                 readyTimer ??= Stopwatch.StartNew();
                 CalibrationInstruction.Text =

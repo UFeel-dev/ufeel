@@ -9,12 +9,12 @@ namespace UFeel
     public enum DetectionType
     {
         Emotions = 0,
-        Gaze = 1 << 0,
-        Speech = 1 << 1,
+        EyeTracking = 1 << 0,
+        SpeechToText = 1 << 1,
         HeartRate = 1 << 2
     }
 
-    public enum GazeStatus
+    public enum EyeTrackingStatus
     {
         NotCalibrated = 0,
         FaceUnavailable = 1,
@@ -27,7 +27,7 @@ namespace UFeel
     }
 
     [Flags]
-    public enum GazeDirection
+    public enum EyeTrackingDirection
     {
         None = 0,
         Left = 1 << 0,
@@ -71,7 +71,18 @@ namespace UFeel
         }
 
         [StructLayout(LayoutKind.Sequential)]
-        internal struct NativeGazeResult
+        internal struct NativeEmotionResult
+        {
+            public int Status;
+            public int Count;
+            public IntPtr Emotions;
+        }
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void EmotionsResultHandler(NativeEmotionResult emotions);
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct NativeEyeTrackingResult
         {
             public int Status;
             public float X;
@@ -120,6 +131,16 @@ namespace UFeel
             public int TargetsWithInsufficientRetainedSamples;
         }
 
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        internal delegate void EyeTrackingResultHandler(NativeEyeTrackingResult gaze);
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct NativeSpeechResult
+        {
+            public int Status;
+            public IntPtr speech;
+        }
+
         [StructLayout(LayoutKind.Sequential)]
         public struct NativeHeartRateResult
         {
@@ -130,7 +151,7 @@ namespace UFeel
         internal enum Status
         {
             Ok = 0,
-            NoGaze = 1,
+            NoEyeTracking = 1,
             NoHeartRate = 2,
             InvalidArgument = 3,
             InvalidState = 4,
@@ -194,6 +215,7 @@ namespace UFeel
 
             return IntPtr.Zero;
         }
+
         [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
         [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
         internal static extern IntPtr ufeel_create(
@@ -206,7 +228,26 @@ namespace UFeel
 
         [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
         [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int ufeel_update(
+            IntPtr processor,
+            int detectionType);
+
+        [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int ufeel_update_from_frame(
+            IntPtr processor,
+            int detectionType,
+            IntPtr frame);
+
+        [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
         internal static extern int ufeel_update_frame(IntPtr processor);
+
+        [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int ufeel_set_frame(
+            IntPtr processor,
+            IntPtr frame);
 
         [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
         [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
@@ -216,11 +257,7 @@ namespace UFeel
         [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
         internal static extern void ufeel_free_frame(IntPtr frame);
 
-        [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
-        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int ufeel_update(
-            IntPtr processor,
-            int detectionType);
+
 
         [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
         [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
@@ -228,15 +265,40 @@ namespace UFeel
 
         [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
         [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern IntPtr ufeel_get_emotions(
+        internal static extern int ufeel_update_emotions_from_frame(
             IntPtr processor,
-            out int count);
+            IntPtr frame);
 
         [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
         [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern void ufeel_free_emotions(
-            IntPtr emotions,
-            int count);
+        internal static extern IntPtr ufeel_get_emotions_result(
+            IntPtr processor,
+            IntPtr result);
+
+        [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern IntPtr ufeel_get_emotions_result_from_frame(
+            IntPtr processor,
+            IntPtr frame,
+            EmotionsResultHandler handler);
+
+        [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern IntPtr ufeel_create_emotions_result();
+
+        [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern void ufeel_free_emotions_result(IntPtr emotions);
+
+
+
+        [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int ufeel_update_eye_tracking(IntPtr processor);
+
+        [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int ufeel_update_eye_tracking_from_frame(IntPtr processor, IntPtr frame);
 
         [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
         [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
@@ -259,13 +321,16 @@ namespace UFeel
 
         [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
         [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int ufeel_update_gaze(IntPtr processor);
+        internal static extern int ufeel_get_eye_tracking_result(
+            IntPtr processor,
+            IntPtr result);
 
         [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
         [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int ufeel_get_gaze_result(
+        internal static extern int ufeel_get_eye_tracking_result_from_frame(
             IntPtr processor,
-            out NativeGazeResult result);
+            IntPtr frame,
+            IntPtr result);
 
         [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
         [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
@@ -293,9 +358,13 @@ namespace UFeel
 
         [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
         [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern int ufeel_set_speech_to_text_enabled(
-            IntPtr processor,
-            int enabled);
+        internal static extern IntPtr ufeel_create_eye_tracking_result();
+
+        [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern void ufeel_free_eye_tracking_result(IntPtr emotions);
+
+
 
         [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
         [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
@@ -303,20 +372,42 @@ namespace UFeel
 
         [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
         [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern IntPtr ufeel_get_speech_to_text(IntPtr processor);
-
-        [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
-        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern void ufeel_free_string(IntPtr value);
-
-        // [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
-        // [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-        // internal static extern int ufeel_update_heart_rate(IntPtr processor);
-
-        [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
-        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int ufeel_get_heartrate(
+        internal static extern int ufeel_set_speech_to_text_enabled(
             IntPtr processor,
-            out NativeHeartRateResult result);
+            int enabled);
+
+        [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern IntPtr ufeel_get_speech_to_text(
+            IntPtr processor,
+            IntPtr result);
+
+        [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern IntPtr ufeel_create_speech_to_text();
+
+        [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern void ufeel_free_speech_result(IntPtr speech);
+
+
+
+        [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int ufeel_update_heart_rate(IntPtr processor);
+
+        [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int ufeel_get_heart_rate_result(
+            IntPtr processor,
+            IntPtr result);
+
+        [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern IntPtr ufeel_create_heart_rate_result();
+
+        [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern void ufeel_free_heart_rate_result(IntPtr heartrate);
     }
 }

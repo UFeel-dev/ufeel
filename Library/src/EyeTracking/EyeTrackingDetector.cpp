@@ -1,6 +1,6 @@
 #include "EyeTracking/EyeTrackingDetector.hpp"
 
-#include "EyeTracking/GazeCalibrationModel.hpp"
+#include "EyeTracking/EyeTrackingCalibrationModel.hpp"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/core/types.hpp"
 #include "Utils/FrameChecker.hpp"
@@ -232,7 +232,7 @@ void EyeTrackingDetector::toggleEyeTrackingDetection(
 
 auto EyeTrackingDetector::process(
     const cv::Mat& frame
-) -> GazeResult
+) -> EyeTrackingResult
 {
     if (frameChecker_.isFrameIdentical(frame))
     {
@@ -242,24 +242,24 @@ auto EyeTrackingDetector::process(
     result_ = {};
     if (!processEnable_)
     {
-        result_.status = GazeStatus::Disabled;
+        result_.status = EyeTrackingStatus::Disabled;
         return result_;
     }
     if (frame.empty())
     {
-        result_.status = GazeStatus::FrameUnavailable;
+        result_.status = EyeTrackingStatus::FrameUnavailable;
         return result_;
     }
 
-    GazeStatus featureStatus = GazeStatus::FaceUnavailable;
+    EyeTrackingStatus featureStatus = EyeTrackingStatus::FaceUnavailable;
     float featureQuality = 0.0F;
     auto features = extractFeatures(frame, featureStatus, featureQuality);
     if (!features)
     {
         gazeEstimator_.reset();
 
-        if (featureStatus == GazeStatus::FaceUnavailable ||
-            featureStatus == GazeStatus::FrameUnavailable)
+        if (featureStatus == EyeTrackingStatus::FaceUnavailable ||
+            featureStatus == EyeTrackingStatus::FrameUnavailable)
         {
             eyeAspectHistory_.clear();
         }
@@ -281,13 +281,13 @@ auto EyeTrackingDetector::process(
                 samples.push_back(*features);
             }
         }
-        result_.status = GazeStatus::Calibrating;
+        result_.status = EyeTrackingStatus::Calibrating;
         result_.confidence = featureQuality;
         return result_;
     }
     if (!calibrationModel_.isValid())
     {
-        result_.status = GazeStatus::NotCalibrated;
+        result_.status = EyeTrackingStatus::NotCalibrated;
         return result_;
     }
 
@@ -295,44 +295,44 @@ auto EyeTrackingDetector::process(
     if (!prediction || prediction->x < -0.25F || prediction->x > 1.25F || prediction->y < -0.25F ||
         prediction->y > 1.25F)
     {
-        result_.status = GazeStatus::LowQuality;
+        result_.status = EyeTrackingStatus::LowQuality;
         return result_;
     }
 
-    cv::Point2f const rawGaze(
+    cv::Point2f const rawEyeTracking(
         std::clamp(prediction->x, 0.0F, 1.0F), std::clamp(prediction->y, 0.0F, 1.0F)
     );
 
-    cv::Point2f const estimatedGaze = gazeEstimator_.update(rawGaze, featureQuality);
+    cv::Point2f const estimatedEyeTracking = gazeEstimator_.update(rawEyeTracking, featureQuality);
 
-    result_.recordedX = rawGaze.x;
-    result_.recordedY = rawGaze.y;
-    result_.x = estimatedGaze.x;
-    result_.y = estimatedGaze.y;
+    result_.recordedX = rawEyeTracking.x;
+    result_.recordedY = rawEyeTracking.y;
+    result_.x = estimatedEyeTracking.x;
+    result_.y = estimatedEyeTracking.y;
     result_.confidence = featureQuality * calibrationModel_.confidence();
-    result_.status = GazeStatus::Valid;
+    result_.status = EyeTrackingStatus::Valid;
 
     if (result_.x < 0.5 - DIRECTION_DEAD_ZONE)
     {
-        result_.directions |= GazeLeft;
+        result_.directions |= EyeTrackingLeft;
     }
     else if (result_.x > 0.5 + DIRECTION_DEAD_ZONE)
     {
-        result_.directions |= GazeRight;
+        result_.directions |= EyeTrackingRight;
     }
 
     if (result_.y < 0.5 - DIRECTION_DEAD_ZONE)
     {
-        result_.directions |= GazeUp;
+        result_.directions |= EyeTrackingUp;
     }
     else if (result_.y > 0.5 + DIRECTION_DEAD_ZONE)
     {
-        result_.directions |= GazeDown;
+        result_.directions |= EyeTrackingDown;
     }
 
-    if ((result_.directions & (GazeLeft | GazeRight | GazeUp | GazeDown)) == 0)
+    if ((result_.directions & (EyeTrackingLeft | EyeTrackingRight | EyeTrackingUp | EyeTrackingDown)) == 0)
     {
-        result_.directions |= GazeCenter;
+        result_.directions |= EyeTrackingCenter;
     }
     frameChecker_.setFrame(frame);
     frameChecker_.setResult(result_);
@@ -363,7 +363,7 @@ auto EyeTrackingDetector::setCalibrationTarget(
     cv::Point2f const newTarget(x, y);
     auto const previousTargetIndex = calibrationTargetIndex_;
     auto target = std::ranges::find_if(
-        calibrationTargets_, [&newTarget](GazeCalibrationTarget const& item) -> bool {
+        calibrationTargets_, [&newTarget](EyeTrackingCalibrationTarget const& item) -> bool {
             return cv::norm(item.target - newTarget) < 1.0e-4;
         }
     );
@@ -402,7 +402,7 @@ auto EyeTrackingDetector::finishCalibration() -> bool
     calibrationTargetIndex_.reset();
     calibrationTargetSetAt_.reset();
 
-    auto fittedModel = GazeCalibrationModel::fit(calibrationTargets_, &lastCalibrationDiagnostics_);
+    auto fittedModel = EyeTrackingCalibrationModel::fit(calibrationTargets_, &lastCalibrationDiagnostics_);
 
     calibrationTargets_.clear();
     gazeEstimator_.reset();
@@ -428,10 +428,10 @@ void EyeTrackingDetector::cancelCalibration()
 }
 
 auto EyeTrackingDetector::extractFeatures(
-    const cv::Mat& frame, GazeStatus& status, float& quality
-) -> std::optional<GazeFeatureVector>
+    const cv::Mat& frame, EyeTrackingStatus& status, float& quality
+) -> std::optional<EyeTrackingFeatureVector>
 {
-    status = GazeStatus::FaceUnavailable;
+    status = EyeTrackingStatus::FaceUnavailable;
     quality = 0.0F;
     irisLandmarker_.loadImageToInput(frame);
     irisLandmarker_.runInference();
@@ -445,7 +445,7 @@ auto EyeTrackingDetector::extractFeatures(
     if (leftIris.size() != IRIS_LANDMARK_COUNT || rightIris.size() != IRIS_LANDMARK_COUNT ||
         irisLandmarker_.getEyeRoi(true).empty() || irisLandmarker_.getEyeRoi(false).empty())
     {
-        status = GazeStatus::LowQuality;
+        status = EyeTrackingStatus::LowQuality;
         return std::nullopt;
     }
 
@@ -465,7 +465,7 @@ auto EyeTrackingDetector::extractFeatures(
     );
     if (!leftPosition || !rightPosition)
     {
-        status = GazeStatus::LowQuality;
+        status = EyeTrackingStatus::LowQuality;
         return std::nullopt;
     }
 
@@ -496,12 +496,12 @@ auto EyeTrackingDetector::extractFeatures(
     }
     if (averageEar < blinkThreshold || leftEar < blinkThreshold || rightEar < blinkThreshold)
     {
-        status = GazeStatus::Blinking;
+        status = EyeTrackingStatus::Blinking;
         return std::nullopt;
     }
     if (leftEar > 0.65 || rightEar > 0.65)
     {
-        status = GazeStatus::LowQuality;
+        status = EyeTrackingStatus::LowQuality;
         return std::nullopt;
     }
 
@@ -518,7 +518,7 @@ auto EyeTrackingDetector::extractFeatures(
     auto const topOfHead = vectorFrom(irisLandmarker_.getFaceLandmark3DAt(10));
     if (!finite(leftOuter) || !finite(rightOuter) || !finite(topOfHead))
     {
-        status = GazeStatus::LowQuality;
+        status = EyeTrackingStatus::LowQuality;
         return std::nullopt;
     }
 
@@ -531,7 +531,7 @@ auto EyeTrackingDetector::extractFeatures(
     auto const minimumFrameDimension = static_cast<double>(std::min(frame.cols, frame.rows));
     if (!std::isfinite(eyeSpan) || eyeSpan < 2.0 || imageEyeSpan < minimumFrameDimension * 0.025)
     {
-        status = GazeStatus::LowQuality;
+        status = EyeTrackingStatus::LowQuality;
         return std::nullopt;
     }
 
@@ -544,7 +544,7 @@ auto EyeTrackingDetector::extractFeatures(
     Vector3 vertical = subtract(topOfHead, eyeCenter);
     if (!xAxis)
     {
-        status = GazeStatus::LowQuality;
+        status = EyeTrackingStatus::LowQuality;
         return std::nullopt;
     }
     double const verticalProjection = dot(vertical, *xAxis);
@@ -555,16 +555,16 @@ auto EyeTrackingDetector::extractFeatures(
     auto const yAxis = normalized(vertical);
     if (!yAxis)
     {
-        status = GazeStatus::LowQuality;
+        status = EyeTrackingStatus::LowQuality;
         return std::nullopt;
     }
     auto const zAxis = normalized(cross(*xAxis, *yAxis));
     if (!zAxis)
     {
-        status = GazeStatus::LowQuality;
+        status = EyeTrackingStatus::LowQuality;
         return std::nullopt;
     }
-    GazeFeatureVector features{};
+    EyeTrackingFeatureVector features{};
     std::size_t featureIndex = 0;
     auto appendFeature = [&features, &featureIndex](double value) -> bool {
         if (featureIndex >= features.size() || !std::isfinite(value))
@@ -577,7 +577,7 @@ auto EyeTrackingDetector::extractFeatures(
     if (!appendFeature(leftPosition->x) || !appendFeature(leftPosition->y) ||
         !appendFeature(rightPosition->x) || !appendFeature(rightPosition->y))
     {
-        status = GazeStatus::LowQuality;
+        status = EyeTrackingStatus::LowQuality;
         return std::nullopt;
     }
 
@@ -597,7 +597,7 @@ auto EyeTrackingDetector::extractFeatures(
     {
         if (!appendLandmarkFeatures(landmarkIndex))
         {
-            status = GazeStatus::LowQuality;
+            status = EyeTrackingStatus::LowQuality;
             return std::nullopt;
         }
     }
@@ -605,7 +605,7 @@ auto EyeTrackingDetector::extractFeatures(
     {
         if (!appendLandmarkFeatures(landmarkIndex))
         {
-            status = GazeStatus::LowQuality;
+            status = EyeTrackingStatus::LowQuality;
             return std::nullopt;
         }
     }
@@ -615,7 +615,7 @@ auto EyeTrackingDetector::extractFeatures(
         !appendFeature(std::atan2((*yAxis).at(2), (*zAxis).at(2))) || !appendFeature(leftEar) ||
         !appendFeature(rightEar))
     {
-        status = GazeStatus::LowQuality;
+        status = EyeTrackingStatus::LowQuality;
         return std::nullopt;
     }
 
@@ -625,7 +625,7 @@ auto EyeTrackingDetector::extractFeatures(
         rightPosition->x > 1.25 || leftPosition->y < -0.5 || leftPosition->y > 1.5 ||
         rightPosition->y < -0.5 || rightPosition->y > 1.5)
     {
-        status = GazeStatus::LowQuality;
+        status = EyeTrackingStatus::LowQuality;
         return std::nullopt;
     }
 
@@ -633,7 +633,7 @@ auto EyeTrackingDetector::extractFeatures(
         *leftPosition, *rightPosition, leftEar, rightEar, imageEyeSpan, minimumFrameDimension
     );
     addEyeAspectSample();
-    status = GazeStatus::Valid;
+    status = EyeTrackingStatus::Valid;
     return features;
 }
 
@@ -674,7 +674,7 @@ auto EyeTrackingDetector::loadCalibrationProfile(
     const std::string& path
 ) -> bool
 {
-    GazeCalibrationModel loadedModel;
+    EyeTrackingCalibrationModel loadedModel;
 
     if (!loadedModel.load(path))
     {

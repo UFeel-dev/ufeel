@@ -152,9 +152,9 @@ add_library(ufeel_detection_library STATIC
     ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/FaceLandmark.cpp
     ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/IrisLandmark.cpp
     ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/ModelLoader.cpp
-    ${LIBRARY_DIR}/src/EyeTracking/GazeCalibrationModel.cpp
+    ${LIBRARY_DIR}/src/EyeTracking/EyeTrackingCalibrationModel.cpp
     ${LIBRARY_DIR}/src/EyeTracking/EyeTrackingDetector.cpp
-    ${LIBRARY_DIR}/src/EyeTracking/GazeKalmanFilter.cpp
+    ${LIBRARY_DIR}/src/EyeTracking/EyeTrackingKalmanFilter.cpp
 
     ${LIBRARY_DIR}/src/SpeechToText/AudioCapture.cpp
     ${LIBRARY_DIR}/src/SpeechToText/SpeechRecognizer.cpp
@@ -201,6 +201,11 @@ target_compile_options(ufeel_detection_library
 )
 
 add_library(ufeel_wrapper SHARED
+    "${WRAPPER_DIR}/ufeel_utils.cpp"
+    "${WRAPPER_DIR}/emotions.cpp"
+    "${WRAPPER_DIR}/eye_tracking.cpp"
+    "${WRAPPER_DIR}/speech_to_text.cpp"
+    "${WRAPPER_DIR}/heart_rate.cpp"
     "${WRAPPER_DIR}/wrapper.cpp"
 )
 

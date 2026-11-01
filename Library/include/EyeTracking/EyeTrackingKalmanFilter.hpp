@@ -5,7 +5,7 @@
 
 #include <chrono>
 
-class GazeKalmanFilter
+class EyeTrackingKalmanFilter
 {
 
 private:

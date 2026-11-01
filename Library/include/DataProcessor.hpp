@@ -2,7 +2,7 @@
 #define DATAPROCESSOR_HPP
 
 #include "EyeTracking/EyeTrackingDetector.hpp"
-#include "EyeTracking/GazeCalibrationModel.hpp"
+#include "EyeTracking/EyeTrackingCalibrationModel.hpp"
 #include "HeartRate/HeartRateDetector.hpp"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/videoio.hpp"
@@ -18,7 +18,7 @@ class HeartRateSensorDetector;
 enum DetectionType : std::uint8_t
 {
     Emotions = 1U << 0U,
-    Gaze = 1U << 1U,
+    EyeTracking = 1U << 1U,
     Speech = 1U << 2U,
     HeartRate = 1U << 3U,
 };
@@ -47,13 +47,15 @@ public:
     auto updateEmotions() -> bool;
     auto updateEmotionsFromFrame(const cv::Mat& image) -> bool;
     [[nodiscard]] auto getEmotions() const -> const std::map<std::string, float>&;
+    [[nodiscard]] auto getEmotionsFromFrame(const cv::Mat& frame) const -> const std::map<std::string, float>;
 
-    auto updateGaze() -> bool;
-    auto updateGazeFromFrame(const cv::Mat& image) -> bool;
-    [[nodiscard]] auto getGaze() const -> GazeResult;
+    auto updateEyeTracking() -> bool;
+    auto updateEyeTrackingFromFrame(const cv::Mat& image) -> bool;
+    [[nodiscard]] auto getEyeTracking() const -> EyeTrackingResult;
+    [[nodiscard]] auto getEyeTrackingFromFrame(const cv::Mat& frame) const -> EyeTrackingResult;
 
-    auto updateSpeech() -> bool;
-    [[nodiscard]] auto getSpeech() const -> const std::string&;
+    auto updateSpeechToText() -> bool;
+    [[nodiscard]] auto getSpeechToText() const -> const std::string&;
 
     auto updateHeartRate() -> bool;
     [[nodiscard]] auto getHeartRate() const -> HeartRateResult;
@@ -75,8 +77,8 @@ private:
     cv::Mat frame_;
 
     std::map<std::string, float> emotions_;
-    GazeResult gaze_;
-    std::string speech_;
+    EyeTrackingResult eyetracking_;
+    std::string speechtotext_;
     HeartRateResult heartrate_{};
 
     std::unique_ptr<EmotionDetector> emotionDetector_;

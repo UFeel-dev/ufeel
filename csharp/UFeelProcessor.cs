@@ -10,7 +10,7 @@ public sealed class UFeelProcessor : IDisposable
     private IntPtr handle;
     private bool disposed;
 
-    private const DetectionType allDetection = DetectionType.Emotions | DetectionType.Gaze | DetectionType.Speech | DetectionType.HeartRate;
+    private const DetectionType allDetection = DetectionType.Emotions | DetectionType.EyeTracking | DetectionType.SpeechToText | DetectionType.HeartRate;
 
     public UFeelProcessor(
         string modelDirectory,
@@ -75,26 +75,29 @@ public sealed class UFeelProcessor : IDisposable
 
     public Dictionary<string, float> GetEmotions()
     {
-        IntPtr pointer = UFeelNative.ufeel_get_emotions(
-            Handle, out int count);
-
-        if (pointer == IntPtr.Zero || count <= 0)
-        {
-            if (pointer != IntPtr.Zero)
-                UFeelNative.ufeel_free_emotions(pointer, count);
-
-            return new Dictionary<string, float>();
-        }
+        IntPtr pointer = UFeelNative.ufeel_create_emotions_result();
+        if (pointer == IntPtr.Zero)
+            return [];
 
         try
         {
-            var emotions = new Dictionary<string, float>(count);
+            UFeelNative.ufeel_get_emotions_result(Handle, pointer);
+
+            UFeelNative.NativeEmotionResult emotionsResult = Marshal.PtrToStructure<UFeelNative.NativeEmotionResult>(
+                            pointer);
+
+            if (emotionsResult.Count <= 0)
+            {
+                return [];
+            }
+
+            var emotions = new Dictionary<string, float>(emotionsResult.Count);
             int itemSize = Marshal.SizeOf<UFeelNative.NativeEmotion>();
 
-            for (int i = 0; i < count; i++)
+            for (int i = 0; i < emotionsResult.Count; i++)
             {
                 IntPtr itemPointer = IntPtr.Add(
-                    pointer, checked(i * itemSize));
+                    emotionsResult.Emotions, checked(i * itemSize));
 
                 UFeelNative.NativeEmotion item =
                     Marshal.PtrToStructure<UFeelNative.NativeEmotion>(
@@ -110,30 +113,47 @@ public sealed class UFeelProcessor : IDisposable
         }
         finally
         {
-            UFeelNative.ufeel_free_emotions(pointer, count);
+            UFeelNative.ufeel_free_emotions_result(pointer);
         }
     }
 
-    public GazeResultData GetGaze()
+    public EyeTrackingResultData GetEyeTracking()
     {
-        UFeelNative.Status status =
-            (UFeelNative.Status)UFeelNative.ufeel_get_gaze_result(
-                Handle, out UFeelNative.NativeGazeResult result);
+        IntPtr pointer =  UFeelNative.ufeel_create_eye_tracking_result();
 
-        if (status != UFeelNative.Status.Ok &&
-            status != UFeelNative.Status.NoGaze)
+        if (pointer == IntPtr.Zero)
+            return new EyeTrackingResultData(
+                EyeTrackingStatus.Disabled,
+                0f, 0f, 0f, 0f, 0f,
+                EyeTrackingDirection.None
+            );
+
+        try
         {
-            ThrowIfFailed(status, "retrieve the gaze estimate");
+            UFeelNative.Status status = (UFeelNative.Status)UFeelNative.ufeel_get_eye_tracking_result(Handle, pointer);
+
+            if (status != UFeelNative.Status.Ok &&
+                status != UFeelNative.Status.NoEyeTracking)
+            {
+                ThrowIfFailed(status, "retrieve the gaze estimate");
+            }
+
+            UFeelNative.NativeEyeTrackingResult eyeTrackingResult = Marshal.PtrToStructure<UFeelNative.NativeEyeTrackingResult>(pointer);
+
+            return new EyeTrackingResultData(
+                (EyeTrackingStatus)eyeTrackingResult.Status,
+                eyeTrackingResult.X,
+                eyeTrackingResult.Y,
+                eyeTrackingResult.RecordedX,
+                eyeTrackingResult.RecordedY,
+                eyeTrackingResult.Confidence,
+                (EyeTrackingDirection)eyeTrackingResult.Directions);
+        }
+        finally
+        {
+            UFeelNative.ufeel_free_eye_tracking_result(pointer);
         }
 
-        return new GazeResultData(
-            (GazeStatus)result.Status,
-            result.X,
-            result.Y,
-            result.RecordedX,
-            result.RecordedY,
-            result.Confidence,
-            (GazeDirection)result.Directions);
     }
 
     public void BeginEyeTrackingCalibration()
@@ -274,35 +294,55 @@ public sealed class UFeelProcessor : IDisposable
 
     public string GetSpeechToText()
     {
-        IntPtr pointer = UFeelNative.ufeel_get_speech_to_text(Handle);
+        IntPtr pointer = UFeelNative.ufeel_create_speech_to_text();
         if (pointer == IntPtr.Zero)
-            return string.Empty;
+            return "";
 
         try
         {
-            return Marshal.PtrToStringUTF8(pointer) ?? string.Empty;
+            UFeelNative.ufeel_get_speech_to_text(Handle, pointer);
+
+            UFeelNative.NativeSpeechResult speechToTextResult = Marshal.PtrToStructure<UFeelNative.NativeSpeechResult>(pointer);
+
+            return Marshal.PtrToStringUTF8(speechToTextResult.speech) ?? string.Empty;
         }
         finally
         {
-            UFeelNative.ufeel_free_string(pointer);
+            UFeelNative.ufeel_free_speech_result(pointer);
         }
     }
 
     public HeartRateResultData GetHeartRate()
     {
-        UFeelNative.Status status =
-            (UFeelNative.Status)UFeelNative.ufeel_get_heartrate(
-                Handle, out UFeelNative.NativeHeartRateResult result);
+        IntPtr pointer = UFeelNative.ufeel_create_heart_rate_result();
+        if (pointer == IntPtr.Zero)
+            return new HeartRateResultData(
+                0, 0
+            );
 
-        if (status != UFeelNative.Status.Ok &&
-            status != UFeelNative.Status.NoHeartRate)
+        try
         {
-            ThrowIfFailed(status, "retrieve the heartrate value");
-        }
 
-        return new HeartRateResultData(
-            (HeartRateStatus)result.Status,
-            result.Bpm);
+            UFeelNative.Status status =
+                (UFeelNative.Status)UFeelNative.ufeel_get_heart_rate_result(
+                    Handle, pointer);
+
+            UFeelNative.NativeHeartRateResult heartRateResult = Marshal.PtrToStructure<UFeelNative.NativeHeartRateResult>(pointer);
+
+            if (status != UFeelNative.Status.Ok &&
+                status != UFeelNative.Status.NoHeartRate)
+            {
+                ThrowIfFailed(status, "retrieve the heartrate value");
+            }
+
+            return new HeartRateResultData(
+                (HeartRateStatus)heartRateResult.Status,
+                heartRateResult.Bpm);
+        }
+        finally
+        {
+            UFeelNative.ufeel_free_heart_rate_result(pointer);
+        }
     }
 
     private IntPtr Handle
@@ -331,7 +371,7 @@ public sealed class UFeelProcessor : IDisposable
 
         string message = status switch
         {
-            UFeelNative.Status.NoGaze =>
+            UFeelNative.Status.NoEyeTracking =>
                 "A valid gaze estimate is not available.",
             UFeelNative.Status.NoHeartRate =>
                 "A valid heartrate is not available.",
@@ -388,16 +428,16 @@ public sealed class FrameData
     }
 }
 
-public sealed record GazeResultData(
-    GazeStatus Status,
+public sealed record EyeTrackingResultData(
+    EyeTrackingStatus Status,
     float EstimatedX,
     float EstimatedY,
     float RecordedX,
     float RecordedY,
     float Confidence,
-    GazeDirection Directions)
+    EyeTrackingDirection Directions)
 {
-    public bool IsValid => Status == GazeStatus.Valid;
+    public bool IsValid => Status == EyeTrackingStatus.Valid;
 }
 
 public sealed class EyeTrackingCalibrationProgress
