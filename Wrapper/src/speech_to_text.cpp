@@ -1,12 +1,19 @@
 #include "DataProcessor.hpp"
+#include "internal/ErrorHandling.hpp"
+#include "internal/Memory.hpp"
+#include "internal/UFeelProcessor.hpp" // IWYU pragma: keep
 #include "ufeel.h"
-#include "ufeel_utils.h"
 
 #include <cstdint>
 #include <cstdlib>
 #include <new>
 
+using ufeel::internal::duplicateUtf8;
+using ufeel::internal::guarded;
+using ufeel::internal::guardedVoid;
+
 extern "C" {
+
 auto ufeel_update_speech_to_text(
     UFeelProcessor* processor
 ) -> int32_t
@@ -14,7 +21,8 @@ auto ufeel_update_speech_to_text(
     return guarded("ufeel_update_speech_to_text", int32_t{0}, [processor] -> int32_t {
         if (processor == nullptr)
         {
-            return 0;
+            return 0; // TODO: update function to return status, and return
+                      // `UFEEL_STATUS_INVALID_PROCESSOR`
         }
         return static_cast<int32_t>(processor->processor.updateSpeechToText());
     });

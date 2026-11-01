@@ -7,7 +7,6 @@
 #include "Emotions/Inference/HeadCalibration.hpp"
 #include "Emotions/Inference/InferencePipeline.hpp"
 #include "Utils/FrameChecker.hpp"
-#include "opencv2/core/hal/interface.h"
 #include "opencv2/core/mat.hpp"
 #include "torch/headeronly/core/DeviceType.h"
 
@@ -19,6 +18,8 @@
 #include <yaml-cpp/node/node.h>
 #include <yaml-cpp/node/parse.h>
 #include <yaml-cpp/yaml.h> // ! needs to be included for templates to compile
+// TODO: check if this now can be deleted with the submodule-based approach (and update it
+// accordingly)
 
 namespace
 {

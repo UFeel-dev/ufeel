@@ -29,7 +29,8 @@ typedef struct
     int32_t height;
     int32_t channels;
     int32_t stride;
-} UFeelFrame;
+} UFeelFrame; // ! should probably expose its buffer size, with a `uint64_t dataSize` member for
+              // example
 
 /** Status returned by functions that can fail. */
 typedef enum
@@ -280,7 +281,7 @@ ufeel_load_eye_tracking_calibration_profile(UFeelProcessor* processor, const cha
 UFEEL_API UFeelEyeTrackingResult* ufeel_create_eye_tracking_result();
 
 /** Releases eye_ racking results returned by ufeel_get_eye_tracking_result(). Accepts NULL. */
-UFEEL_API void ufeel_free_eye_tracking_result(UFeelEyeTrackingResult* eye_tracking);
+UFEEL_API void ufeel_free_eye_tracking_result(UFeelEyeTrackingResult* eyetracking);
 
 /** Processes the next input frame for speech. Returns 1 when processing succeeds, otherwise 0. */
 UFEEL_API int32_t ufeel_update_speech_to_text(UFeelProcessor* processor);

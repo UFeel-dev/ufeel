@@ -200,54 +200,16 @@ target_compile_options(ufeel_detection_library
         ${TORCH_CXX_FLAGS}
 )
 
-add_library(ufeel_wrapper SHARED
-    "${WRAPPER_DIR}/ufeel_utils.cpp"
-    "${WRAPPER_DIR}/emotions.cpp"
-    "${WRAPPER_DIR}/eye_tracking.cpp"
-    "${WRAPPER_DIR}/speech_to_text.cpp"
-    "${WRAPPER_DIR}/heart_rate.cpp"
-    "${WRAPPER_DIR}/wrapper.cpp"
-)
-
-target_include_directories(ufeel_wrapper
-    PUBLIC
-        "${LIBRARY_DIR}/include"
-        "${WRAPPER_DIR}"
-)
-
-target_include_directories(ufeel_wrapper
-    SYSTEM PUBLIC
-        "${OPENCV_DIR}/include/opencv4"
-        ${TORCH_INCLUDE_DIRS}
-)
-
-target_link_libraries(ufeel_wrapper
-    PRIVATE
-        ufeel_detection_library
-)
-
-target_link_options(ufeel_wrapper PRIVATE
-    "-Wl,--no-undefined"
-)
-
-set_target_properties(ufeel_wrapper PROPERTIES
-    BUILD_RPATH
-        "${OPENCV_DIR}/lib;${LIBTORCH_DIR}/lib;${PORTAUDIO_DIR}/lib;${CPR_DIR}/lib"
-    INSTALL_RPATH
-        "$ORIGIN/dependencies"
-    INSTALL_RPATH_USE_LINK_PATH FALSE
-)
+add_subdirectory(Wrapper)
 
 if(CLANG_TIDY_COMMAND)
-    set_target_properties(ufeel_detection_library ufeel_wrapper PROPERTIES
-        CXX_CLANG_TIDY "${CLANG_TIDY_COMMAND}"
+    set_target_properties(
+        ufeel_detection_library
+        ufeel_wrapper
+        PROPERTIES
+            CXX_CLANG_TIDY "${CLANG_TIDY_COMMAND}"
     )
 endif()
-
-install(
-    TARGETS ufeel_wrapper
-    LIBRARY DESTINATION .
-)
 
 install(
     FILES

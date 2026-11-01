@@ -1,28 +1,12 @@
-// NOLINTBEGIN
-
-#ifndef UFEEL_UTILS_H_
-#define UFEEL_UTILS_H_
-
-#include "DataProcessor.hpp"
-#include "opencv2/core/mat.hpp"
-#include "ufeel.h"
+#ifndef ERRORHANDLING_HPP
+#define ERRORHANDLING_HPP
 
 #include <exception>
 #include <iostream>
-#include <string>
 #include <utility>
 
-struct UFeelProcessor
+namespace ufeel::internal
 {
-    DataProcessor processor;
-
-    UFeelProcessor(
-        const std::string& modelDirectory, const std::string& speechModelPath
-    )
-        : processor(modelDirectory, speechModelPath)
-    {
-    }
-};
 
 template <typename Result, typename Function>
 auto guarded(
@@ -64,7 +48,6 @@ void guardedVoid(
     }
 }
 
-auto duplicateUtf8(const std::string& value) -> char*;
-auto convertUFeelFrameToMat(const UFeelFrame* frame) -> cv::Mat;
+} // namespace ufeel::internal
 
-#endif /* !UFEEL_UTILS_H_ */
+#endif // ERRORHANDLING_HPP

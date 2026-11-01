@@ -25,6 +25,13 @@ enum DetectionType : std::uint8_t
     HeartRate = 1U << 3U,
 };
 
+constexpr auto hasDetection(
+    std::uint8_t detectionType, DetectionType flag
+) noexcept -> bool
+{
+    return (detectionType & static_cast<std::uint8_t>(flag)) != 0U;
+}
+
 class DataProcessor
 {
 public:

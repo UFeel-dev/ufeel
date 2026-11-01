@@ -1,21 +1,31 @@
-#include "DataProcessor.hpp"
+#include "internal/ErrorHandling.hpp"
+#include "internal/FrameConversion.hpp"
+#include "internal/UFeelProcessor.hpp"
+#include "opencv2/core/mat.hpp"
 #include "ufeel.h"
-#include "ufeel_utils.h"
 
-#include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
-#include <exception>
-#include <iostream>
 #include <limits>
 #include <memory>
 #include <new>
-#include <opencv2/core/mat.hpp>
 #include <string>
-#include <utility>
+
+using ufeel::internal::convertFrame;
+using ufeel::internal::guarded;
+using ufeel::internal::guardedVoid;
+
+UFeelProcessor::UFeelProcessor(
+    const std::string& modelDirectory, const std::string& speechModelPath
+)
+    : processor(modelDirectory, speechModelPath)
+{
+}
 
 extern "C" {
+
 auto ufeel_create(
     const char* utf8ModelDirectory, const char* utf8SpeechModelPath
 ) -> UFeelProcessor*
@@ -48,7 +58,8 @@ auto ufeel_update(
 {
     if (processor == nullptr)
     {
-        return UFEEL_STATUS_INVALID_PROCESSOR;
+        return 0; // TODO: update function to return status, and return
+                  // `UFEEL_STATUS_INVALID_PROCESSOR`
     }
 
     return guarded("ufeel_update", int32_t{0}, [processor, detectionType] -> int32_t {
@@ -62,14 +73,15 @@ auto ufeel_update_from_frame(
 {
     if (processor == nullptr)
     {
-        return UFEEL_STATUS_INVALID_PROCESSOR;
+        return 0; // TODO: update function to return status, and return
+                  // `UFEEL_STATUS_INVALID_PROCESSOR`
     }
 
-    const cv::Mat frameConverted = convertUFeelFrameToMat(frame);
+    const cv::Mat frameConverted = convertFrame(frame);
 
     if (frameConverted.empty())
     {
-        return UFEEL_STATUS_INVALID_FRAME;
+        return 0; // TODO: update function to return status, and return `UFEEL_STATUS_INVALID_FRAME`
     }
 
     return guarded(
@@ -89,7 +101,8 @@ auto ufeel_update_frame(
 {
     if (processor == nullptr)
     {
-        return UFEEL_STATUS_INVALID_PROCESSOR;
+        return 0; // TODO: update function to return status, and return
+                  // `UFEEL_STATUS_INVALID_PROCESSOR`
     }
 
     return guarded("ufeel_update_frame", int32_t{0}, [processor] -> int32_t {
@@ -106,11 +119,11 @@ auto ufeel_set_frame(
         return UFEEL_STATUS_INVALID_PROCESSOR;
     }
 
-    const cv::Mat frameConverted = convertUFeelFrameToMat(frame);
+    const cv::Mat frameConverted = convertFrame(frame);
 
     if (frameConverted.empty())
     {
-        return 0;
+        return UFEEL_STATUS_INVALID_FRAME;
     }
     return guarded("ufeel_set_frame", int32_t{0}, [processor, frameConverted] -> int32_t {
         return static_cast<int32_t>(processor->processor.setFrame(frameConverted));
@@ -190,4 +203,5 @@ void ufeel_free_frame(
         delete frame;
     });
 }
-}
+
+} // extern "C"

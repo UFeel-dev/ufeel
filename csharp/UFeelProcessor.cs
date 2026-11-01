@@ -84,6 +84,7 @@ public sealed class UFeelProcessor : IDisposable
         try
         {
             UFeelNative.ufeel_get_emotions_result(Handle, result);
+            // TODO: check status
 
             UFeelNative.NativeEmotionResult emotionsResult = Marshal.PtrToStructure<UFeelNative.NativeEmotionResult>(
                             result);
@@ -304,6 +305,8 @@ public sealed class UFeelProcessor : IDisposable
         try
         {
             UFeelNative.ufeel_get_speech_to_text_result(Handle, result);
+
+            // TODO: check status
 
             UFeelNative.NativeSpeechToTextResult speechToTextResult = Marshal.PtrToStructure<UFeelNative.NativeSpeechToTextResult>(result);
 

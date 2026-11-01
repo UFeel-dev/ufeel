@@ -1,7 +1,10 @@
 #include "DataProcessor.hpp"
+#include "internal/ErrorHandling.hpp"
+#include "internal/FrameConversion.hpp"
+#include "internal/Memory.hpp"
+#include "internal/UFeelProcessor.hpp" // IWYU pragma: keep
 #include "opencv2/core/mat.hpp"
 #include "ufeel.h"
-#include "ufeel_utils.h"
 
 #include <cstdint>
 #include <cstdlib>
@@ -11,6 +14,11 @@
 #include <memory>
 #include <new>
 #include <string>
+
+using ufeel::internal::convertFrame;
+using ufeel::internal::duplicateUtf8;
+using ufeel::internal::guarded;
+using ufeel::internal::guardedVoid;
 
 namespace
 {
@@ -56,6 +64,7 @@ auto convertEmotionsResultToUFeelPair(
 } // namespace
 
 extern "C" {
+
 auto ufeel_update_emotions(
     UFeelProcessor* processor
 ) -> int32_t
@@ -63,7 +72,8 @@ auto ufeel_update_emotions(
     return guarded("ufeel_update_emotions", int32_t{0}, [processor] -> int32_t {
         if (processor == nullptr)
         {
-            return UFEEL_STATUS_INVALID_PROCESSOR;
+            return 0; // TODO: update function to return status, and return
+                      // `UFEEL_STATUS_INVALID_PROCESSOR`
         }
         return static_cast<int32_t>(processor->processor.updateEmotions());
     });
@@ -76,14 +86,16 @@ auto ufeel_update_emotions_from_frame(
     return guarded("ufeel_update_emotions_from_frame", int32_t{0}, [processor, frame] -> int32_t {
         if (processor == nullptr)
         {
-            return UFEEL_STATUS_INVALID_PROCESSOR;
+            return 0; // TODO: update function to return status, and return
+                      // `UFEEL_STATUS_INVALID_PROCESSOR`
         }
 
-        const cv::Mat frameConverted = convertUFeelFrameToMat(frame);
+        const cv::Mat frameConverted = convertFrame(frame);
 
         if (frameConverted.empty())
         {
-            return UFEEL_STATUS_INVALID_FRAME;
+            return 0; // TODO: update function to return status, and return
+                      // `UFEEL_STATUS_INVALID_FRAME`
         }
 
         return static_cast<int32_t>(processor->processor.updateEmotionsFromFrame(frameConverted));
@@ -127,7 +139,7 @@ void ufeel_get_emotions_result_from_frame(
             return;
         }
 
-        const cv::Mat frameConverted = convertUFeelFrameToMat(frame);
+        const cv::Mat frameConverted = convertFrame(frame);
 
         if (frameConverted.empty())
         {

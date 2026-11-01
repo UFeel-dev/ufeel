@@ -1,7 +1,9 @@
 #include "DataProcessor.hpp"
 #include "EyeTracking/EyeTrackingDetector.hpp"
+#include "internal/ErrorHandling.hpp"
+#include "internal/FrameConversion.hpp"
+#include "internal/UFeelProcessor.hpp" // IWYU pragma: keep
 #include "ufeel.h"
-#include "ufeel_utils.h"
 
 #include <cmath>
 #include <cstdint>
@@ -9,7 +11,12 @@
 #include <new>
 #include <string>
 
+using ufeel::internal::convertFrame;
+using ufeel::internal::guarded;
+using ufeel::internal::guardedVoid;
+
 extern "C" {
+
 auto ufeel_update_eye_tracking(
     UFeelProcessor* processor
 ) -> int32_t
@@ -17,7 +24,8 @@ auto ufeel_update_eye_tracking(
     return guarded("ufeel_update_eye_tracking", int32_t{0}, [processor] -> int32_t {
         if (processor == nullptr)
         {
-            return UFEEL_STATUS_INVALID_PROCESSOR;
+            return 0; // TODO: update function to return status, and return
+                      // `UFEEL_STATUS_INVALID_PROCESSOR`
         }
         return static_cast<int32_t>(processor->processor.updateEyeTracking());
     });
@@ -31,14 +39,16 @@ auto ufeel_update_eye_tracking_from_frame(
         "ufeel_update_eye_tracking_from_frame", int32_t{0}, [processor, frame] -> int32_t {
             if (processor == nullptr)
             {
-                return UFEEL_STATUS_INVALID_PROCESSOR;
+                return 0; // TODO: update function to return status, and return
+                          // `UFEEL_STATUS_INVALID_PROCESSOR`
             }
 
-            const cv::Mat frameConverted = convertUFeelFrameToMat(frame);
+            const cv::Mat frameConverted = convertFrame(frame);
 
             if (frameConverted.empty())
             {
-                return UFEEL_STATUS_INVALID_FRAME;
+                return 0; // TODO: update function to return status, and return
+                          // `UFEEL_STATUS_INVALID_FRAME`
             }
             return static_cast<int32_t>(
                 processor->processor.updateEyeTrackingFromFrame(frameConverted)
@@ -175,7 +185,7 @@ void ufeel_get_eye_tracking_result_from_frame(
             return;
         }
 
-        const cv::Mat frameConverted = convertUFeelFrameToMat(frame);
+        const cv::Mat frameConverted = convertFrame(frame);
 
         if (frameConverted.empty())
         {
@@ -335,16 +345,16 @@ auto ufeel_create_eye_tracking_result() -> UFeelEyeTrackingResult*
 }
 
 void ufeel_free_eye_tracking_result(
-    UFeelEyeTrackingResult* eye_tracking
+    UFeelEyeTrackingResult* eyetracking
 )
 {
-    guardedVoid("ufeel_free_eye_tracking_result", [eye_tracking] -> void {
-        if (eye_tracking == nullptr)
+    guardedVoid("ufeel_free_eye_tracking_result", [eyetracking] -> void {
+        if (eyetracking == nullptr)
         {
             return;
         }
 
-        delete eye_tracking;
+        delete eyetracking;
     });
 }
 }

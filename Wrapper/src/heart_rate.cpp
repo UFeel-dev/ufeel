@@ -1,12 +1,17 @@
 #include "DataProcessor.hpp"
 #include "HeartRate/UFeelHeartRateStatus.hpp"
+#include "internal/ErrorHandling.hpp"
+#include "internal/UFeelProcessor.hpp" // IWYU pragma: keep
 #include "ufeel.h"
-#include "ufeel_utils.h"
 
 #include <cstdint>
 #include <new>
 
+using ufeel::internal::guarded;
+using ufeel::internal::guardedVoid;
+
 extern "C" {
+
 auto ufeel_update_heart_rate(
     UFeelProcessor* processor
 ) -> int32_t
@@ -14,7 +19,8 @@ auto ufeel_update_heart_rate(
     return guarded("ufeel_update_heart_rate", int32_t{0}, [processor] -> int32_t {
         if (processor == nullptr)
         {
-            return 0;
+            return 0; // TODO: update function to return status, and return
+                      // `UFEEL_STATUS_INVALID_PROCESSOR`
         }
         return static_cast<int32_t>(processor->processor.updateHeartRate());
     });

@@ -33,7 +33,7 @@ DataProcessor::DataProcessor(
     // heartRateDetector_ = std::make_unique<HeartRateSensorDetector>();
 }
 
-auto DataProcessor::updateFrame() -> bool
+auto DataProcessor::updateFrame() -> bool // TODO: always check the return value of updateFrame
 {
     cap_ >> frame_;
 
@@ -61,22 +61,27 @@ auto DataProcessor::updateFromFrame(
 ) -> bool
 {
     frame_ = image;
-    if ((detectionType & Emotions) != 0)
+
+    if (hasDetection(detectionType, Emotions))
     {
         emotions_ = emotionDetector_->process(frame_);
     }
-    if ((detectionType & EyeTracking) != 0)
+
+    if (hasDetection(detectionType, EyeTracking))
     {
         eyeTracking_ = eyeTrackingDetector_->process(frame_);
     }
-    if ((detectionType & Speech) != 0)
+
+    if (hasDetection(detectionType, Speech))
     {
         speechToText_ = speechToTextDetector_->process();
     }
-    if ((detectionType & HeartRate) != 0)
+
+    if (hasDetection(detectionType, HeartRate))
     {
         heartRate_ = HeartRateSensorDetector::process();
     }
+
     return true;
 }
 
