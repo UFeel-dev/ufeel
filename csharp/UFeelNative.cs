@@ -44,6 +44,7 @@ namespace UFeel
         JsonParseOutOfRange = 1,
         RequestFailed = 2,
         Valid = 3,
+        NoData = 4,
     }
 
     internal static class UFeelNative

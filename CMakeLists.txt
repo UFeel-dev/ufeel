@@ -161,6 +161,9 @@ add_library(ufeel_detection_library STATIC
     ${LIBRARY_DIR}/src/SpeechToText/SpeechToTextDetector.cpp
 
     ${LIBRARY_DIR}/src/HeartRate/HeartRateDetector.cpp
+    ${LIBRARY_DIR}/src/HeartRate/HeartRateSource.cpp
+    ${LIBRARY_DIR}/src/HeartRate/SensorHeartRateSource.cpp
+    ${LIBRARY_DIR}/src/HeartRate/WatchHeartRateSource.cpp
 )
 
 target_include_directories(ufeel_detection_library

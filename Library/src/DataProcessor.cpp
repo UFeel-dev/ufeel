@@ -4,6 +4,7 @@
 #include "EyeTracking/EyeTrackingCalibrationModel.hpp"
 #include "EyeTracking/EyeTrackingDetector.hpp"
 #include "HeartRate/HeartRateDetector.hpp"
+#include "HeartRate/HeartRateSource.hpp"
 #include "SpeechToText/SpeechToTextDetector.hpp"
 
 #include <cstdint>
@@ -30,7 +31,7 @@ DataProcessor::DataProcessor(
 
     speechToTextDetector_ = std::make_unique<SpeechToTextDetector>(speechModelPath);
 
-    // heartRateDetector_ = std::make_unique<HeartRateSensorDetector>();
+    heartRateSensorDetector_ = std::make_unique<HeartRateSensorDetector>();
 }
 
 auto DataProcessor::updateFrame() -> bool // TODO: always check the return value of updateFrame
@@ -79,7 +80,7 @@ auto DataProcessor::updateFromFrame(
 
     if (hasDetection(detectionType, HeartRate))
     {
-        heartRate_ = HeartRateSensorDetector::process();
+        heartRate_ = heartRateSensorDetector_->process();
     }
 
     return true;
@@ -215,7 +216,7 @@ auto DataProcessor::loadEyeTrackingCalibrationProfile(
 
 auto DataProcessor::updateHeartRate() -> bool
 {
-    heartRate_ = HeartRateSensorDetector::process();
+    heartRate_ = heartRateSensorDetector_->process();
     return true;
 }
 

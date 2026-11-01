@@ -4,6 +4,7 @@
 #include "EyeTracking/EyeTrackingCalibrationModel.hpp"
 #include "EyeTracking/EyeTrackingDetector.hpp"
 #include "HeartRate/HeartRateDetector.hpp"
+#include "HeartRate/HeartRateSource.hpp"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/videoio.hpp"
 
@@ -94,7 +95,7 @@ private:
     std::unique_ptr<EmotionDetector> emotionDetector_;
     std::unique_ptr<EyeTrackingDetector> eyeTrackingDetector_;
     std::unique_ptr<SpeechToTextDetector> speechToTextDetector_;
-    // std::unique_ptr<HeartRateSensorDetector> heartRateDetector_;
+    std::unique_ptr<HeartRateSensorDetector> heartRateSensorDetector_;
 };
 
 #endif // DATAPROCESSOR_HPP
