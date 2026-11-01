@@ -87,7 +87,8 @@ public:
 
 private:
 
-    [[nodiscard]] auto extractFeatures(const cv::Mat& frame, EyeTrackingStatus& status, float& quality)
+    [[nodiscard]] auto
+    extractFeatures(const cv::Mat& frame, EyeTrackingStatus& status, float& quality)
         -> std::optional<EyeTrackingFeatureVector>;
 
     bool processEnable_ = true;

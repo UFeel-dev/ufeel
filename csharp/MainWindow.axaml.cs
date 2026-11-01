@@ -138,7 +138,7 @@ public partial class MainWindow : Window
 
                 try
                 {
-                    updated = processor.Update();
+                    updated = processor.Update(); // TODO: avoid grouping all features together for the update phase, update one by one and at separate timestamps
 
                     if (!updated)
                     {
@@ -220,7 +220,7 @@ public partial class MainWindow : Window
                     EyeTrackingOverlay.IsVisible = eyeTracking.IsValid && !CalibrationOverlay.IsVisible;
                     if (EyeTrackingOverlay.IsVisible)
                         UpdateEyeTrackingMarker(eyeTracking);
-                    SpeechText.Text = string.IsNullOrWhiteSpace(speechToText)
+                    SpeechToTextText.Text = string.IsNullOrWhiteSpace(speechToText)
                         ? "No speech detected"
                         : speechToText;
                     HeartRate.Text = FormatHeartRate(heartRate);
@@ -389,7 +389,7 @@ public partial class MainWindow : Window
         return heartRate.Bpm.ToString();
     }
 
-    private async void SpeechButton_OnClick(
+    private async void SpeechToTextButton_OnClick(
         object? sender,
         RoutedEventArgs e)
     {
@@ -409,7 +409,7 @@ public partial class MainWindow : Window
                 processorGate.Release();
             }
 
-            SpeechButton.Content = speechEnabled
+            SpeechToTextButton.Content = speechEnabled
                 ? "Disable speech"
                 : "Enable speech";
         }

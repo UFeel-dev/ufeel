@@ -10,7 +10,9 @@
 #include <string>
 #include <vector>
 
-inline constexpr std::size_t GAZE_FEATURE_COUNT = 60;
+inline constexpr std::size_t GAZE_FEATURE_COUNT =
+    60; // ? should this be renamed to EYE_TRACKING? Or should related elements be renamed back to
+        // gaze? Or should we eliminate Gaze from the codebase?
 inline constexpr std::size_t GAZE_MINIMUM_CALIBRATION_TARGETS = 9;
 inline constexpr std::size_t GAZE_MINIMUM_SAMPLES_PER_TARGET = 15;
 inline constexpr std::size_t GAZE_MAXIMUM_SAMPLES_PER_TARGET = 120;
@@ -75,7 +77,8 @@ public:
 
     [[nodiscard]] static auto
     fit(const std::vector<EyeTrackingCalibrationTarget>& targets,
-        CalibrationDiagnostics* diagnostics = nullptr) -> std::optional<EyeTrackingCalibrationModel>;
+        CalibrationDiagnostics* diagnostics = nullptr)
+        -> std::optional<EyeTrackingCalibrationModel>;
 
     [[nodiscard]] auto predict(const EyeTrackingFeatureVector& features) const
         -> std::optional<cv::Point2f>;
@@ -89,11 +92,12 @@ private:
 
     using Coefficients = std::array<std::array<double, GAZE_FEATURE_COUNT + 1>, 2>;
 
-    [[nodiscard]] static auto fitRegression(const std::vector<EyeTrackingCalibrationTarget>& targets)
+    [[nodiscard]] static auto
+    fitRegression(const std::vector<EyeTrackingCalibrationTarget>& targets)
         -> std::optional<EyeTrackingCalibrationModel>;
 
-    [[nodiscard]] auto predictCoordinate(const EyeTrackingFeatureVector& features, int coordinate) const
-        -> double;
+    [[nodiscard]] auto
+    predictCoordinate(const EyeTrackingFeatureVector& features, int coordinate) const -> double;
 
     EyeTrackingFeatureVector means_{};
     EyeTrackingFeatureVector scales_{};

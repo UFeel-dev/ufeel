@@ -4,17 +4,11 @@
 #define UFEEL_UTILS_H_
 
 #include "DataProcessor.hpp"
+#include "opencv2/core/mat.hpp"
 #include "ufeel.h"
 
-#include <cmath>
-#include <cstdint>
-#include <cstdlib>
-#include <cstring>
 #include <exception>
 #include <iostream>
-#include <limits>
-#include <memory>
-#include <new>
 #include <string>
 #include <utility>
 

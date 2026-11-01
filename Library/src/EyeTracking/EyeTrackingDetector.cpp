@@ -1,9 +1,9 @@
 #include "EyeTracking/EyeTrackingDetector.hpp"
 
 #include "EyeTracking/EyeTrackingCalibrationModel.hpp"
+#include "Utils/FrameChecker.hpp"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/core/types.hpp"
-#include "Utils/FrameChecker.hpp"
 
 #include <algorithm>
 #include <array>
@@ -330,7 +330,8 @@ auto EyeTrackingDetector::process(
         result_.directions |= EyeTrackingDown;
     }
 
-    if ((result_.directions & (EyeTrackingLeft | EyeTrackingRight | EyeTrackingUp | EyeTrackingDown)) == 0)
+    if ((result_.directions &
+         (EyeTrackingLeft | EyeTrackingRight | EyeTrackingUp | EyeTrackingDown)) == 0)
     {
         result_.directions |= EyeTrackingCenter;
     }
@@ -402,7 +403,8 @@ auto EyeTrackingDetector::finishCalibration() -> bool
     calibrationTargetIndex_.reset();
     calibrationTargetSetAt_.reset();
 
-    auto fittedModel = EyeTrackingCalibrationModel::fit(calibrationTargets_, &lastCalibrationDiagnostics_);
+    auto fittedModel =
+        EyeTrackingCalibrationModel::fit(calibrationTargets_, &lastCalibrationDiagnostics_);
 
     calibrationTargets_.clear();
     gazeEstimator_.reset();

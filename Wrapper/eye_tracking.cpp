@@ -5,15 +5,9 @@
 
 #include <cmath>
 #include <cstdint>
-#include <cstdlib>
-#include <cstring>
-#include <exception>
-#include <iostream>
-#include <limits>
 #include <memory>
 #include <new>
 #include <string>
-#include <utility>
 
 extern "C" {
 auto ufeel_update_eye_tracking(
@@ -33,20 +27,24 @@ auto ufeel_update_eye_tracking_from_frame(
     UFeelProcessor* processor, const UFeelFrame* frame
 ) -> int32_t
 {
-    return guarded("ufeel_update_eye_tracking_from_frame", int32_t{0}, [processor, frame] -> int32_t {
-        if (processor == nullptr)
-        {
-            return UFEEL_STATUS_INVALID_PROCESSOR;
-        }
+    return guarded(
+        "ufeel_update_eye_tracking_from_frame", int32_t{0}, [processor, frame] -> int32_t {
+            if (processor == nullptr)
+            {
+                return UFEEL_STATUS_INVALID_PROCESSOR;
+            }
 
-        const cv::Mat frameConverted = convertUFeelFrameToMat(frame);
+            const cv::Mat frameConverted = convertUFeelFrameToMat(frame);
 
-        if (frameConverted.empty())
-        {
-            return UFEEL_STATUS_INVALID_FRAME;
+            if (frameConverted.empty())
+            {
+                return UFEEL_STATUS_INVALID_FRAME;
+            }
+            return static_cast<int32_t>(
+                processor->processor.updateEyeTrackingFromFrame(frameConverted)
+            );
         }
-        return static_cast<int32_t>(processor->processor.updateEyeTrackingFromFrame(frameConverted));
-    });
+    );
 }
 
 auto ufeel_begin_eye_tracking_calibration(
@@ -143,60 +141,61 @@ auto ufeel_get_eye_tracking_result(
 
             *result = {};
 
-            const auto gaze = processor->processor.getEyeTracking();
+            const auto eyeTracking = processor->processor.getEyeTracking();
 
-            result->status = static_cast<int32_t>(gaze.status);
-            result->x = static_cast<float>(gaze.x);
-            result->y = static_cast<float>(gaze.y);
-            result->recordedX = static_cast<float>(gaze.recordedX);
-            result->recordedY = static_cast<float>(gaze.recordedY);
-            result->confidence = static_cast<float>(gaze.confidence);
-            result->directions = static_cast<int32_t>(gaze.directions);
+            result->status = static_cast<int32_t>(eyeTracking.status);
+            result->x = static_cast<float>(eyeTracking.x);
+            result->y = static_cast<float>(eyeTracking.y);
+            result->recordedX = static_cast<float>(eyeTracking.recordedX);
+            result->recordedY = static_cast<float>(eyeTracking.recordedY);
+            result->confidence = static_cast<float>(eyeTracking.confidence);
+            result->directions = static_cast<int32_t>(eyeTracking.directions);
 
-            return gaze.status == EyeTrackingStatus::Valid ? UFEEL_STATUS_OK : UFEEL_STATUS_NO_GAZE;
+            return eyeTracking.status == EyeTrackingStatus::Valid ? UFEEL_STATUS_OK
+                                                                  : UFEEL_STATUS_NO_EYE_TRACKING;
         }
     );
 }
 
-// TODO: User have to freed the value once used !!
+// TODO: User have to free the value once used !!
+// TODO: update description in the ufeel header
 void ufeel_get_eye_tracking_result_from_frame(
     UFeelProcessor* processor, UFeelFrame* frame, void (*handler)(UFeelEyeTrackingResult* gaze)
 )
 {
-    guardedVoid(
-        "ufeel_get_eye_tracking_result_from_frame",
-        [processor, frame, handler] {
-            auto result = std::make_unique<UFeelEyeTrackingResult>();
+    guardedVoid("ufeel_get_eye_tracking_result_from_frame", [processor, frame, handler] {
+        auto result = std::make_unique<UFeelEyeTrackingResult>();
 
-            *result = {};
+        *result = {};
 
-            if (processor == nullptr)
-            {
-                result->status = UFEEL_STATUS_INVALID_PROCESSOR;
-                return handler(result.get());
-            }
-
-            const cv::Mat frameConverted = convertUFeelFrameToMat(frame);
-
-            if (frameConverted.empty())
-            {
-                result->status = UFEEL_STATUS_INVALID_FRAME;
-                return handler(result.get());
-            }
-
-            const auto gaze = processor->processor.getEyeTrackingFromFrame(frameConverted);
-
-            result->status = static_cast<int32_t>(gaze.status);
-            result->x = static_cast<float>(gaze.x);
-            result->y = static_cast<float>(gaze.y);
-            result->recordedX = static_cast<float>(gaze.recordedX);
-            result->recordedY = static_cast<float>(gaze.recordedY);
-            result->confidence = static_cast<float>(gaze.confidence);
-            result->directions = static_cast<int32_t>(gaze.directions);
-
-            return handler(result.get());
+        if (processor == nullptr)
+        {
+            result->status = UFEEL_STATUS_INVALID_PROCESSOR;
+            handler(result.get());
+            return;
         }
-    );
+
+        const cv::Mat frameConverted = convertUFeelFrameToMat(frame);
+
+        if (frameConverted.empty())
+        {
+            result->status = UFEEL_STATUS_INVALID_FRAME;
+            handler(result.get());
+            return;
+        }
+
+        const auto gaze = processor->processor.getEyeTrackingFromFrame(frameConverted);
+
+        result->status = static_cast<int32_t>(gaze.status);
+        result->x = static_cast<float>(gaze.x);
+        result->y = static_cast<float>(gaze.y);
+        result->recordedX = static_cast<float>(gaze.recordedX);
+        result->recordedY = static_cast<float>(gaze.recordedY);
+        result->confidence = static_cast<float>(gaze.confidence);
+        result->directions = static_cast<int32_t>(gaze.directions);
+
+        handler(result.get());
+    });
 }
 
 auto ufeel_get_eye_tracking_calibration_progress(
@@ -236,7 +235,7 @@ auto ufeel_get_eye_tracking_calibration_diagnostics(
         "ufeel_get_eye_tracking_calibration_diagnostics",
         int32_t{UFEEL_STATUS_INTERNAL_ERROR},
         [processor, diagnostics] -> UFeelStatus {
-                if (diagnostics == nullptr || processor == nullptr)
+            if (diagnostics == nullptr || processor == nullptr)
             {
                 return UFEEL_STATUS_INVALID_ARGUMENT;
             }
@@ -323,25 +322,29 @@ auto ufeel_load_eye_tracking_calibration_profile(
 
 auto ufeel_create_eye_tracking_result() -> UFeelEyeTrackingResult*
 {
-    return guarded("ufeel_create_eye_tracking_result", static_cast<UFeelEyeTrackingResult*>(nullptr), [] -> UFeelEyeTrackingResult* {
-        auto* result = new UFeelEyeTrackingResult{};
+    return guarded(
+        "ufeel_create_eye_tracking_result",
+        static_cast<UFeelEyeTrackingResult*>(nullptr),
+        [] -> UFeelEyeTrackingResult* {
+            auto* result = new UFeelEyeTrackingResult{};
 
-        *result = {};
-        return result;
-    });
+            *result = {};
+            return result;
+        }
+    );
 }
 
 void ufeel_free_eye_tracking_result(
-    UFeelEyeTrackingResult* gaze
+    UFeelEyeTrackingResult* eye_tracking
 )
 {
-    guardedVoid("ufeel_free_eye_tracking_result", [gaze] -> void {
-        if (gaze == nullptr)
+    guardedVoid("ufeel_free_eye_tracking_result", [eye_tracking] -> void {
+        if (eye_tracking == nullptr)
         {
             return;
         }
 
-        delete gaze;
+        delete eye_tracking;
     });
 }
 }

@@ -1,21 +1,20 @@
 #include "DataProcessor.hpp"
+#include "opencv2/core/mat.hpp"
 #include "ufeel.h"
 #include "ufeel_utils.h"
 
-#include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
-#include <exception>
-#include <iostream>
 #include <limits>
+#include <map>
 #include <memory>
 #include <new>
 #include <string>
-#include <utility>
 
 namespace
 {
+
 auto convertEmotionsResultToUFeelPair(
     const std::map<std::string, float>& emotions
 ) -> UFeelPair*
@@ -26,8 +25,7 @@ auto convertEmotionsResultToUFeelPair(
         return static_cast<UFeelPair*>(nullptr);
     }
 
-    auto output =
-        std::unique_ptr<UFeelPair[]>(new (std::nothrow) UFeelPair[emotions.size()]{});
+    auto output = std::unique_ptr<UFeelPair[]>(new (std::nothrow) UFeelPair[emotions.size()]{});
 
     if (!output)
     {
@@ -54,7 +52,8 @@ auto convertEmotionsResultToUFeelPair(
 
     return output.release();
 }
-}
+
+} // namespace
 
 extern "C" {
 auto ufeel_update_emotions(
@@ -69,7 +68,6 @@ auto ufeel_update_emotions(
         return static_cast<int32_t>(processor->processor.updateEmotions());
     });
 }
-
 
 auto ufeel_update_emotions_from_frame(
     UFeelProcessor* processor, const UFeelFrame* frame
@@ -92,74 +90,73 @@ auto ufeel_update_emotions_from_frame(
     });
 }
 
-
 auto ufeel_get_emotions_result(
     UFeelProcessor* processor, UFeelEmotionsResult* result
 ) -> int32_t
 {
-    return guarded(
-        "ufeel_get_emotions_result", int32_t{0}, [processor, result] -> int32_t {
-            if (result == nullptr || processor == nullptr)
-            {
-                return UFEEL_STATUS_INVALID_ARGUMENT;
-            }
-
-            *result = {};
-
-            const auto emotions = processor->processor.getEmotions();
-
-            result->emotions = convertEmotionsResultToUFeelPair(emotions);
-            result->count = emotions.size();
-            result->status = UFEEL_EMOTIONS_STATUS_VALID;
-            return UFEEL_STATUS_OK;
+    return guarded("ufeel_get_emotions_result", int32_t{0}, [processor, result] -> int32_t {
+        if (result == nullptr || processor == nullptr)
+        {
+            return UFEEL_STATUS_INVALID_ARGUMENT;
         }
-    );
+
+        *result = {};
+
+        const auto emotions = processor->processor.getEmotions();
+
+        result->emotions = convertEmotionsResultToUFeelPair(emotions);
+        result->count = emotions.size();
+        result->status = UFEEL_EMOTIONS_STATUS_VALID;
+        return UFEEL_STATUS_OK;
+    });
 }
 
 void ufeel_get_emotions_result_from_frame(
     UFeelProcessor* processor, UFeelFrame* frame, void (*handler)(UFeelEmotionsResult* emotions)
 )
 {
-    guardedVoid(
-        "ufeel_get_emotions_from_frame", [processor, frame, handler] {
-            auto result = std::make_unique<UFeelEmotionsResult>();
+    guardedVoid("ufeel_get_emotions_result_from_frame", [processor, frame, handler] {
+        auto result = std::make_unique<UFeelEmotionsResult>();
 
-            *result = {};
+        *result = {};
 
-            if (processor == nullptr)
-            {
-                result->status = UFEEL_STATUS_INVALID_PROCESSOR;
-                handler(result.get());
-                return;
-            }
-
-            const cv::Mat frameConverted = convertUFeelFrameToMat(frame);
-
-            if (frameConverted.empty())
-            {
-                result->status = UFEEL_STATUS_INVALID_FRAME;
-                handler(result.get());
-                return;
-            }
-            const auto emotions = processor->processor.getEmotionsFromFrame(frameConverted);
-
-            result->emotions = convertEmotionsResultToUFeelPair(emotions);
-            result->count = emotions.size();
-            result->status = UFEEL_EMOTIONS_STATUS_VALID;
-
+        if (processor == nullptr)
+        {
+            result->status = UFEEL_STATUS_INVALID_PROCESSOR;
             handler(result.get());
+            return;
         }
-    );
+
+        const cv::Mat frameConverted = convertUFeelFrameToMat(frame);
+
+        if (frameConverted.empty())
+        {
+            result->status = UFEEL_STATUS_INVALID_FRAME;
+            handler(result.get());
+            return;
+        }
+        const auto emotions = processor->processor.getEmotionsFromFrame(frameConverted);
+
+        result->emotions = convertEmotionsResultToUFeelPair(emotions);
+        result->count = emotions.size();
+        result->status = UFEEL_EMOTIONS_STATUS_VALID;
+
+        handler(result.get());
+    });
 }
 
 auto ufeel_create_emotions_result() -> UFeelEmotionsResult*
 {
-    return guarded("ufeel_create_emotions_result", static_cast<UFeelEmotionsResult*>(nullptr), [] -> UFeelEmotionsResult* {
-        auto* result = new UFeelEmotionsResult{};
+    return guarded(
+        "ufeel_create_emotions_result",
+        static_cast<UFeelEmotionsResult*>(nullptr),
+        [] -> UFeelEmotionsResult* {
+            auto* result = new UFeelEmotionsResult{};
 
-        *result = {};
-        return result;
-    });
+            *result = {};
+            return result;
+        }
+    );
 }
 
 void ufeel_free_emotions_result(

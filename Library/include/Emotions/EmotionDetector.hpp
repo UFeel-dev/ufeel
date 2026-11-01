@@ -2,8 +2,8 @@
 #define EMOTIONS_EMOTIONDETECTOR_HPP
 
 #include "Inference/HeadCalibration.hpp"
-#include "opencv2/core/mat.hpp"
 #include "Utils/FrameChecker.hpp"
+#include "opencv2/core/mat.hpp"
 
 #include <filesystem>
 #include <map>

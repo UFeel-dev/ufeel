@@ -1,12 +1,13 @@
 #ifndef DATAPROCESSOR_HPP
 #define DATAPROCESSOR_HPP
 
-#include "EyeTracking/EyeTrackingDetector.hpp"
 #include "EyeTracking/EyeTrackingCalibrationModel.hpp"
+#include "EyeTracking/EyeTrackingDetector.hpp"
 #include "HeartRate/HeartRateDetector.hpp"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/videoio.hpp"
 
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <string>
@@ -17,6 +18,7 @@ class HeartRateSensorDetector;
 
 enum DetectionType : std::uint8_t
 {
+    None = 0U,
     Emotions = 1U << 0U,
     EyeTracking = 1U << 1U,
     Speech = 1U << 2U,
@@ -45,12 +47,13 @@ public:
     auto update(uint32_t detectionType) -> bool;
 
     auto updateEmotions() -> bool;
-    auto updateEmotionsFromFrame(const cv::Mat& image) -> bool;
+    auto updateEmotionsFromFrame(const cv::Mat& frame) -> bool;
     [[nodiscard]] auto getEmotions() const -> const std::map<std::string, float>&;
-    [[nodiscard]] auto getEmotionsFromFrame(const cv::Mat& frame) const -> const std::map<std::string, float>;
+    [[nodiscard]] auto getEmotionsFromFrame(const cv::Mat& frame) const
+        -> const std::map<std::string, float>;
 
     auto updateEyeTracking() -> bool;
-    auto updateEyeTrackingFromFrame(const cv::Mat& image) -> bool;
+    auto updateEyeTrackingFromFrame(const cv::Mat& frame) -> bool;
     [[nodiscard]] auto getEyeTracking() const -> EyeTrackingResult;
     [[nodiscard]] auto getEyeTrackingFromFrame(const cv::Mat& frame) const -> EyeTrackingResult;
 
@@ -76,15 +79,15 @@ private:
     cv::VideoCapture cap_;
     cv::Mat frame_;
 
-    std::map<std::string, float> emotions_;
-    EyeTrackingResult eyetracking_;
-    std::string speechtotext_;
-    HeartRateResult heartrate_{};
+    std::map<std::string, float> emotions_; // TODO: add result struct
+    EyeTrackingResult eyeTracking_;
+    std::string speechToText_; // TODO: add result struct
+    HeartRateResult heartRate_{};
 
     std::unique_ptr<EmotionDetector> emotionDetector_;
     std::unique_ptr<EyeTrackingDetector> eyeTrackingDetector_;
     std::unique_ptr<SpeechToTextDetector> speechToTextDetector_;
-    std::unique_ptr<HeartRateSensorDetector> heartRateDetector_;
+    // std::unique_ptr<HeartRateSensorDetector> heartRateDetector_;
 };
 
 #endif // DATAPROCESSOR_HPP

@@ -6,10 +6,10 @@
 #include "Emotions/Inference/FaceDetector.hpp"
 #include "Emotions/Inference/HeadCalibration.hpp"
 #include "Emotions/Inference/InferencePipeline.hpp"
+#include "Utils/FrameChecker.hpp"
 #include "opencv2/core/hal/interface.h"
 #include "opencv2/core/mat.hpp"
 #include "torch/headeronly/core/DeviceType.h"
-#include "Utils/FrameChecker.hpp"
 
 #include <filesystem>
 #include <map>

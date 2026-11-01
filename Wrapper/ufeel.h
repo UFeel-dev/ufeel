@@ -36,7 +36,7 @@ typedef enum
 {
     UFEEL_STATUS_OK = 0,
     UFEEL_STATUS_NO_EMOTIONS = 1,
-    UFEEL_STATUS_NO_GAZE = 2,
+    UFEEL_STATUS_NO_EYE_TRACKING = 2,
     UFEEL_STATUS_NO_SPEECH = 3,
     UFEEL_STATUS_NO_HEARTRATE = 4,
     UFEEL_STATUS_INVALID_ARGUMENT = 5,
@@ -44,7 +44,9 @@ typedef enum
     UFEEL_STATUS_EYE_TRACKING_CALIBRATION_FAILED = 7,
     UFEEL_STATUS_EYE_TRACKING_PROFILE_FAILED = 8,
     UFEEL_STATUS_INTERNAL_ERROR = 9,
-    UFEEL_STATUS_INVALID_PROCESSOR = 10,
+    UFEEL_STATUS_INVALID_PROCESSOR =
+        10, // ? do we need separate status for each kind of invalid argument, or does invalid
+            // processor and frame count as `UFEEL_STATUS_INVALID_ARGUMENT`?
     UFEEL_STATUS_INVALID_FRAME = 11,
 } UFeelStatus;
 
@@ -156,7 +158,7 @@ typedef struct
 {
     int32_t status;
     char* speech;
-} UFeelSpeechResult;
+} UFeelSpeechToTextResult;
 
 //? HEARTRATE
 
@@ -175,7 +177,8 @@ typedef struct
 } UFeelHeartRateResult;
 
 /** Creates a processor. Returns NULL if initialization fails. */
-UFEEL_API UFeelProcessor* ufeel_create(const char* utf8ModelDirectory, const char* utf8SpeechModelPath);
+UFEEL_API UFeelProcessor*
+ufeel_create(const char* utf8ModelDirectory, const char* utf8SpeechModelPath);
 
 /** Destroys a processor created by ufeel_create(). Accepts NULL. */
 UFEEL_API void ufeel_destroy(UFeelProcessor* processor);
@@ -184,13 +187,14 @@ UFEEL_API void ufeel_destroy(UFeelProcessor* processor);
 UFEEL_API int32_t ufeel_update(UFeelProcessor* processor, int32_t detectionType);
 
 /** Processes the next input frame. Returns 1 when processing succeeds, otherwise 0. */
-UFEEL_API int32_t ufeel_update_from_frame(UFeelProcessor* processor, int32_t detectionType, const UFeelFrame* frame);
+UFEEL_API int32_t
+ufeel_update_from_frame(UFeelProcessor* processor, int32_t detectionType, const UFeelFrame* frame);
 
 /** Processes the next input frame. Returns 1 when processing succeeds, otherwise 0. */
 UFEEL_API int32_t ufeel_update_frame(UFeelProcessor* processor);
 
 /** Set the lasted processed image to the one you gave. */
-UFEEL_API int32_t ufeel_set_frame(UFeelProcessor* processor, const  UFeelFrame* frame);
+UFEEL_API int32_t ufeel_set_frame(UFeelProcessor* processor, const UFeelFrame* frame);
 
 /** Returns a copy of the latest processed image, or NULL if no frame is available. */
 UFEEL_API UFeelFrame* ufeel_get_frame(UFeelProcessor* processor);
@@ -198,19 +202,21 @@ UFEEL_API UFeelFrame* ufeel_get_frame(UFeelProcessor* processor);
 /** Releases a frame returned by ufeel_get_frame(). Accepts NULL. */
 UFEEL_API void ufeel_free_frame(UFeelFrame* frame);
 
-
-
 /** Processes the next input frame for emotions. Returns 1 when processing succeeds, otherwise 0. */
 UFEEL_API int32_t ufeel_update_emotions(UFeelProcessor* processor);
 
 /** Processes the next input frame for emotions. Returns 1 when processing succeeds, otherwise 0. */
-UFEEL_API int32_t ufeel_update_emotions_from_frame(UFeelProcessor* processor, const UFeelFrame* frame);
+UFEEL_API int32_t
+ufeel_update_emotions_from_frame(UFeelProcessor* processor, const UFeelFrame* frame);
 
 /** Returns the current emotion scores. Set *count to zero if no scores are available. */
 UFEEL_API int32_t ufeel_get_emotions_result(UFeelProcessor* processor, UFeelEmotionsResult* result);
 
-/** Processes the input frame for emotion detection and passes the result to the handler. The result is only valid during the callback and is automatically freed afterward. */
-UFEEL_API void ufeel_get_emotions_result_from_frame(UFeelProcessor* processor, UFeelFrame* frame, void (*handler)(UFeelEmotionsResult* emotions));
+/** Processes the input frame for emotion detection and passes the result to the handler. The result
+ * is only valid during the callback and is automatically freed afterward. */
+UFEEL_API void ufeel_get_emotions_result_from_frame(
+    UFeelProcessor* processor, UFeelFrame* frame, void (*handler)(UFeelEmotionsResult* emotions)
+);
 
 /** Create emotion results. */
 UFEEL_API UFeelEmotionsResult* ufeel_create_emotions_result();
@@ -218,19 +224,21 @@ UFEEL_API UFeelEmotionsResult* ufeel_create_emotions_result();
 /** Releases emotion results returned by ufeel_get_emotions_result(). Accepts NULL. */
 UFEEL_API void ufeel_free_emotions_result(UFeelEmotionsResult* emotions);
 
-
-
-/** Processes the next input frame for eye_tracking. Returns 1 when processing succeeds, otherwise 0.*/
+/** Processes the next input frame for eye_tracking. Returns 1 when processing succeeds, otherwise
+ * 0.*/
 UFEEL_API int32_t ufeel_update_eye_tracking(UFeelProcessor* processor);
 
-/** Processes the next input frame for eye_tracking. Returns 1 when processing succeeds, otherwise 0.*/
-UFEEL_API int32_t ufeel_update_eye_tracking_from_frame(UFeelProcessor* processor, const UFeelFrame* frame);
+/** Processes the next input frame for eye_tracking. Returns 1 when processing succeeds, otherwise
+ * 0.*/
+UFEEL_API int32_t
+ufeel_update_eye_tracking_from_frame(UFeelProcessor* processor, const UFeelFrame* frame);
 
 /** Begins eye tracking calibration. */
 UFEEL_API int32_t ufeel_begin_eye_tracking_calibration(UFeelProcessor* processor);
 
 /** Sets the screen coordinate currently being used as the eye tracking calibration target. */
-UFEEL_API int32_t ufeel_set_eye_tracking_calibration_target(UFeelProcessor* processor, float screenX, float screenY);
+UFEEL_API int32_t
+ufeel_set_eye_tracking_calibration_target(UFeelProcessor* processor, float screenX, float screenY);
 
 /** Fits and activates the eye tracking calibration model. */
 UFEEL_API int32_t ufeel_finish_eye_tracking_calibration(UFeelProcessor* processor);
@@ -239,32 +247,40 @@ UFEEL_API int32_t ufeel_finish_eye_tracking_calibration(UFeelProcessor* processo
 UFEEL_API int32_t ufeel_cancel_eye_tracking_calibration(UFeelProcessor* processor);
 
 /** Retrieves the latest eye_tracking estimate and its validity status. */
-UFEEL_API int32_t ufeel_get_eye_tracking_result(UFeelProcessor* processor, UFeelEyeTrackingResult* result);
+UFEEL_API int32_t
+ufeel_get_eye_tracking_result(UFeelProcessor* processor, UFeelEyeTrackingResult* result);
 
-/** Processes the input frame for eye tracking detection and passes the result to the handler. The result is only valid during the callback and is automatically freed afterward. */
-UFEEL_API void ufeel_get_eye_tracking_result_from_frame(UFeelProcessor* processor, UFeelFrame* frame, void (*handler)(UFeelEyeTrackingResult* eye_tracking));
-
+/** Processes the input frame for eye tracking detection and passes the result to the handler. The
+ * result is only valid during the callback and is automatically freed afterward. */
+UFEEL_API void ufeel_get_eye_tracking_result_from_frame(
+    UFeelProcessor* processor,
+    UFeelFrame* frame,
+    void (*handler)(UFeelEyeTrackingResult* eye_tracking)
+);
 
 /** Retrieves progress for the current eye tracking calibration session. */
-UFEEL_API int32_t ufeel_get_eye_tracking_calibration_progress(UFeelProcessor* processor, UFeelEyeTrackingCalibrationProgress* progress);
+UFEEL_API int32_t ufeel_get_eye_tracking_calibration_progress(
+    UFeelProcessor* processor, UFeelEyeTrackingCalibrationProgress* progress
+);
 
 /** Retrieves diagnostic measurements from eye tracking calibration. */
-UFEEL_API int32_t ufeel_get_eye_tracking_calibration_diagnostics(UFeelProcessor* processor, UFeelEyeTrackingCalibrationDiagnostics* diagnostics);
+UFEEL_API int32_t ufeel_get_eye_tracking_calibration_diagnostics(
+    UFeelProcessor* processor, UFeelEyeTrackingCalibrationDiagnostics* diagnostics
+);
 
 /** Saves the active eye tracking calibration profile to a UTF-8 file path. */
-UFEEL_API int32_t ufeel_save_eye_tracking_calibration_profile(UFeelProcessor* processor, const char* utf8Path);
+UFEEL_API int32_t
+ufeel_save_eye_tracking_calibration_profile(UFeelProcessor* processor, const char* utf8Path);
 
 /** Loads an eye tracking calibration profile from a UTF-8 file path. */
-UFEEL_API int32_t ufeel_load_eye_tracking_calibration_profile(UFeelProcessor* processor, const char* utf8Path);
+UFEEL_API int32_t
+ufeel_load_eye_tracking_calibration_profile(UFeelProcessor* processor, const char* utf8Path);
 
 /** Create eye tracking results. */
 UFEEL_API UFeelEyeTrackingResult* ufeel_create_eye_tracking_result();
 
 /** Releases eye_ racking results returned by ufeel_get_eye_tracking_result(). Accepts NULL. */
 UFEEL_API void ufeel_free_eye_tracking_result(UFeelEyeTrackingResult* eye_tracking);
-
-
-
 
 /** Processes the next input frame for speech. Returns 1 when processing succeeds, otherwise 0. */
 UFEEL_API int32_t ufeel_update_speech_to_text(UFeelProcessor* processor);
@@ -273,27 +289,28 @@ UFEEL_API int32_t ufeel_update_speech_to_text(UFeelProcessor* processor);
 UFEEL_API int32_t ufeel_set_speech_to_text_enabled(UFeelProcessor* processor, int32_t enabled);
 
 /** Returns the latest speech-to-text result as a library-allocated UTF-8 string. */
-UFEEL_API int32_t ufeel_get_speech_to_text_result(UFeelProcessor* processor, UFeelSpeechResult* result);
+UFEEL_API int32_t
+ufeel_get_speech_to_text_result(UFeelProcessor* processor, UFeelSpeechToTextResult* result);
 
 /** Create speech results. */
-UFEEL_API UFeelSpeechResult* ufeel_create_speech_to_text_result();
+UFEEL_API UFeelSpeechToTextResult* ufeel_create_speech_to_text_result();
 
-/** Releases speech result returned by ufeel_get_speech_to_text(). Accepts NULL. */
-UFEEL_API void ufeel_free_speech_to_text_result(UFeelSpeechResult *speech);
+/** Releases speech result returned by ufeel_get_speech_to_text_result(). Accepts NULL. */
+UFEEL_API void ufeel_free_speech_to_text_result(UFeelSpeechToTextResult* speech);
 
-
-
-/** Processes the next input frame for heartrate. Returns 1 when processing succeeds, otherwise 0. */
+/** Processes the next input frame for heartrate. Returns 1 when processing succeeds, otherwise 0.
+ */
 UFEEL_API int32_t ufeel_update_heart_rate(UFeelProcessor* processor);
 
 /** Fetches and returns the current heartrate and its validity status. */
-UFEEL_API int32_t ufeel_get_heart_rate_result(UFeelProcessor* processor, UFeelHeartRateResult* result);
+UFEEL_API int32_t
+ufeel_get_heart_rate_result(UFeelProcessor* processor, UFeelHeartRateResult* result);
 
 /** Create heartrate results. */
 UFEEL_API UFeelHeartRateResult* ufeel_create_heart_rate_result();
 
 /** Releases heartrate result returned by ufeel_get_heartrate(). Accepts NULL. */
-UFEEL_API void ufeel_free_heart_rate_result(UFeelHeartRateResult *heartrate);
+UFEEL_API void ufeel_free_heart_rate_result(UFeelHeartRateResult* heartrate);
 
 #ifdef __cplusplus
 }

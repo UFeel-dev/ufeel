@@ -12,7 +12,10 @@ auto HeartRateSensorDetector::process() -> HeartRateResult
 {
     cpr::Response const r = cpr::Get(cpr::Url{"http://localhost:8000"});
 
-    HeartRateResult result = {.bpm = 0, .status = HeartRateStatus::Valid};
+    HeartRateResult result = {
+        .bpm = 0,
+        .status = HeartRateStatus::Valid,
+    };
 
     if (r.status_code == 200)
     {

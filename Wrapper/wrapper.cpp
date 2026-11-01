@@ -11,6 +11,7 @@
 #include <limits>
 #include <memory>
 #include <new>
+#include <opencv2/core/mat.hpp>
 #include <string>
 #include <utility>
 
@@ -43,7 +44,7 @@ void ufeel_destroy(
 
 auto ufeel_update(
     UFeelProcessor* processor, int32_t detectionType
-) -> int32_t
+) -> int32_t // TODO: return a UFeel status instead of a bool if possible
 {
     if (processor == nullptr)
     {
@@ -71,10 +72,15 @@ auto ufeel_update_from_frame(
         return UFEEL_STATUS_INVALID_FRAME;
     }
 
-
-    return guarded("ufeel_update_from_frame", int32_t{0}, [processor, detectionType, frameConverted] -> int32_t {
-        return static_cast<int32_t>(processor->processor.updateFromFrame(detectionType, frameConverted));
-    });
+    return guarded(
+        "ufeel_update_from_frame",
+        int32_t{0},
+        [processor, detectionType, frameConverted] -> int32_t {
+            return static_cast<int32_t>(
+                processor->processor.updateFromFrame(detectionType, frameConverted)
+            );
+        }
+    );
 }
 
 auto ufeel_update_frame(

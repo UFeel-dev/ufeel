@@ -8,10 +8,11 @@ namespace UFeel
     [Flags]
     public enum DetectionType
     {
-        Emotions = 0,
-        EyeTracking = 1 << 0,
-        SpeechToText = 1 << 1,
-        HeartRate = 1 << 2
+        None = 0,
+        Emotions = 0 << 0,
+        EyeTracking = 1 << 1,
+        SpeechToText = 1 << 2,
+        HeartRate = 1 << 3,
     }
 
     public enum EyeTrackingStatus
@@ -23,7 +24,7 @@ namespace UFeel
         Calibrating = 4,
         Valid = 5,
         Disabled = 6,
-        FrameUnavailable = 7
+        FrameUnavailable = 7,
     }
 
     [Flags]
@@ -34,7 +35,7 @@ namespace UFeel
         Right = 1 << 1,
         Up = 1 << 2,
         Down = 1 << 3,
-        Center = 1 << 4
+        Center = 1 << 4,
     }
 
     public enum HeartRateStatus
@@ -135,7 +136,7 @@ namespace UFeel
         internal delegate void EyeTrackingResultHandler(NativeEyeTrackingResult gaze);
 
         [StructLayout(LayoutKind.Sequential)]
-        public struct NativeSpeechResult
+        public struct NativeSpeechToTextResult
         {
             public int Status;
             public IntPtr speech;
@@ -151,13 +152,17 @@ namespace UFeel
         internal enum Status
         {
             Ok = 0,
-            NoEyeTracking = 1,
-            NoHeartRate = 2,
-            InvalidArgument = 3,
-            InvalidState = 4,
-            EyeTrackingCalibrationFailed = 5,
-            EyeTrackingProfileFailed = 6,
-            InternalError = 7
+            NoEmotions = 1,
+            NoEyeTracking = 2,
+            NoSpeech = 3,
+            NoHeartRate = 4,
+            InvalidArgument = 5,
+            InvalidState = 6,
+            EyeTrackingCalibrationFailed = 7,
+            EyeTrackingProfileFailed = 8,
+            InternalError = 9,
+            InvalidProcessor = 10,
+            InvalidFrame = 11,
         }
 
         internal static void ConfigureLibrary(string libraryPath)
@@ -378,17 +383,17 @@ namespace UFeel
 
         [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
         [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern IntPtr ufeel_get_speech_to_text(
+        internal static extern IntPtr ufeel_get_speech_to_text_result(
             IntPtr processor,
             IntPtr result);
 
         [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
         [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern IntPtr ufeel_create_speech_to_text();
+        internal static extern IntPtr ufeel_create_speech_to_text_result();
 
         [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
         [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern void ufeel_free_speech_result(IntPtr speech);
+        internal static extern void ufeel_free_speech_to_text_result(IntPtr speech);
 
 
 

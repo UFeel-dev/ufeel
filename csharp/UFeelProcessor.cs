@@ -38,14 +38,14 @@ public sealed class UFeelProcessor : IDisposable
 
     public FrameData? GetFrame()
     {
-        IntPtr pointer = UFeelNative.ufeel_get_frame(Handle);
-        if (pointer == IntPtr.Zero)
+        IntPtr framePointer = UFeelNative.ufeel_get_frame(Handle);
+        if (framePointer == IntPtr.Zero)
             return null;
 
         try
         {
             UFeelNative.NativeFrame frame =
-                Marshal.PtrToStructure<UFeelNative.NativeFrame>(pointer);
+                Marshal.PtrToStructure<UFeelNative.NativeFrame>(framePointer);
 
             if (frame.Data == IntPtr.Zero ||
                 frame.Width <= 0 ||
@@ -69,22 +69,24 @@ public sealed class UFeelProcessor : IDisposable
         }
         finally
         {
-            UFeelNative.ufeel_free_frame(pointer);
+            UFeelNative.ufeel_free_frame(framePointer);
         }
     }
 
     public Dictionary<string, float> GetEmotions()
     {
-        IntPtr pointer = UFeelNative.ufeel_create_emotions_result();
-        if (pointer == IntPtr.Zero)
+        IntPtr result = UFeelNative.ufeel_create_emotions_result();
+        if (result == IntPtr.Zero)
             return [];
+
+        // TODO: use result fully (including status)
 
         try
         {
-            UFeelNative.ufeel_get_emotions_result(Handle, pointer);
+            UFeelNative.ufeel_get_emotions_result(Handle, result);
 
             UFeelNative.NativeEmotionResult emotionsResult = Marshal.PtrToStructure<UFeelNative.NativeEmotionResult>(
-                            pointer);
+                            result);
 
             if (emotionsResult.Count <= 0)
             {
@@ -113,15 +115,15 @@ public sealed class UFeelProcessor : IDisposable
         }
         finally
         {
-            UFeelNative.ufeel_free_emotions_result(pointer);
+            UFeelNative.ufeel_free_emotions_result(result);
         }
     }
 
     public EyeTrackingResultData GetEyeTracking()
     {
-        IntPtr pointer =  UFeelNative.ufeel_create_eye_tracking_result();
+        IntPtr result = UFeelNative.ufeel_create_eye_tracking_result();
 
-        if (pointer == IntPtr.Zero)
+        if (result == IntPtr.Zero)
             return new EyeTrackingResultData(
                 EyeTrackingStatus.Disabled,
                 0f, 0f, 0f, 0f, 0f,
@@ -130,7 +132,7 @@ public sealed class UFeelProcessor : IDisposable
 
         try
         {
-            UFeelNative.Status status = (UFeelNative.Status)UFeelNative.ufeel_get_eye_tracking_result(Handle, pointer);
+            UFeelNative.Status status = (UFeelNative.Status)UFeelNative.ufeel_get_eye_tracking_result(Handle, result);
 
             if (status != UFeelNative.Status.Ok &&
                 status != UFeelNative.Status.NoEyeTracking)
@@ -138,7 +140,7 @@ public sealed class UFeelProcessor : IDisposable
                 ThrowIfFailed(status, "retrieve the gaze estimate");
             }
 
-            UFeelNative.NativeEyeTrackingResult eyeTrackingResult = Marshal.PtrToStructure<UFeelNative.NativeEyeTrackingResult>(pointer);
+            UFeelNative.NativeEyeTrackingResult eyeTrackingResult = Marshal.PtrToStructure<UFeelNative.NativeEyeTrackingResult>(result);
 
             return new EyeTrackingResultData(
                 (EyeTrackingStatus)eyeTrackingResult.Status,
@@ -151,9 +153,8 @@ public sealed class UFeelProcessor : IDisposable
         }
         finally
         {
-            UFeelNative.ufeel_free_eye_tracking_result(pointer);
+            UFeelNative.ufeel_free_eye_tracking_result(result);
         }
-
     }
 
     public void BeginEyeTrackingCalibration()
@@ -294,40 +295,41 @@ public sealed class UFeelProcessor : IDisposable
 
     public string GetSpeechToText()
     {
-        IntPtr pointer = UFeelNative.ufeel_create_speech_to_text();
-        if (pointer == IntPtr.Zero)
-            return "";
+        IntPtr result = UFeelNative.ufeel_create_speech_to_text_result();
+        if (result == IntPtr.Zero)
+            return string.Empty;
+
+        // TODO: use result fully (including status)
 
         try
         {
-            UFeelNative.ufeel_get_speech_to_text(Handle, pointer);
+            UFeelNative.ufeel_get_speech_to_text_result(Handle, result);
 
-            UFeelNative.NativeSpeechResult speechToTextResult = Marshal.PtrToStructure<UFeelNative.NativeSpeechResult>(pointer);
+            UFeelNative.NativeSpeechToTextResult speechToTextResult = Marshal.PtrToStructure<UFeelNative.NativeSpeechToTextResult>(result);
 
             return Marshal.PtrToStringUTF8(speechToTextResult.speech) ?? string.Empty;
         }
         finally
         {
-            UFeelNative.ufeel_free_speech_result(pointer);
+            UFeelNative.ufeel_free_speech_to_text_result(result); // TODO: keep the same struct for the whole program to avoid spamming alloc/free
         }
     }
 
     public HeartRateResultData GetHeartRate()
     {
-        IntPtr pointer = UFeelNative.ufeel_create_heart_rate_result();
-        if (pointer == IntPtr.Zero)
+        IntPtr result = UFeelNative.ufeel_create_heart_rate_result();
+        if (result == IntPtr.Zero)
             return new HeartRateResultData(
-                0, 0
+                HeartRateStatus.RequestFailed, 0
             );
 
         try
         {
-
             UFeelNative.Status status =
                 (UFeelNative.Status)UFeelNative.ufeel_get_heart_rate_result(
-                    Handle, pointer);
+                    Handle, result);
 
-            UFeelNative.NativeHeartRateResult heartRateResult = Marshal.PtrToStructure<UFeelNative.NativeHeartRateResult>(pointer);
+            UFeelNative.NativeHeartRateResult heartRateResult = Marshal.PtrToStructure<UFeelNative.NativeHeartRateResult>(result);
 
             if (status != UFeelNative.Status.Ok &&
                 status != UFeelNative.Status.NoHeartRate)
@@ -341,7 +343,7 @@ public sealed class UFeelProcessor : IDisposable
         }
         finally
         {
-            UFeelNative.ufeel_free_heart_rate_result(pointer);
+            UFeelNative.ufeel_free_heart_rate_result(result);
         }
     }
 

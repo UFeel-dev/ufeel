@@ -1,11 +1,12 @@
 #include "DataProcessor.hpp"
 
 #include "Emotions/EmotionDetector.hpp"
-#include "EyeTracking/EyeTrackingDetector.hpp"
 #include "EyeTracking/EyeTrackingCalibrationModel.hpp"
+#include "EyeTracking/EyeTrackingDetector.hpp"
 #include "HeartRate/HeartRateDetector.hpp"
 #include "SpeechToText/SpeechToTextDetector.hpp"
 
+#include <cstdint>
 #include <iostream>
 #include <map>
 #include <memory>
@@ -29,7 +30,7 @@ DataProcessor::DataProcessor(
 
     speechToTextDetector_ = std::make_unique<SpeechToTextDetector>(speechModelPath);
 
-    heartRateDetector_ = std::make_unique<HeartRateSensorDetector>();
+    // heartRateDetector_ = std::make_unique<HeartRateSensorDetector>();
 }
 
 auto DataProcessor::updateFrame() -> bool
@@ -39,7 +40,9 @@ auto DataProcessor::updateFrame() -> bool
     return !frame_.empty();
 }
 
-auto DataProcessor::setFrame(const cv::Mat& frame) -> bool
+auto DataProcessor::setFrame(
+    const cv::Mat& frame
+) -> bool
 {
     frame_ = frame;
     return true;
@@ -50,7 +53,12 @@ auto DataProcessor::getFrame() const -> cv::Mat
     return frame_;
 }
 
-auto DataProcessor::updateFromFrame(uint32_t detectionType, const cv::Mat& image) -> bool
+auto DataProcessor::updateFromFrame(
+    // TODO: check why this function always returns true, maybe it should return void instead of a
+    // bool
+    uint32_t detectionType,
+    const cv::Mat& image
+) -> bool
 {
     frame_ = image;
     if ((detectionType & Emotions) != 0)
@@ -59,26 +67,31 @@ auto DataProcessor::updateFromFrame(uint32_t detectionType, const cv::Mat& image
     }
     if ((detectionType & EyeTracking) != 0)
     {
-        eyetracking_ = eyeTrackingDetector_->process(frame_);
+        eyeTracking_ = eyeTrackingDetector_->process(frame_);
     }
     if ((detectionType & Speech) != 0)
     {
-        speechtotext_ = speechToTextDetector_->process();
+        speechToText_ = speechToTextDetector_->process();
     }
     if ((detectionType & HeartRate) != 0)
     {
-        heartrate_ = heartRateDetector_->process();
+        heartRate_ = HeartRateSensorDetector::process();
     }
     return true;
 }
 
-auto DataProcessor::update(uint32_t detectionType) -> bool
+auto DataProcessor::update(
+    uint32_t detectionType
+) -> bool
 {
-    if ((detectionType & Emotions) != 0 || (detectionType & EyeTracking) != 0)
+    if (((detectionType & Emotions) != 0 || (detectionType & EyeTracking) != 0) && (!updateFrame()))
     {
-        updateFrame();
+        return false;
     }
-    return updateFromFrame(detectionType, frame_);
+
+    return updateFromFrame(
+        detectionType, frame_
+    ); // ? why do we call this method even when only updating features that do not use the frame?
 }
 
 auto DataProcessor::updateEmotions() -> bool
@@ -88,7 +101,9 @@ auto DataProcessor::updateEmotions() -> bool
     return true;
 }
 
-auto DataProcessor::updateEmotionsFromFrame(const cv::Mat& frame) -> bool
+auto DataProcessor::updateEmotionsFromFrame(
+    const cv::Mat& frame
+) -> bool
 {
     frame_ = frame;
     emotions_ = emotionDetector_->process(frame_);
@@ -100,7 +115,10 @@ auto DataProcessor::getEmotions() const -> const std::map<std::string, float>&
     return emotions_;
 }
 
-auto DataProcessor::getEmotionsFromFrame(const cv::Mat& frame) const -> const std::map<std::string, float>
+auto DataProcessor::getEmotionsFromFrame(
+    // TODO: fix const warning
+    const cv::Mat& frame
+) const -> const std::map<std::string, float>
 {
     return emotionDetector_->process(frame);
 }
@@ -108,37 +126,40 @@ auto DataProcessor::getEmotionsFromFrame(const cv::Mat& frame) const -> const st
 auto DataProcessor::updateEyeTracking() -> bool
 {
     updateFrame();
-    eyetracking_ = eyeTrackingDetector_->process(frame_);
+    eyeTracking_ = eyeTrackingDetector_->process(frame_);
     return true;
 }
 
-auto DataProcessor::updateEyeTrackingFromFrame(const cv::Mat& frame) -> bool
+auto DataProcessor::updateEyeTrackingFromFrame(
+    const cv::Mat& frame
+) -> bool
 {
     frame_ = frame;
-    eyetracking_ = eyeTrackingDetector_->process(frame_);
+    eyeTracking_ = eyeTrackingDetector_->process(frame_);
     return true;
 }
 
 auto DataProcessor::getEyeTracking() const -> EyeTrackingResult
 {
-    return eyetracking_;
+    return eyeTracking_;
 }
 
-auto DataProcessor::getEyeTrackingFromFrame(const cv::Mat& frame) const -> EyeTrackingResult
+auto DataProcessor::getEyeTrackingFromFrame(
+    const cv::Mat& frame
+) const -> EyeTrackingResult
 {
     return eyeTrackingDetector_->process(frame);
 }
 
-
 auto DataProcessor::updateSpeechToText() -> bool
 {
-    speechtotext_ = speechToTextDetector_->process();
+    speechToText_ = speechToTextDetector_->process();
     return true;
 }
 
 auto DataProcessor::getSpeechToText() const -> const std::string&
 {
-    return speechtotext_;
+    return speechToText_;
 }
 
 void DataProcessor::beginEyeTrackingCalibration()
@@ -189,13 +210,13 @@ auto DataProcessor::loadEyeTrackingCalibrationProfile(
 
 auto DataProcessor::updateHeartRate() -> bool
 {
-    heartrate_ = heartRateDetector_->process();
+    heartRate_ = HeartRateSensorDetector::process();
     return true;
 }
 
 auto DataProcessor::getHeartRate() const -> HeartRateResult
 {
-    return heartrate_;
+    return heartRate_;
 }
 
 void DataProcessor::toggleSpeechToText(

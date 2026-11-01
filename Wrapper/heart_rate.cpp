@@ -3,17 +3,8 @@
 #include "ufeel.h"
 #include "ufeel_utils.h"
 
-#include <cmath>
 #include <cstdint>
-#include <cstdlib>
-#include <cstring>
-#include <exception>
-#include <iostream>
-#include <limits>
-#include <memory>
 #include <new>
-#include <string>
-#include <utility>
 
 extern "C" {
 auto ufeel_update_heart_rate(
@@ -29,13 +20,12 @@ auto ufeel_update_heart_rate(
     });
 }
 
-
-auto ufeel_get_heart_rate(
+auto ufeel_get_heart_rate_result(
     UFeelProcessor* processor, UFeelHeartRateResult* result
 ) -> int32_t
 {
     return guarded(
-        "ufeel_get_heart_rate",
+        "ufeel_get_heart_rate_result",
         int32_t{UFEEL_STATUS_INTERNAL_ERROR},
         [processor, result] -> UFeelStatus {
             if (result == nullptr || processor == nullptr)
@@ -55,17 +45,23 @@ auto ufeel_get_heart_rate(
     );
 }
 
-auto  ufeel_create_heart_rate_result() -> UFeelHeartRateResult*
+auto ufeel_create_heart_rate_result() -> UFeelHeartRateResult*
 {
-    return guarded("ufeel_create_heart_rate_result", static_cast<UFeelHeartRateResult*>(nullptr), [] -> UFeelHeartRateResult* {
-        auto* result = new UFeelHeartRateResult{};
-        *result = {};
+    return guarded(
+        "ufeel_create_heart_rate_result",
+        static_cast<UFeelHeartRateResult*>(nullptr),
+        [] -> UFeelHeartRateResult* {
+            auto* result = new UFeelHeartRateResult{};
+            *result = {};
 
-        return result;
-    });
+            return result;
+        }
+    );
 }
 
-void ufeel_free_heart_rate_result(UFeelHeartRateResult *heartrate)
+void ufeel_free_heart_rate_result(
+    UFeelHeartRateResult* heartrate
+)
 {
     guardedVoid("ufeel_free_heart_rate_result", [heartrate] -> void {
         if (heartrate == nullptr)

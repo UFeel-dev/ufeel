@@ -2,17 +2,9 @@
 #include "ufeel.h"
 #include "ufeel_utils.h"
 
-#include <cmath>
 #include <cstdint>
 #include <cstdlib>
-#include <cstring>
-#include <exception>
-#include <iostream>
-#include <limits>
-#include <memory>
 #include <new>
-#include <string>
-#include <utility>
 
 extern "C" {
 auto ufeel_update_speech_to_text(
@@ -46,11 +38,11 @@ auto ufeel_set_speech_to_text_enabled(
     );
 }
 
-auto ufeel_get_speech_to_text(
-    UFeelProcessor* processor, UFeelSpeechResult* result
+auto ufeel_get_speech_to_text_result(
+    UFeelProcessor* processor, UFeelSpeechToTextResult* result
 ) -> int32_t
 {
-    return guarded("ufeel_get_speech_to_text", int32_t{0}, [processor, result] -> int32_t {
+    return guarded("ufeel_get_speech_to_text_result", int32_t{0}, [processor, result] -> int32_t {
         if (result == nullptr || processor == nullptr)
         {
             return UFEEL_STATUS_INVALID_ARGUMENT;
@@ -62,21 +54,25 @@ auto ufeel_get_speech_to_text(
     });
 }
 
-auto ufeel_create_speech_to_text() -> UFeelSpeechResult*
+auto ufeel_create_speech_to_text_result() -> UFeelSpeechToTextResult*
 {
-    return guarded("ufeel_get_speech_to_text", static_cast<UFeelSpeechResult*>(nullptr), [] -> UFeelSpeechResult* {
-        auto* result = new UFeelSpeechResult{};
-        result = {};
+    return guarded(
+        "ufeel_create_speech_to_text_result",
+        static_cast<UFeelSpeechToTextResult*>(nullptr),
+        [] -> UFeelSpeechToTextResult* {
+            auto* result = new UFeelSpeechToTextResult{};
+            *result = {};
 
-        return result;
-    });
+            return result;
+        }
+    );
 }
 
-void ufeel_free_speech_to_text(
-    UFeelSpeechResult* speech
+void ufeel_free_speech_to_text_result(
+    UFeelSpeechToTextResult* speech
 )
 {
-    guardedVoid("ufeel_free_string", [speech] -> void {
+    guardedVoid("ufeel_free_speech_to_text_result", [speech] -> void {
         if (speech == nullptr)
         {
             return;
