@@ -15,6 +15,11 @@ public sealed class UFeelProcessor : IDisposable
     private IntPtr handle;
     private bool disposed;
 
+    private IntPtr emotionsResult;
+    private IntPtr eyeTrackingResult;
+    private IntPtr speechToTextResult;
+    private IntPtr heartRateResult;
+
     public UFeelProcessor(
         string modelDirectory,
         string speechModelPath,
@@ -31,6 +36,23 @@ public sealed class UFeelProcessor : IDisposable
         if (handle == IntPtr.Zero)
             throw new InvalidOperationException(
                 "Failed to create the native UFeel processor.");
+
+        try
+        {
+            emotionsResult = CreateResult(
+                UFeelNative.ufeel_create_emotions_result, "emotions");
+            eyeTrackingResult = CreateResult(
+                UFeelNative.ufeel_create_eye_tracking_result, "eye-tracking");
+            speechToTextResult = CreateResult(
+                UFeelNative.ufeel_create_speech_to_text_result, "speech-to-text");
+            heartRateResult = CreateResult(
+                UFeelNative.ufeel_create_heart_rate_result, "heart-rate");
+        }
+        catch
+        {
+            ReleaseNative();
+            throw;
+        }
     }
 
     public bool Update()
@@ -88,89 +110,70 @@ public sealed class UFeelProcessor : IDisposable
 
     public Dictionary<string, float> GetEmotions()
     {
-        IntPtr result = UFeelNative.ufeel_create_emotions_result();
-        if (result == IntPtr.Zero)
-            return [];
+        IntPtr processor = Handle;
 
         // TODO: use result fully (including status)
 
-        try
+        UFeelNative.ufeel_get_emotions_result(processor, emotionsResult);
+        // TODO: check status
+
+        UFeelNative.NativeEmotionResult result =
+            Marshal.PtrToStructure<UFeelNative.NativeEmotionResult>(emotionsResult);
+
+        if (result.Count <= 0)
         {
-            UFeelNative.ufeel_get_emotions_result(Handle, result);
-            // TODO: check status
-
-            UFeelNative.NativeEmotionResult emotionsResult =
-                Marshal.PtrToStructure<UFeelNative.NativeEmotionResult>(result);
-
-            if (emotionsResult.Count <= 0)
-            {
-                return [];
-            }
-
-            var emotions = new Dictionary<string, float>(emotionsResult.Count);
-            int itemSize = Marshal.SizeOf<UFeelNative.NativeEmotion>();
-
-            for (int i = 0; i < emotionsResult.Count; i++)
-            {
-                IntPtr itemPointer = IntPtr.Add(
-                    emotionsResult.Emotions, checked(i * itemSize));
-
-                UFeelNative.NativeEmotion item =
-                    Marshal.PtrToStructure<UFeelNative.NativeEmotion>(
-                        itemPointer);
-
-                string name =
-                    Marshal.PtrToStringUTF8(item.Name) ?? string.Empty;
-
-                emotions[name] = item.Value;
-            }
-
-            return emotions;
+            return [];
         }
-        finally
+
+        var emotions = new Dictionary<string, float>(result.Count);
+        int itemSize = Marshal.SizeOf<UFeelNative.NativeEmotion>();
+
+        for (int i = 0; i < result.Count; i++)
         {
-            UFeelNative.ufeel_free_emotions_result(result);
+            IntPtr itemPointer = IntPtr.Add(
+                result.Emotions, checked(i * itemSize));
+
+            UFeelNative.NativeEmotion item =
+                Marshal.PtrToStructure<UFeelNative.NativeEmotion>(
+                    itemPointer);
+
+            string name =
+                Marshal.PtrToStringUTF8(item.Name) ?? string.Empty;
+
+            emotions[name] = item.Value;
         }
+
+        return emotions;
     }
 
     public EyeTrackingResultData GetEyeTracking()
     {
-        IntPtr result = UFeelNative.ufeel_create_eye_tracking_result();
+        IntPtr processor = Handle;
 
-        if (result == IntPtr.Zero)
-            return new EyeTrackingResultData(
-                EyeTrackingStatus.Disabled,
-                0f, 0f, 0f, 0f, 0f,
-                EyeTrackingDirection.None
-            );
+        Marshal.StructureToPtr(
+            default(UFeelNative.NativeEyeTrackingResult), eyeTrackingResult, false);
 
-        try
+        UFeelNative.Status status =
+            (UFeelNative.Status)UFeelNative.ufeel_get_eye_tracking_result(
+                processor, eyeTrackingResult);
+
+        if (status != UFeelNative.Status.Ok &&
+            status != UFeelNative.Status.NoEyeTracking)
         {
-            UFeelNative.Status status =
-                (UFeelNative.Status)UFeelNative.ufeel_get_eye_tracking_result(Handle, result);
-
-            if (status != UFeelNative.Status.Ok &&
-                status != UFeelNative.Status.NoEyeTracking)
-            {
-                ThrowIfFailed(status, "retrieve the gaze estimate");
-            }
-
-            UFeelNative.NativeEyeTrackingResult eyeTrackingResult =
-                Marshal.PtrToStructure<UFeelNative.NativeEyeTrackingResult>(result);
-
-            return new EyeTrackingResultData(
-                (EyeTrackingStatus)eyeTrackingResult.Status,
-                eyeTrackingResult.X,
-                eyeTrackingResult.Y,
-                eyeTrackingResult.RecordedX,
-                eyeTrackingResult.RecordedY,
-                eyeTrackingResult.Confidence,
-                (EyeTrackingDirection)eyeTrackingResult.Directions);
+            ThrowIfFailed(status, "retrieve the gaze estimate");
         }
-        finally
-        {
-            UFeelNative.ufeel_free_eye_tracking_result(result);
-        }
+
+        UFeelNative.NativeEyeTrackingResult result =
+            Marshal.PtrToStructure<UFeelNative.NativeEyeTrackingResult>(eyeTrackingResult);
+
+        return new EyeTrackingResultData(
+            (EyeTrackingStatus)result.Status,
+            result.X,
+            result.Y,
+            result.RecordedX,
+            result.RecordedY,
+            result.Confidence,
+            (EyeTrackingDirection)result.Directions);
     }
 
     public void BeginEyeTrackingCalibration()
@@ -309,60 +312,43 @@ public sealed class UFeelProcessor : IDisposable
 
     public string GetSpeechToText()
     {
-        IntPtr result = UFeelNative.ufeel_create_speech_to_text_result();
-        if (result == IntPtr.Zero)
-            return string.Empty;
+        IntPtr processor = Handle;
 
         // TODO: use result fully (including status)
 
-        try
-        {
-            UFeelNative.ufeel_get_speech_to_text_result(Handle, result);
+        UFeelNative.ufeel_get_speech_to_text_result(processor, speechToTextResult);
 
-            // TODO: check status
+        // TODO: check status
 
-            UFeelNative.NativeSpeechToTextResult speechToTextResult =
-                Marshal.PtrToStructure<UFeelNative.NativeSpeechToTextResult>(result);
+        UFeelNative.NativeSpeechToTextResult result =
+            Marshal.PtrToStructure<UFeelNative.NativeSpeechToTextResult>(speechToTextResult);
 
-            return Marshal.PtrToStringUTF8(speechToTextResult.Speech) ?? string.Empty;
-        }
-        finally
-        {
-            UFeelNative.ufeel_free_speech_to_text_result(result); // TODO: keep the same struct for the whole program to avoid spamming alloc/free
-        }
+        return Marshal.PtrToStringUTF8(result.Speech) ?? string.Empty;
     }
 
     public HeartRateResultData GetHeartRate()
     {
-        IntPtr result = UFeelNative.ufeel_create_heart_rate_result();
-        if (result == IntPtr.Zero)
-            return new HeartRateResultData(
-                HeartRateStatus.RequestFailed, 0
-            );
+        IntPtr processor = Handle;
 
-        try
+        Marshal.StructureToPtr(
+            default(UFeelNative.NativeHeartRateResult), heartRateResult, false);
+
+        UFeelNative.Status status =
+            (UFeelNative.Status)UFeelNative.ufeel_get_heart_rate_result(
+                processor, heartRateResult);
+
+        UFeelNative.NativeHeartRateResult result =
+            Marshal.PtrToStructure<UFeelNative.NativeHeartRateResult>(heartRateResult);
+
+        if (status != UFeelNative.Status.Ok &&
+            status != UFeelNative.Status.NoHeartRate)
         {
-            UFeelNative.Status status =
-                (UFeelNative.Status)UFeelNative.ufeel_get_heart_rate_result(
-                    Handle, result);
-
-            UFeelNative.NativeHeartRateResult heartRateResult =
-                Marshal.PtrToStructure<UFeelNative.NativeHeartRateResult>(result);
-
-            if (status != UFeelNative.Status.Ok &&
-                status != UFeelNative.Status.NoHeartRate)
-            {
-                ThrowIfFailed(status, "retrieve the heartrate value");
-            }
-
-            return new HeartRateResultData(
-                (HeartRateStatus)heartRateResult.Status,
-                heartRateResult.Bpm);
+            ThrowIfFailed(status, "retrieve the heartrate value");
         }
-        finally
-        {
-            UFeelNative.ufeel_free_heart_rate_result(result);
-        }
+
+        return new HeartRateResultData(
+            (HeartRateStatus)result.Status,
+            result.Bpm);
     }
 
     private IntPtr Handle
@@ -373,6 +359,50 @@ public sealed class UFeelProcessor : IDisposable
                 disposed || handle == IntPtr.Zero, this);
 
             return handle;
+        }
+    }
+
+    private static IntPtr CreateResult(Func<IntPtr> create, string name)
+    {
+        IntPtr result = create();
+
+        if (result == IntPtr.Zero)
+            throw new InvalidOperationException(
+                $"Failed to allocate the native {name} result.");
+
+        return result;
+    }
+
+    private void ReleaseNative()
+    {
+        if (emotionsResult != IntPtr.Zero)
+        {
+            UFeelNative.ufeel_free_emotions_result(emotionsResult);
+            emotionsResult = IntPtr.Zero;
+        }
+
+        if (eyeTrackingResult != IntPtr.Zero)
+        {
+            UFeelNative.ufeel_free_eye_tracking_result(eyeTrackingResult);
+            eyeTrackingResult = IntPtr.Zero;
+        }
+
+        if (speechToTextResult != IntPtr.Zero)
+        {
+            UFeelNative.ufeel_free_speech_to_text_result(speechToTextResult);
+            speechToTextResult = IntPtr.Zero;
+        }
+
+        if (heartRateResult != IntPtr.Zero)
+        {
+            UFeelNative.ufeel_free_heart_rate_result(heartRateResult);
+            heartRateResult = IntPtr.Zero;
+        }
+
+        if (handle != IntPtr.Zero)
+        {
+            UFeelNative.ufeel_destroy(handle);
+            handle = IntPtr.Zero;
         }
     }
 
@@ -419,11 +449,7 @@ public sealed class UFeelProcessor : IDisposable
 
         disposed = true;
 
-        if (handle != IntPtr.Zero)
-        {
-            UFeelNative.ufeel_destroy(handle);
-            handle = IntPtr.Zero;
-        }
+        ReleaseNative();
 
         GC.SuppressFinalize(this);
     }
