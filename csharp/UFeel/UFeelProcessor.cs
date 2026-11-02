@@ -19,6 +19,7 @@ public sealed class UFeelProcessor : IDisposable
     private IntPtr eyeTrackingResult;
     private IntPtr speechToTextResult;
     private IntPtr heartRateResult;
+    private FrameData? frameBuffer;
 
     public UFeelProcessor(
         string modelDirectory,
@@ -73,39 +74,46 @@ public sealed class UFeelProcessor : IDisposable
 
     public FrameData? GetFrame()
     {
-        IntPtr framePointer = UFeelNative.ufeel_get_frame(Handle);
-        if (framePointer == IntPtr.Zero)
+        IntPtr processor = Handle;
+
+        if ((UFeelNative.Status)UFeelNative.ufeel_get_frame_info(
+                processor, out UFeelNative.NativeFrame info) != UFeelNative.Status.Ok)
+        {
             return null;
-
-        try
-        {
-            UFeelNative.NativeFrame frame =
-                Marshal.PtrToStructure<UFeelNative.NativeFrame>(framePointer);
-
-            if (frame.Data == IntPtr.Zero ||
-                frame.Width <= 0 ||
-                frame.Height <= 0 ||
-                frame.Channels <= 0 ||
-                frame.Stride <= 0)
-            {
-                return null;
-            }
-
-            int byteCount = checked(frame.Stride * frame.Height);
-            byte[] data = new byte[byteCount];
-            Marshal.Copy(frame.Data, data, 0, byteCount);
-
-            return new FrameData(
-                data,
-                frame.Width,
-                frame.Height,
-                frame.Channels,
-                frame.Stride);
         }
-        finally
+
+        if (info.Width <= 0 ||
+            info.Height <= 0 ||
+            info.Channels <= 0 ||
+            info.Stride <= 0)
         {
-            UFeelNative.ufeel_free_frame(framePointer);
+            return null;
         }
+
+        int byteCount = checked(info.Stride * info.Height);
+
+        if (frameBuffer is null ||
+            frameBuffer.Data.Length != byteCount ||
+            frameBuffer.Width != info.Width ||
+            frameBuffer.Height != info.Height ||
+            frameBuffer.Channels != info.Channels ||
+            frameBuffer.Stride != info.Stride)
+        {
+            frameBuffer = new FrameData(
+                new byte[byteCount],
+                info.Width,
+                info.Height,
+                info.Channels,
+                info.Stride);
+        }
+
+        if ((UFeelNative.Status)UFeelNative.ufeel_copy_frame(
+                processor, frameBuffer.Data, byteCount) != UFeelNative.Status.Ok)
+        {
+            return null;
+        }
+
+        return frameBuffer;
     }
 
     public Dictionary<string, float> GetEmotions()

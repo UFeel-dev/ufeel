@@ -225,6 +225,19 @@ internal static class UFeelNative
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
     internal static extern void ufeel_free_frame(IntPtr frame);
 
+    [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern int ufeel_get_frame_info(
+        IntPtr processor,
+        out NativeFrame info);
+
+    [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern int ufeel_copy_frame(
+        IntPtr processor,
+        [Out] byte[] destination,
+        int destinationSize);
+
     // * emotions
 
     [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]

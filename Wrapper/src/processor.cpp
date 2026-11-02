@@ -24,6 +24,34 @@ UFeelProcessor::UFeelProcessor(
 {
 }
 
+namespace
+{
+
+auto tightFrameLayout(
+    const cv::Mat& frame, int32_t& stride, int32_t& byteCount
+) -> bool
+{
+    if (frame.empty() || frame.cols <= 0 || frame.rows <= 0 || frame.channels() <= 0)
+    {
+        return false;
+    }
+
+    constexpr auto limit = static_cast<size_t>(std::numeric_limits<int32_t>::max());
+    const auto rowBytes = static_cast<size_t>(frame.cols) * frame.elemSize();
+    const auto height = static_cast<size_t>(frame.rows);
+
+    if (rowBytes > limit || rowBytes > limit / height)
+    {
+        return false;
+    }
+
+    stride = static_cast<int32_t>(rowBytes);
+    byteCount = static_cast<int32_t>(rowBytes * height);
+    return true;
+}
+
+} // namespace
+
 extern "C" {
 
 auto ufeel_create(
@@ -202,6 +230,89 @@ void ufeel_free_frame(
         frame->data = nullptr;
         delete frame;
     });
+}
+
+auto ufeel_get_frame_info(
+    UFeelProcessor* processor, UFeelFrame* info
+) -> int32_t
+{
+    if (processor == nullptr)
+    {
+        return UFEEL_STATUS_INVALID_PROCESSOR;
+    }
+
+    if (info == nullptr)
+    {
+        return UFEEL_STATUS_INVALID_ARGUMENT;
+    }
+
+    return guarded(
+        "ufeel_get_frame_info",
+        static_cast<int32_t>(UFEEL_STATUS_INTERNAL_ERROR),
+        [processor, info] -> int32_t {
+            const cv::Mat frame = processor->processor.getFrame();
+
+            int32_t stride = 0;
+            int32_t byteCount = 0;
+            if (!tightFrameLayout(frame, stride, byteCount))
+            {
+                return UFEEL_STATUS_INVALID_FRAME;
+            }
+
+            info->data = nullptr;
+            info->width = frame.cols;
+            info->height = frame.rows;
+            info->channels = frame.channels();
+            info->stride = stride;
+
+            return UFEEL_STATUS_OK;
+        }
+    );
+}
+
+auto ufeel_copy_frame(
+    UFeelProcessor* processor, uint8_t* destination, int32_t destinationSize
+) -> int32_t
+{
+    if (processor == nullptr)
+    {
+        return UFEEL_STATUS_INVALID_PROCESSOR;
+    }
+
+    if (destination == nullptr || destinationSize <= 0)
+    {
+        return UFEEL_STATUS_INVALID_ARGUMENT;
+    }
+
+    return guarded(
+        "ufeel_copy_frame",
+        static_cast<int32_t>(UFEEL_STATUS_INTERNAL_ERROR),
+        [processor, destination, destinationSize] -> int32_t {
+            const cv::Mat frame = processor->processor.getFrame();
+
+            int32_t stride = 0;
+            int32_t byteCount = 0;
+            if (!tightFrameLayout(frame, stride, byteCount))
+            {
+                return UFEEL_STATUS_INVALID_FRAME;
+            }
+
+            if (destinationSize < byteCount)
+            {
+                return UFEEL_STATUS_INVALID_ARGUMENT;
+            }
+
+            const auto rowBytes = static_cast<size_t>(stride);
+            for (int row = 0; row < frame.rows; ++row)
+            {
+                std::memcpy(
+                    destination + (static_cast<size_t>(row) * rowBytes), frame.ptr(row), rowBytes
+                );
+            }
+
+            return UFEEL_STATUS_OK;
+        }
+    );
 }
 
 } // extern "C"

@@ -204,6 +204,15 @@ UFEEL_API UFeelFrame* ufeel_get_frame(UFeelProcessor* processor);
 /** Releases a frame returned by ufeel_get_frame(). Accepts NULL. */
 UFEEL_API void ufeel_free_frame(UFeelFrame* frame);
 
+// TODO: add comment
+UFEEL_API int32_t ufeel_get_frame_info(UFeelProcessor* processor, UFeelFrame* info);
+
+// TODO: add comment
+UFEEL_API int32_t
+ufeel_copy_frame(UFeelProcessor* processor, uint8_t* destination, int32_t destinationSize);
+
+// TODO: add logic to create and free the buffer used for `ufeel_copy_frame`
+
 /** Processes the next input frame for emotions. Returns 1 when processing succeeds, otherwise 0. */
 UFEEL_API int32_t ufeel_update_emotions(UFeelProcessor* processor);
 
