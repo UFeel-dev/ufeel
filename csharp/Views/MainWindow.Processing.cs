@@ -67,10 +67,7 @@ public partial class MainWindow
                     }
                     else
                     {
-                        FrameData? frame = processor.GetFrame();
-
-                        if (frame is not null)
-                            bitmap = FrameBitmapFactory.Create(frame);
+                        bitmap = frameBitmaps.Update(processor);
 
                         if (due.HasFlag(DetectionType.Emotions))
                             emotions = processor.GetEmotions();
@@ -100,9 +97,6 @@ public partial class MainWindow
                     continue;
                 }
 
-                Bitmap? nextBitmap = bitmap;
-                bitmap = null;
-
                 Dictionary<string, float> shownEmotions = emotions;
                 EyeTrackingResultData shownEyeTracking = eyeTracking;
                 string shownSpeech = speechToText;
@@ -110,7 +104,7 @@ public partial class MainWindow
 
                 await Dispatcher.UIThread.InvokeAsync(() =>
                     ShowResults(
-                        nextBitmap,
+                        bitmap,
                         shownEmotions,
                         shownEyeTracking,
                         shownSpeech,
@@ -124,8 +118,6 @@ public partial class MainWindow
             }
             catch (Exception exception)
             {
-                bitmap?.Dispose();
-
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
                     if (!closing)
@@ -140,10 +132,6 @@ public partial class MainWindow
                 {
                     break;
                 }
-            }
-            finally
-            {
-                bitmap?.Dispose();
             }
         }
     }
@@ -160,24 +148,17 @@ public partial class MainWindow
     }
 
     private void ShowResults(
-        Bitmap? nextBitmap,
+        Bitmap? bitmap,
         Dictionary<string, float> emotions,
         EyeTrackingResultData eyeTracking,
         string speechToText,
         HeartRateResultData heartRate)
     {
         if (closing)
-        {
-            nextBitmap?.Dispose();
             return;
-        }
 
-        if (nextBitmap is not null)
-        {
-            Bitmap? oldBitmap = FrameImage.Source as Bitmap;
-            FrameImage.Source = nextBitmap;
-            oldBitmap?.Dispose();
-        }
+        if (bitmap is not null)
+            FrameImage.Source = bitmap;
 
         EmotionsText.Text = DisplayFormatter.FormatEmotions(emotions);
         DirectionsText.Text = DisplayFormatter.FormatDirections(eyeTracking);

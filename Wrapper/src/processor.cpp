@@ -1,7 +1,9 @@
 #include "internal/ErrorHandling.hpp"
 #include "internal/FrameConversion.hpp"
 #include "internal/UFeelProcessor.hpp"
+#include "opencv2/core/hal/interface.h"
 #include "opencv2/core/mat.hpp"
+#include "opencv2/imgproc.hpp"
 #include "ufeel.h"
 
 #include <cstddef>
@@ -308,6 +310,70 @@ auto ufeel_copy_frame(
                 std::memcpy(
                     destination + (static_cast<size_t>(row) * rowBytes), frame.ptr(row), rowBytes
                 );
+            }
+
+            return UFEEL_STATUS_OK;
+        }
+    );
+}
+
+auto ufeel_copy_frame_bgra(
+    UFeelProcessor* processor,
+    uint8_t* destination,
+    int32_t destinationRowBytes,
+    int32_t width,
+    int32_t height
+) -> int32_t
+{
+    if (processor == nullptr)
+    {
+        return UFEEL_STATUS_INVALID_PROCESSOR;
+    }
+
+    if (destination == nullptr || width <= 0 || height <= 0 ||
+        static_cast<int64_t>(destinationRowBytes) < static_cast<int64_t>(width) * 4)
+    {
+        return UFEEL_STATUS_INVALID_ARGUMENT;
+    }
+
+    return guarded(
+        "ufeel_copy_frame_bgra",
+        static_cast<int32_t>(UFEEL_STATUS_INTERNAL_ERROR),
+        [processor, destination, destinationRowBytes, width, height] -> int32_t {
+            const cv::Mat frame = processor->processor.getFrame();
+
+            if (frame.empty() || frame.depth() != CV_8U)
+            {
+                return UFEEL_STATUS_INVALID_FRAME;
+            }
+
+            if (frame.cols != width || frame.rows != height)
+            {
+                return UFEEL_STATUS_INVALID_ARGUMENT;
+            }
+
+            cv::Mat output(
+                height, width, CV_8UC4, destination, static_cast<size_t>(destinationRowBytes)
+            );
+
+            switch (frame.channels())
+            {
+            case 1:
+                cv::cvtColor(frame, output, cv::COLOR_GRAY2BGRA);
+                break;
+            case 3:
+                cv::cvtColor(frame, output, cv::COLOR_BGR2BGRA);
+                break;
+            case 4:
+                frame.copyTo(output);
+                break;
+            default:
+                return UFEEL_STATUS_INVALID_FRAME;
+            }
+
+            if (output.data != destination)
+            {
+                return UFEEL_STATUS_INTERNAL_ERROR;
             }
 
             return UFEEL_STATUS_OK;

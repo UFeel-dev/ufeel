@@ -211,7 +211,15 @@ UFEEL_API int32_t ufeel_get_frame_info(UFeelProcessor* processor, UFeelFrame* in
 UFEEL_API int32_t
 ufeel_copy_frame(UFeelProcessor* processor, uint8_t* destination, int32_t destinationSize);
 
-// TODO: add logic to create and free the buffer used for `ufeel_copy_frame`
+UFEEL_API int32_t ufeel_copy_frame_bgra(
+    UFeelProcessor* processor,
+    uint8_t* destination,
+    int32_t destinationRowBytes,
+    int32_t width,
+    int32_t height
+);
+
+// TODO: add logic to create and free the buffer used for `ufeel_copy_frame` and `ufeel_copy_frame_bgra`
 
 /** Processes the next input frame for emotions. Returns 1 when processing succeeds, otherwise 0. */
 UFEEL_API int32_t ufeel_update_emotions(UFeelProcessor* processor);

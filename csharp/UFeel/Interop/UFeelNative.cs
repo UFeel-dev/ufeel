@@ -238,6 +238,15 @@ internal static class UFeelNative
         [Out] byte[] destination,
         int destinationSize);
 
+    [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
+    [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern int ufeel_copy_frame_bgra(
+        IntPtr processor,
+        IntPtr destination,
+        int destinationRowBytes,
+        int width,
+        int height);
+
     // * emotions
 
     [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]

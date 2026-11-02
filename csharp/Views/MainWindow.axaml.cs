@@ -4,7 +4,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
-using Avalonia.Media.Imaging;
 using UFeel;
 
 namespace UFeelTest;
@@ -16,6 +15,7 @@ public partial class MainWindow : Window
     private readonly SemaphoreSlim processorGate = new(1, 1);
     private readonly FeatureScheduler scheduler = FeatureScheduler.CreateDefault();
     private readonly EyeTrackingSmoother eyeTrackingSmoother = new();
+    private readonly FrameBitmapBuffer frameBitmaps = new();
 
     private readonly Task processTask;
     private readonly string calibrationProfilePath;
@@ -121,8 +121,8 @@ public partial class MainWindow : Window
         }
         finally
         {
-            (FrameImage.Source as Bitmap)?.Dispose();
             FrameImage.Source = null;
+            frameBitmaps.Dispose();
 
             processorGate.Dispose();
             cancellation.Dispose();

@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 
 namespace UFeel;
 
+// ! not thread-safe, the cached native result buffers are shared between calls, so callers must serialize access
 public sealed class UFeelProcessor : IDisposable
 {
     private const DetectionType AllDetection =
@@ -114,6 +115,32 @@ public sealed class UFeelProcessor : IDisposable
         }
 
         return frameBuffer;
+    }
+
+    public bool TryGetFrameSize(out int width, out int height)
+    {
+        width = 0;
+        height = 0;
+
+        if ((UFeelNative.Status)UFeelNative.ufeel_get_frame_info(
+                Handle, out UFeelNative.NativeFrame info) != UFeelNative.Status.Ok)
+        {
+            return false;
+        }
+
+        if (info.Width <= 0 || info.Height <= 0)
+            return false;
+
+        width = info.Width;
+        height = info.Height;
+        return true;
+    }
+
+    public bool TryCopyFrameBgra(
+        IntPtr destination, int destinationRowBytes, int width, int height)
+    {
+        return (UFeelNative.Status)UFeelNative.ufeel_copy_frame_bgra(
+            Handle, destination, destinationRowBytes, width, height) == UFeelNative.Status.Ok;
     }
 
     public Dictionary<string, float> GetEmotions()
