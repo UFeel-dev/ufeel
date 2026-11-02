@@ -1,16 +1,19 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace UFeel;
 
 public sealed class UFeelProcessor : IDisposable
 {
+    private const DetectionType AllDetection =
+        DetectionType.Emotions |
+        DetectionType.EyeTracking |
+        DetectionType.SpeechToText |
+        DetectionType.HeartRate;
+
     private IntPtr handle;
     private bool disposed;
-
-    private const DetectionType allDetection = DetectionType.Emotions | DetectionType.EyeTracking | DetectionType.SpeechToText | DetectionType.HeartRate;
 
     public UFeelProcessor(
         string modelDirectory,
@@ -32,8 +35,18 @@ public sealed class UFeelProcessor : IDisposable
 
     public bool Update()
     {
+        UpdateFrame();
+        return Update(AllDetection);
+    }
+
+    public void UpdateFrame()
+    {
         _ = UFeelNative.ufeel_update_frame(Handle);
-        return UFeelNative.ufeel_update(Handle, (int)allDetection) != 0;
+    }
+
+    public bool Update(DetectionType detection)
+    {
+        return UFeelNative.ufeel_update(Handle, (int)detection) != 0;
     }
 
     public FrameData? GetFrame()
@@ -86,8 +99,8 @@ public sealed class UFeelProcessor : IDisposable
             UFeelNative.ufeel_get_emotions_result(Handle, result);
             // TODO: check status
 
-            UFeelNative.NativeEmotionResult emotionsResult = Marshal.PtrToStructure<UFeelNative.NativeEmotionResult>(
-                            result);
+            UFeelNative.NativeEmotionResult emotionsResult =
+                Marshal.PtrToStructure<UFeelNative.NativeEmotionResult>(result);
 
             if (emotionsResult.Count <= 0)
             {
@@ -133,7 +146,8 @@ public sealed class UFeelProcessor : IDisposable
 
         try
         {
-            UFeelNative.Status status = (UFeelNative.Status)UFeelNative.ufeel_get_eye_tracking_result(Handle, result);
+            UFeelNative.Status status =
+                (UFeelNative.Status)UFeelNative.ufeel_get_eye_tracking_result(Handle, result);
 
             if (status != UFeelNative.Status.Ok &&
                 status != UFeelNative.Status.NoEyeTracking)
@@ -141,7 +155,8 @@ public sealed class UFeelProcessor : IDisposable
                 ThrowIfFailed(status, "retrieve the gaze estimate");
             }
 
-            UFeelNative.NativeEyeTrackingResult eyeTrackingResult = Marshal.PtrToStructure<UFeelNative.NativeEyeTrackingResult>(result);
+            UFeelNative.NativeEyeTrackingResult eyeTrackingResult =
+                Marshal.PtrToStructure<UFeelNative.NativeEyeTrackingResult>(result);
 
             return new EyeTrackingResultData(
                 (EyeTrackingStatus)eyeTrackingResult.Status,
@@ -188,7 +203,7 @@ public sealed class UFeelProcessor : IDisposable
             return false;
 
         ThrowIfFailed(status, "finish eye-tracking calibration");
-        return false; // Unreachable; satisfies definite-return analysis.
+        return false;
     }
 
     public void CancelEyeTrackingCalibration()
@@ -199,8 +214,7 @@ public sealed class UFeelProcessor : IDisposable
             "cancel eye-tracking calibration");
     }
 
-    public EyeTrackingCalibrationProgress
-        GetEyeTrackingCalibrationProgress()
+    public EyeTrackingCalibrationProgress GetEyeTrackingCalibrationProgress()
     {
         ThrowIfFailed(
             (UFeelNative.Status)
@@ -216,8 +230,7 @@ public sealed class UFeelProcessor : IDisposable
             progress.RequiredSamplesPerTarget);
     }
 
-    public EyeTrackingCalibrationDiagnostics
-        GetEyeTrackingCalibrationDiagnostics()
+    public EyeTrackingCalibrationDiagnostics GetEyeTrackingCalibrationDiagnostics()
     {
         ThrowIfFailed(
             (UFeelNative.Status)
@@ -308,9 +321,10 @@ public sealed class UFeelProcessor : IDisposable
 
             // TODO: check status
 
-            UFeelNative.NativeSpeechToTextResult speechToTextResult = Marshal.PtrToStructure<UFeelNative.NativeSpeechToTextResult>(result);
+            UFeelNative.NativeSpeechToTextResult speechToTextResult =
+                Marshal.PtrToStructure<UFeelNative.NativeSpeechToTextResult>(result);
 
-            return Marshal.PtrToStringUTF8(speechToTextResult.speech) ?? string.Empty;
+            return Marshal.PtrToStringUTF8(speechToTextResult.Speech) ?? string.Empty;
         }
         finally
         {
@@ -332,7 +346,8 @@ public sealed class UFeelProcessor : IDisposable
                 (UFeelNative.Status)UFeelNative.ufeel_get_heart_rate_result(
                     Handle, result);
 
-            UFeelNative.NativeHeartRateResult heartRateResult = Marshal.PtrToStructure<UFeelNative.NativeHeartRateResult>(result);
+            UFeelNative.NativeHeartRateResult heartRateResult =
+                Marshal.PtrToStructure<UFeelNative.NativeHeartRateResult>(result);
 
             if (status != UFeelNative.Status.Ok &&
                 status != UFeelNative.Status.NoHeartRate)
@@ -412,139 +427,4 @@ public sealed class UFeelProcessor : IDisposable
 
         GC.SuppressFinalize(this);
     }
-}
-
-public sealed class FrameData
-{
-    public byte[] Data { get; }
-    public int Width { get; }
-    public int Height { get; }
-    public int Channels { get; }
-    public int Stride { get; }
-
-    public FrameData(
-        byte[] data, int width, int height, int channels, int stride)
-    {
-        Data = data;
-        Width = width;
-        Height = height;
-        Channels = channels;
-        Stride = stride;
-    }
-}
-
-public sealed record EyeTrackingResultData(
-    EyeTrackingStatus Status,
-    float EstimatedX,
-    float EstimatedY,
-    float RecordedX,
-    float RecordedY,
-    float Confidence,
-    EyeTrackingDirection Directions)
-{
-    public bool IsValid => Status == EyeTrackingStatus.Valid;
-}
-
-public sealed class EyeTrackingCalibrationProgress
-{
-    public int TargetsWithEnoughSamples { get; }
-    public int TargetCount { get; }
-    public int SamplesForCurrentTarget { get; }
-    public int RequiredSamplesPerTarget { get; }
-
-    public EyeTrackingCalibrationProgress(
-        int targetsWithEnoughSamples,
-        int targetCount,
-        int samplesForCurrentTarget,
-        int requiredSamplesPerTarget)
-    {
-        TargetsWithEnoughSamples = targetsWithEnoughSamples;
-        TargetCount = targetCount;
-        SamplesForCurrentTarget = samplesForCurrentTarget;
-        RequiredSamplesPerTarget = requiredSamplesPerTarget;
-    }
-}
-
-public enum CalibrationFailureReason
-{
-    None = 0,
-    NotCalibrating = 1,
-    TooFewValidTargets = 2,
-    InsufficientSamples = 3,
-    InsufficientHorizontalCoverage = 4,
-    InsufficientVerticalCoverage = 5,
-    InsufficientSpatialGridCoverage = 6,
-    RegressionFailed = 7,
-    CrossValidationMeanErrorExceeded = 8,
-    CrossValidationMaxErrorExceeded = 9,
-    InvalidCrossValidationResult = 10
-}
-
-public sealed class EyeTrackingCalibrationDiagnostics
-{
-    public CalibrationFailureReason FailureReason { get; }
-    public int InputTargetCount { get; }
-    public int TargetsWithEnoughRawSamples { get; }
-    public int TargetsWithEnoughRetainedSamples { get; }
-    public int ValidTargetCount { get; }
-    public int MinimumRetainedSamples { get; }
-    public int MaximumRetainedSamples { get; }
-    public float HorizontalSpan { get; }
-    public float VerticalSpan { get; }
-    public float MeanCrossValidationError { get; }
-    public float MaximumCrossValidationError { get; }
-    public int CrossValidationTargetsEvaluated { get; }
-    public bool MeanErrorExceeded { get; }
-    public bool MaximumErrorExceeded { get; }
-    public int RegressionFailures { get; }
-    public int InvalidTargetCount { get; }
-    public int TargetsWithInsufficientRawSamples { get; }
-    public int TargetsWithInsufficientRetainedSamples { get; }
-
-    public EyeTrackingCalibrationDiagnostics(
-        CalibrationFailureReason failureReason,
-        int inputTargetCount,
-        int targetsWithEnoughRawSamples,
-        int targetsWithEnoughRetainedSamples,
-        int validTargetCount,
-        int minimumRetainedSamples,
-        int maximumRetainedSamples,
-        float horizontalSpan,
-        float verticalSpan,
-        float meanCrossValidationError,
-        float maximumCrossValidationError,
-        int crossValidationTargetsEvaluated,
-        bool meanErrorExceeded,
-        bool maximumErrorExceeded,
-        int regressionFailures,
-        int invalidTargetCount,
-        int targetsWithInsufficientRawSamples,
-        int targetsWithInsufficientRetainedSamples)
-    {
-        FailureReason = failureReason;
-        InputTargetCount = inputTargetCount;
-        TargetsWithEnoughRawSamples = targetsWithEnoughRawSamples;
-        TargetsWithEnoughRetainedSamples = targetsWithEnoughRetainedSamples;
-        ValidTargetCount = validTargetCount;
-        MinimumRetainedSamples = minimumRetainedSamples;
-        MaximumRetainedSamples = maximumRetainedSamples;
-        HorizontalSpan = horizontalSpan;
-        VerticalSpan = verticalSpan;
-        MeanCrossValidationError = meanCrossValidationError;
-        MaximumCrossValidationError = maximumCrossValidationError;
-        CrossValidationTargetsEvaluated = crossValidationTargetsEvaluated;
-        MeanErrorExceeded = meanErrorExceeded;
-        MaximumErrorExceeded = maximumErrorExceeded;
-        RegressionFailures = regressionFailures;
-        InvalidTargetCount = invalidTargetCount;
-        TargetsWithInsufficientRawSamples = targetsWithInsufficientRawSamples;
-        TargetsWithInsufficientRetainedSamples = targetsWithInsufficientRetainedSamples;
-    }
-}
-
-public sealed record HeartRateResultData(
-    HeartRateStatus Status,
-    uint Bpm)
-{
-    public bool IsValid => Status == HeartRateStatus.Valid;
 }
