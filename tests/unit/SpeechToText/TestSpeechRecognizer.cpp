@@ -58,6 +58,22 @@ public:
     }
 };
 
+void resetFakeVoskForDetector()
+{
+    FakeVosk::reset();
+}
+
+void setFakeVoskFinalizedResult(const std::string& result)
+{
+    FakeVosk::finalizedResult = result;
+    FakeVosk::finalizedResultIsNull = false;
+}
+
+void setFakeVoskWaveformResult(int result)
+{
+    FakeVosk::waveformResult = result;
+}
+
 void vosk_model_free(
     VoskModel*
 )
