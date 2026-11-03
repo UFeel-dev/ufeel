@@ -7,7 +7,7 @@ add_executable(
     SpeechToText/TestSpeechRecognizer.cpp
     SpeechToText/TestSpeechToTextDetector.cpp
 
-    # HeartRate/TestHeartRateDetector.cpp
+    HeartRate/TestHeartRateDetector.cpp
 )
 
 target_link_libraries(

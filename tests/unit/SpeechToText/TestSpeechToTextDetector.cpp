@@ -19,7 +19,6 @@ struct FakePaStream
 constexpr int simulatedDeviceCount = 1;
 PaDeviceInfo simulatedDeviceInfo{2, "Fake input device", 0, 2, 0, 0.01, 0.1, 0.01, 0.1, 16000.0};
 
-
 PaError Pa_Initialize()
 {
     return paNoError;
@@ -199,4 +198,44 @@ TEST_F(
     detector.toggle(false);
 
     EXPECT_EQ(detector.process(), "final sentence");
+}
+
+TEST_F(
+    TestSpeechToTextDetector, ToggleTrueCalledMultipleTimesDoesNotCrash
+)
+{
+    SpeechToTextDetector detector(modelPath_);
+
+    EXPECT_NO_THROW({
+        detector.toggle(true);
+        detector.toggle(true);
+        detector.toggle(false);
+    });
+
+    EXPECT_EQ(detector.process(), "final sentence");
+}
+
+TEST_F(
+    TestSpeechToTextDetector, ToggleFalseCalledMultipleTimesDoesNotCrash
+)
+{
+    SpeechToTextDetector detector(modelPath_);
+
+    EXPECT_NO_THROW({
+        detector.toggle(true);
+        detector.toggle(false);
+        detector.toggle(false);
+        detector.toggle(false);
+    });
+}
+
+TEST_F(
+    TestSpeechToTextDetector, DestructorStopsDetector
+)
+{
+    EXPECT_NO_THROW({
+        auto detector = std::make_unique<SpeechToTextDetector>(modelPath_);
+        detector->toggle(true);
+        detector.reset();
+    });
 }
