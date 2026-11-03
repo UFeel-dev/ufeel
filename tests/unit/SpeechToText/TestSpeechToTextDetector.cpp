@@ -167,3 +167,36 @@ TEST_F(
 {
     EXPECT_NO_THROW({ SpeechToTextDetector detector(modelPath_); });
 }
+
+TEST_F(
+    TestSpeechToTextDetector, ProcessReturnsEmptyTextInitially
+)
+{
+    SpeechToTextDetector detector(modelPath_);
+
+    EXPECT_TRUE(detector.process().empty());
+}
+
+TEST_F(
+    TestSpeechToTextDetector, ToggleFalseDoesNotCrashBeforeStarting
+)
+{
+    SpeechToTextDetector detector(modelPath_);
+
+    EXPECT_NO_THROW(detector.toggle(false));
+    EXPECT_TRUE(detector.process().empty());
+}
+
+TEST_F(
+    TestSpeechToTextDetector, ToggleTrueStartsAndStopsDetector
+)
+{
+    SpeechToTextDetector detector(modelPath_);
+
+    setFakeVoskFinalizedResult(R"({"text": "final sentence"})");
+
+    detector.toggle(true);
+    detector.toggle(false);
+
+    EXPECT_EQ(detector.process(), "final sentence");
+}
