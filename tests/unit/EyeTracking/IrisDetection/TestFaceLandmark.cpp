@@ -182,3 +182,54 @@ TEST_F(
 {
     EXPECT_EQ(landmark_->getFaceLandmark3DAt(0), cv::Point3f());
 }
+
+TEST_F(
+    TestFaceLandmark, ReturnsEmptyVectorWhenNoFaceRoiExists
+)
+{
+    EXPECT_TRUE(landmark_->getAllFaceLandmarks().empty());
+}
+
+TEST_F(
+    TestFaceLandmark, Returns468LandmarksWhenFaceIsDetected
+)
+{
+    if (!createImageWithFace())
+    {
+        GTEST_SKIP() << "No face detected by the test model.";
+    }
+
+    auto const landmarks = landmark_->getAllFaceLandmarks();
+
+    EXPECT_EQ(landmarks.size(), 468);
+}
+
+TEST_F(
+    TestFaceLandmark, ReturnsLandmarkAtFirstIndexWhenFaceIsDetected
+)
+{
+    if (!createImageWithFace())
+    {
+        GTEST_SKIP() << "No face detected by the test model.";
+    }
+
+    auto const point = landmark_->getFaceLandmarkAt(0);
+
+    EXPECT_GE(point.x, 0);
+    EXPECT_GE(point.y, 0);
+}
+
+TEST_F(
+    TestFaceLandmark, ReturnsLandmarkAtLastIndexWhenFaceIsDetected
+)
+{
+    if (!createImageWithFace())
+    {
+        GTEST_SKIP() << "No face detected by the test model.";
+    }
+
+    auto const point = landmark_->getFaceLandmarkAt(467);
+
+    EXPECT_GE(point.x, 0);
+    EXPECT_GE(point.y, 0);
+}
