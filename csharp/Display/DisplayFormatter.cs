@@ -7,16 +7,36 @@ namespace UFeelTest;
 
 internal static class DisplayFormatter
 {
-    public static string FormatEmotions(
-        Dictionary<string, float> emotions)
+    public static string FormatEmotions(EmotionResultData result)
     {
-        if (emotions.Count == 0)
+        if (!result.IsValid)
+        {
+            return result.Status switch
+            {
+                EmotionStatus.FaceUnavailable => "Face not detected",
+                EmotionStatus.FrameUnavailable => "Camera frame unavailable",
+                _ => "Emotion data unavailable"
+            };
+        }
+
+        if (result.Emotions.Count == 0)
             return "No data";
 
         return string.Join(
             Environment.NewLine,
-            emotions.OrderByDescending(pair => pair.Value)
+            result.Emotions.OrderByDescending(pair => pair.Value)
                 .Select(pair => $"{pair.Key}: {pair.Value:F3}"));
+    }
+
+    public static string FormatSpeech(SpeechToTextResultData result)
+    {
+        return result.Status switch
+        {
+            SpeechToTextStatus.Disabled => "Speech recognition is disabled",
+            SpeechToTextStatus.NoSpeech => "No speech detected",
+            SpeechToTextStatus.Valid => result.Text,
+            _ => "Speech result unavailable"
+        };
     }
 
     public static string FormatDirections(EyeTrackingResultData eyeTracking)

@@ -22,6 +22,8 @@ public enum EyeTrackingStatus
     Valid = 5,
     Disabled = 6,
     FrameUnavailable = 7,
+    InvalidProcessor = 8,
+    InternalError = 9,
 }
 
 [Flags]
@@ -42,6 +44,38 @@ public enum HeartRateStatus
     RequestFailed = 2,
     Valid = 3,
     NoData = 4,
+}
+
+public enum EmotionStatus
+{
+    FaceUnavailable = 0,
+    Valid = 1,
+    FrameUnavailable = 2,
+    InvalidProcessor = 3,
+    InternalError = 4,
+}
+
+public enum SpeechToTextStatus
+{
+    Disabled = 0,
+    NoSpeech = 1,
+    Valid = 2,
+}
+
+public enum UFeelStatus
+{
+    Ok = 0,
+    NoEmotions = 1,
+    NoEyeTracking = 2,
+    NoSpeech = 3,
+    NoHeartRate = 4,
+    InvalidArgument = 5,
+    InvalidState = 6,
+    EyeTrackingCalibrationFailed = 7,
+    EyeTrackingProfileFailed = 8,
+    InternalError = 9,
+    InvalidProcessor = 10,
+    InvalidFrame = 11,
 }
 
 public enum CalibrationFailureReason

@@ -21,6 +21,7 @@ internal static class UFeelNative
         public int Height;
         public int Channels;
         public int Stride;
+        public ulong DataSize;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -39,7 +40,7 @@ internal static class UFeelNative
     }
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    internal delegate void EmotionsResultHandler(NativeEmotionResult emotions);
+    internal delegate void EmotionsResultHandler(IntPtr emotions);
 
     [StructLayout(LayoutKind.Sequential)]
     internal struct NativeEyeTrackingResult
@@ -92,7 +93,7 @@ internal static class UFeelNative
     }
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    internal delegate void EyeTrackingResultHandler(NativeEyeTrackingResult gaze);
+    internal delegate void EyeTrackingResultHandler(IntPtr gaze);
 
     [StructLayout(LayoutKind.Sequential)]
     internal struct NativeSpeechToTextResult
@@ -106,22 +107,6 @@ internal static class UFeelNative
     {
         public int Status;
         public uint Bpm;
-    }
-
-    internal enum Status
-    {
-        Ok = 0,
-        NoEmotions = 1,
-        NoEyeTracking = 2,
-        NoSpeech = 3,
-        NoHeartRate = 4,
-        InvalidArgument = 5,
-        InvalidState = 6,
-        EyeTrackingCalibrationFailed = 7,
-        EyeTrackingProfileFailed = 8,
-        InternalError = 9,
-        InvalidProcessor = 10,
-        InvalidFrame = 11,
     }
 
     internal static void ConfigureLibrary(string libraryPath)
@@ -261,13 +246,13 @@ internal static class UFeelNative
 
     [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-    internal static extern IntPtr ufeel_get_emotions_result(
+    internal static extern int ufeel_get_emotions_result(
         IntPtr processor,
         IntPtr result);
 
     [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-    internal static extern IntPtr ufeel_get_emotions_result_from_frame(
+    internal static extern void ufeel_get_emotions_result_from_frame(
         IntPtr processor,
         IntPtr frame,
         EmotionsResultHandler handler);
@@ -317,10 +302,10 @@ internal static class UFeelNative
 
     [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-    internal static extern int ufeel_get_eye_tracking_result_from_frame(
+    internal static extern void ufeel_get_eye_tracking_result_from_frame(
         IntPtr processor,
         IntPtr frame,
-        IntPtr result);
+        EyeTrackingResultHandler handler);
 
     [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
@@ -368,7 +353,7 @@ internal static class UFeelNative
 
     [DefaultDllImportSearchPaths(DllImportSearchPath.SafeDirectories)]
     [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
-    internal static extern IntPtr ufeel_get_speech_to_text_result(
+    internal static extern int ufeel_get_speech_to_text_result(
         IntPtr processor,
         IntPtr result);
 

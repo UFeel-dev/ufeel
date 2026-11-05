@@ -26,11 +26,45 @@ enum DetectionType : std::uint8_t
     HeartRate = 1U << 3U,
 };
 
+enum class DataProcessorStatus : std::uint8_t
+{
+    Ok,
+    InvalidFrame,
+    FrameUnavailable,
+    InvalidDetectionType,
+};
+
+enum class EmotionStatus : std::uint8_t
+{
+    FaceUnavailable,
+    Valid,
+    FrameUnavailable,
+};
+
+struct EmotionResult
+{
+    EmotionStatus status = EmotionStatus::FrameUnavailable;
+    std::map<std::string, float> emotions;
+};
+
+enum class SpeechToTextStatus : std::uint8_t
+{
+    Disabled,
+    NoSpeech,
+    Valid,
+};
+
+struct SpeechToTextResult
+{
+    SpeechToTextStatus status = SpeechToTextStatus::Disabled;
+    std::string text;
+};
+
 constexpr auto hasDetection(
-    std::uint8_t detectionType, DetectionType flag
+    std::uint32_t detectionType, DetectionType flag
 ) noexcept -> bool
 {
-    return (detectionType & static_cast<std::uint8_t>(flag)) != 0U;
+    return (detectionType & static_cast<std::uint32_t>(flag)) != 0U;
 }
 
 class DataProcessor
@@ -47,28 +81,27 @@ public:
     DataProcessor(DataProcessor&&) = delete;
     auto operator=(DataProcessor&&) -> DataProcessor& = delete;
 
-    auto updateFrame() -> bool;
-    auto setFrame(const cv::Mat& frame) -> bool;
+    auto updateFrame() -> DataProcessorStatus;
+    auto setFrame(const cv::Mat& frame) -> DataProcessorStatus;
     [[nodiscard]] auto getFrame() const -> cv::Mat;
 
-    auto updateFromFrame(uint32_t detectionType, const cv::Mat& image) -> bool;
-    auto update(uint32_t detectionType) -> bool;
+    auto updateFromFrame(uint32_t detectionType, const cv::Mat& image) -> DataProcessorStatus;
+    auto update(uint32_t detectionType) -> DataProcessorStatus;
 
-    auto updateEmotions() -> bool;
-    auto updateEmotionsFromFrame(const cv::Mat& frame) -> bool;
-    [[nodiscard]] auto getEmotions() const -> const std::map<std::string, float>&;
-    [[nodiscard]] auto getEmotionsFromFrame(const cv::Mat& frame) const
-        -> const std::map<std::string, float>;
+    auto updateEmotions() -> DataProcessorStatus;
+    auto updateEmotionsFromFrame(const cv::Mat& frame) -> DataProcessorStatus;
+    [[nodiscard]] auto getEmotions() const -> const EmotionResult&;
+    [[nodiscard]] auto getEmotionsFromFrame(const cv::Mat& frame) const -> EmotionResult;
 
-    auto updateEyeTracking() -> bool;
-    auto updateEyeTrackingFromFrame(const cv::Mat& frame) -> bool;
+    auto updateEyeTracking() -> DataProcessorStatus;
+    auto updateEyeTrackingFromFrame(const cv::Mat& frame) -> DataProcessorStatus;
     [[nodiscard]] auto getEyeTracking() const -> EyeTrackingResult;
     [[nodiscard]] auto getEyeTrackingFromFrame(const cv::Mat& frame) const -> EyeTrackingResult;
 
-    auto updateSpeechToText() -> bool;
-    [[nodiscard]] auto getSpeechToText() const -> const std::string&;
+    auto updateSpeechToText() -> DataProcessorStatus;
+    [[nodiscard]] auto getSpeechToText() const -> const SpeechToTextResult&;
 
-    auto updateHeartRate() -> bool;
+    auto updateHeartRate() -> DataProcessorStatus;
     [[nodiscard]] auto getHeartRate() const -> HeartRateResult;
 
     void beginEyeTrackingCalibration();
@@ -87,10 +120,11 @@ private:
     cv::VideoCapture cap_;
     cv::Mat frame_;
 
-    std::map<std::string, float> emotions_; // TODO: add result struct
+    EmotionResult emotions_;
     EyeTrackingResult eyeTracking_;
-    std::string speechToText_; // TODO: add result struct
+    SpeechToTextResult speechToText_;
     HeartRateResult heartRate_{};
+    bool speechToTextEnabled_ = false;
 
     std::unique_ptr<EmotionDetector> emotionDetector_;
     std::unique_ptr<EyeTrackingDetector> eyeTrackingDetector_;

@@ -16,8 +16,10 @@
 #include <string>
 
 using ufeel::internal::convertFrame;
+using ufeel::internal::FrameCopyPolicy;
 using ufeel::internal::guarded;
 using ufeel::internal::guardedVoid;
+using ufeel::internal::toUFeelStatus;
 
 UFeelProcessor::UFeelProcessor(
     const std::string& modelDirectory, const std::string& speechModelPath
@@ -39,7 +41,14 @@ auto tightFrameLayout(
     }
 
     constexpr auto limit = static_cast<size_t>(std::numeric_limits<int32_t>::max());
-    const auto rowBytes = static_cast<size_t>(frame.cols) * frame.elemSize();
+    const auto width = static_cast<size_t>(frame.cols);
+    const auto elementSize = frame.elemSize();
+    if (elementSize > limit / width)
+    {
+        return false;
+    }
+
+    const auto rowBytes = width * elementSize;
     const auto height = static_cast<size_t>(frame.rows);
 
     if (rowBytes > limit || rowBytes > limit / height)
@@ -84,41 +93,42 @@ void ufeel_destroy(
 
 auto ufeel_update(
     UFeelProcessor* processor, int32_t detectionType
-) -> int32_t // TODO: return a UFeel status instead of a bool if possible
+) -> int32_t
 {
     if (processor == nullptr)
     {
-        return 0; // TODO: update function to return status, and return
-                  // `UFEEL_STATUS_INVALID_PROCESSOR`
+        return UFEEL_STATUS_INVALID_PROCESSOR;
     }
 
-    return guarded("ufeel_update", int32_t{0}, [processor, detectionType] -> int32_t {
-        return static_cast<int32_t>(processor->processor.update(detectionType));
-    });
+    return guarded(
+        "ufeel_update",
+        int32_t{UFEEL_STATUS_INTERNAL_ERROR},
+        [processor, detectionType] -> int32_t {
+            return toUFeelStatus(processor->processor.update(detectionType));
+        }
+    );
 }
 
 auto ufeel_update_from_frame(
     UFeelProcessor* processor, int32_t detectionType, const UFeelFrame* frame
 ) -> int32_t
 {
-    if (processor == nullptr)
-    {
-        return 0; // TODO: update function to return status, and return
-                  // `UFEEL_STATUS_INVALID_PROCESSOR`
-    }
-
-    const cv::Mat frameConverted = convertFrame(frame);
-
-    if (frameConverted.empty())
-    {
-        return 0; // TODO: update function to return status, and return `UFEEL_STATUS_INVALID_FRAME`
-    }
-
     return guarded(
         "ufeel_update_from_frame",
-        int32_t{0},
-        [processor, detectionType, frameConverted] -> int32_t {
-            return static_cast<int32_t>(
+        int32_t{UFEEL_STATUS_INTERNAL_ERROR},
+        [processor, detectionType, frame] -> int32_t {
+            if (processor == nullptr)
+            {
+                return UFEEL_STATUS_INVALID_PROCESSOR;
+            }
+
+            const cv::Mat frameConverted = convertFrame(frame, FrameCopyPolicy::Borrow);
+            if (frameConverted.empty())
+            {
+                return UFEEL_STATUS_INVALID_FRAME;
+            }
+
+            return toUFeelStatus(
                 processor->processor.updateFromFrame(detectionType, frameConverted)
             );
         }
@@ -131,33 +141,36 @@ auto ufeel_update_frame(
 {
     if (processor == nullptr)
     {
-        return 0; // TODO: update function to return status, and return
-                  // `UFEEL_STATUS_INVALID_PROCESSOR`
+        return UFEEL_STATUS_INVALID_PROCESSOR;
     }
 
-    return guarded("ufeel_update_frame", int32_t{0}, [processor] -> int32_t {
-        return static_cast<int32_t>(processor->processor.updateFrame());
-    });
+    return guarded(
+        "ufeel_update_frame", int32_t{UFEEL_STATUS_INTERNAL_ERROR}, [processor] -> int32_t {
+            return toUFeelStatus(processor->processor.updateFrame());
+        }
+    );
 }
 
 auto ufeel_set_frame(
     UFeelProcessor* processor, const UFeelFrame* frame
 ) -> int32_t
 {
-    if (processor == nullptr)
-    {
-        return UFEEL_STATUS_INVALID_PROCESSOR;
-    }
+    return guarded(
+        "ufeel_set_frame", int32_t{UFEEL_STATUS_INTERNAL_ERROR}, [processor, frame] -> int32_t {
+            if (processor == nullptr)
+            {
+                return UFEEL_STATUS_INVALID_PROCESSOR;
+            }
 
-    const cv::Mat frameConverted = convertFrame(frame);
+            const cv::Mat frameConverted = convertFrame(frame, FrameCopyPolicy::Borrow);
+            if (frameConverted.empty())
+            {
+                return UFEEL_STATUS_INVALID_FRAME;
+            }
 
-    if (frameConverted.empty())
-    {
-        return UFEEL_STATUS_INVALID_FRAME;
-    }
-    return guarded("ufeel_set_frame", int32_t{0}, [processor, frameConverted] -> int32_t {
-        return static_cast<int32_t>(processor->processor.setFrame(frameConverted));
-    });
+            return toUFeelStatus(processor->processor.setFrame(frameConverted));
+        }
+    );
 }
 
 auto ufeel_get_frame(
@@ -185,7 +198,11 @@ auto ufeel_get_frame(
             const size_t stride = frame.step[0];
             const auto height = static_cast<size_t>(frame.rows);
 
-            if (stride == 0 || stride < static_cast<size_t>(frame.cols) * frame.elemSize() ||
+            const auto width = static_cast<size_t>(frame.cols);
+            const auto elementSize = frame.elemSize();
+
+            if (stride == 0 || elementSize > std::numeric_limits<size_t>::max() / width ||
+                stride < width * elementSize ||
                 stride > std::numeric_limits<size_t>::max() / height ||
                 stride > static_cast<size_t>(std::numeric_limits<int32_t>::max()))
             {
@@ -212,6 +229,7 @@ auto ufeel_get_frame(
             output->height = frame.rows;
             output->channels = frame.channels();
             output->stride = static_cast<int32_t>(stride);
+            output->dataSize = byteCount;
 
             return output.release();
         }
@@ -266,6 +284,7 @@ auto ufeel_get_frame_info(
             info->height = frame.rows;
             info->channels = frame.channels();
             info->stride = stride;
+            info->dataSize = static_cast<uint64_t>(byteCount);
 
             return UFEEL_STATUS_OK;
         }

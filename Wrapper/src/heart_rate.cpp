@@ -9,6 +9,7 @@
 
 using ufeel::internal::guarded;
 using ufeel::internal::guardedVoid;
+using ufeel::internal::toUFeelStatus;
 
 extern "C" {
 
@@ -16,14 +17,24 @@ auto ufeel_update_heart_rate(
     UFeelProcessor* processor
 ) -> int32_t
 {
-    return guarded("ufeel_update_heart_rate", int32_t{0}, [processor] -> int32_t {
-        if (processor == nullptr)
-        {
-            return 0; // TODO: update function to return status, and return
-                      // `UFEEL_STATUS_INVALID_PROCESSOR`
+    return guarded(
+        "ufeel_update_heart_rate", int32_t{UFEEL_STATUS_INTERNAL_ERROR}, [processor] -> int32_t {
+            if (processor == nullptr)
+            {
+                return UFEEL_STATUS_INVALID_PROCESSOR;
+            }
+
+            const auto updateStatus = processor->processor.updateHeartRate();
+            if (updateStatus != DataProcessorStatus::Ok)
+            {
+                return toUFeelStatus(updateStatus);
+            }
+
+            return processor->processor.getHeartRate().status == HeartRateStatus::Valid
+                       ? UFEEL_STATUS_OK
+                       : UFEEL_STATUS_NO_HEARTRATE;
         }
-        return static_cast<int32_t>(processor->processor.updateHeartRate());
-    });
+    );
 }
 
 auto ufeel_get_heart_rate_result(
@@ -34,7 +45,11 @@ auto ufeel_get_heart_rate_result(
         "ufeel_get_heart_rate_result",
         int32_t{UFEEL_STATUS_INTERNAL_ERROR},
         [processor, result] -> UFeelStatus {
-            if (result == nullptr || processor == nullptr)
+            if (processor == nullptr)
+            {
+                return UFEEL_STATUS_INVALID_PROCESSOR;
+            }
+            if (result == nullptr)
             {
                 return UFEEL_STATUS_INVALID_ARGUMENT;
             }
@@ -75,7 +90,7 @@ void ufeel_free_heart_rate_result(
             return;
         }
 
-        delete[] heartrate;
+        delete heartrate;
     });
 }
 }

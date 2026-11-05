@@ -6,15 +6,22 @@
 #include "ufeel.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <limits>
 #include <utility>
 
 namespace ufeel::internal
 {
 
+enum class FrameCopyPolicy : std::uint8_t
+{
+    Borrow,
+    Copy,
+};
+
 inline auto convertFrame(
-    const UFeelFrame* frame
-) -> cv::Mat // TODO: add option to avoid the copy for parts that do not need it
+    const UFeelFrame* frame, FrameCopyPolicy copyPolicy = FrameCopyPolicy::Copy
+) -> cv::Mat
 {
     if (frame == nullptr || frame->data == nullptr)
     {
@@ -42,12 +49,23 @@ inline auto convertFrame(
         return {};
     }
 
+    const auto height = static_cast<size_t>(frame->height);
+    const auto stride = static_cast<size_t>(frame->stride);
+    if (stride > std::numeric_limits<size_t>::max() / height)
+    {
+        return {};
+    }
+    const auto dataSize = stride * height;
+    if (std::cmp_less(frame->dataSize, dataSize))
+    {
+        return {};
+    }
+
     const int type = CV_MAKETYPE(CV_8U, frame->channels);
 
-    return cv::Mat(
-               frame->height, frame->width, type, frame->data, static_cast<size_t>(frame->stride)
-    )
-        .clone();
+    cv::Mat converted(frame->height, frame->width, type, frame->data, stride);
+
+    return copyPolicy == FrameCopyPolicy::Copy ? converted.clone() : converted;
 }
 
 } // namespace ufeel::internal

@@ -57,28 +57,24 @@ public sealed class UFeelProcessor : IDisposable
         }
     }
 
-    public bool Update()
+    public UFeelStatus Update() => Update(AllDetection);
+
+    public UFeelStatus UpdateFrame()
     {
-        UpdateFrame();
-        return Update(AllDetection);
+        return (UFeelStatus)UFeelNative.ufeel_update_frame(Handle);
     }
 
-    public void UpdateFrame()
+    public UFeelStatus Update(DetectionType detection)
     {
-        _ = UFeelNative.ufeel_update_frame(Handle);
-    }
-
-    public bool Update(DetectionType detection)
-    {
-        return UFeelNative.ufeel_update(Handle, (int)detection) != 0;
+        return (UFeelStatus)UFeelNative.ufeel_update(Handle, (int)detection);
     }
 
     public FrameData? GetFrame()
     {
         IntPtr processor = Handle;
 
-        if ((UFeelNative.Status)UFeelNative.ufeel_get_frame_info(
-                processor, out UFeelNative.NativeFrame info) != UFeelNative.Status.Ok)
+        if ((UFeelStatus)UFeelNative.ufeel_get_frame_info(
+                processor, out UFeelNative.NativeFrame info) != UFeelStatus.Ok)
         {
             return null;
         }
@@ -91,7 +87,11 @@ public sealed class UFeelProcessor : IDisposable
             return null;
         }
 
-        int byteCount = checked(info.Stride * info.Height);
+        ulong expectedSize = checked((ulong)info.Stride * (ulong)info.Height);
+        if (info.DataSize < expectedSize || info.DataSize > int.MaxValue)
+            return null;
+
+        int byteCount = (int)info.DataSize;
 
         if (frameBuffer is null ||
             frameBuffer.Data.Length != byteCount ||
@@ -108,8 +108,8 @@ public sealed class UFeelProcessor : IDisposable
                 info.Stride);
         }
 
-        if ((UFeelNative.Status)UFeelNative.ufeel_copy_frame(
-                processor, frameBuffer.Data, byteCount) != UFeelNative.Status.Ok)
+        if ((UFeelStatus)UFeelNative.ufeel_copy_frame(
+                processor, frameBuffer.Data, byteCount) != UFeelStatus.Ok)
         {
             return null;
         }
@@ -122,8 +122,8 @@ public sealed class UFeelProcessor : IDisposable
         width = 0;
         height = 0;
 
-        if ((UFeelNative.Status)UFeelNative.ufeel_get_frame_info(
-                Handle, out UFeelNative.NativeFrame info) != UFeelNative.Status.Ok)
+        if ((UFeelStatus)UFeelNative.ufeel_get_frame_info(
+                Handle, out UFeelNative.NativeFrame info) != UFeelStatus.Ok)
         {
             return false;
         }
@@ -139,25 +139,35 @@ public sealed class UFeelProcessor : IDisposable
     public bool TryCopyFrameBgra(
         IntPtr destination, int destinationRowBytes, int width, int height)
     {
-        return (UFeelNative.Status)UFeelNative.ufeel_copy_frame_bgra(
-            Handle, destination, destinationRowBytes, width, height) == UFeelNative.Status.Ok;
+        return (UFeelStatus)UFeelNative.ufeel_copy_frame_bgra(
+            Handle, destination, destinationRowBytes, width, height) == UFeelStatus.Ok;
     }
 
-    public Dictionary<string, float> GetEmotions()
+    public EmotionResultData GetEmotions()
     {
         IntPtr processor = Handle;
 
-        // TODO: use result fully (including status)
-
-        UFeelNative.ufeel_get_emotions_result(processor, emotionsResult);
-        // TODO: check status
+        UFeelStatus status = (UFeelStatus)UFeelNative.ufeel_get_emotions_result(
+            processor, emotionsResult);
+        if (status != UFeelStatus.Ok &&
+            status != UFeelStatus.NoEmotions &&
+            status != UFeelStatus.InvalidFrame)
+        {
+            ThrowIfFailed(status, "retrieve emotion estimates");
+        }
 
         UFeelNative.NativeEmotionResult result =
             Marshal.PtrToStructure<UFeelNative.NativeEmotionResult>(emotionsResult);
 
-        if (result.Count <= 0)
+        if (!Enum.IsDefined(typeof(EmotionStatus), result.Status))
+            throw new InvalidOperationException(
+                $"The native emotion result has an unknown status ({result.Status}).");
+
+        if (result.Count < 0 ||
+            (result.Count > 0 && result.Emotions == IntPtr.Zero))
         {
-            return [];
+            throw new InvalidOperationException(
+                "The native emotion result contains an invalid score buffer.");
         }
 
         var emotions = new Dictionary<string, float>(result.Count);
@@ -172,13 +182,14 @@ public sealed class UFeelProcessor : IDisposable
                 Marshal.PtrToStructure<UFeelNative.NativeEmotion>(
                     itemPointer);
 
-            string name =
-                Marshal.PtrToStringUTF8(item.Name) ?? string.Empty;
+            string name = Marshal.PtrToStringUTF8(item.Name) ??
+                throw new InvalidOperationException(
+                    "The native emotion result contains a null score name.");
 
             emotions[name] = item.Value;
         }
 
-        return emotions;
+        return new EmotionResultData((EmotionStatus)result.Status, emotions);
     }
 
     public EyeTrackingResultData GetEyeTracking()
@@ -188,18 +199,22 @@ public sealed class UFeelProcessor : IDisposable
         Marshal.StructureToPtr(
             default(UFeelNative.NativeEyeTrackingResult), eyeTrackingResult, false);
 
-        UFeelNative.Status status =
-            (UFeelNative.Status)UFeelNative.ufeel_get_eye_tracking_result(
+        UFeelStatus status =
+            (UFeelStatus)UFeelNative.ufeel_get_eye_tracking_result(
                 processor, eyeTrackingResult);
 
-        if (status != UFeelNative.Status.Ok &&
-            status != UFeelNative.Status.NoEyeTracking)
+        if (status != UFeelStatus.Ok &&
+            status != UFeelStatus.NoEyeTracking)
         {
             ThrowIfFailed(status, "retrieve the gaze estimate");
         }
 
         UFeelNative.NativeEyeTrackingResult result =
             Marshal.PtrToStructure<UFeelNative.NativeEyeTrackingResult>(eyeTrackingResult);
+
+        if (!Enum.IsDefined(typeof(EyeTrackingStatus), result.Status))
+            throw new InvalidOperationException(
+                $"The native eye-tracking result has an unknown status ({result.Status}).");
 
         return new EyeTrackingResultData(
             (EyeTrackingStatus)result.Status,
@@ -214,7 +229,7 @@ public sealed class UFeelProcessor : IDisposable
     public void BeginEyeTrackingCalibration()
     {
         ThrowIfFailed(
-            (UFeelNative.Status)
+            (UFeelStatus)
                 UFeelNative.ufeel_begin_eye_tracking_calibration(Handle),
             "begin eye-tracking calibration");
     }
@@ -222,7 +237,7 @@ public sealed class UFeelProcessor : IDisposable
     public void SetEyeTrackingCalibrationTarget(float screenX, float screenY)
     {
         ThrowIfFailed(
-            (UFeelNative.Status)
+            (UFeelStatus)
                 UFeelNative.ufeel_set_eye_tracking_calibration_target(
                     Handle, screenX, screenY),
             "set the eye-tracking calibration target");
@@ -230,14 +245,14 @@ public sealed class UFeelProcessor : IDisposable
 
     public bool FinishEyeTrackingCalibration()
     {
-        UFeelNative.Status status =
-            (UFeelNative.Status)
+        UFeelStatus status =
+            (UFeelStatus)
                 UFeelNative.ufeel_finish_eye_tracking_calibration(Handle);
 
-        if (status == UFeelNative.Status.Ok)
+        if (status == UFeelStatus.Ok)
             return true;
 
-        if (status == UFeelNative.Status.EyeTrackingCalibrationFailed)
+        if (status == UFeelStatus.EyeTrackingCalibrationFailed)
             return false;
 
         ThrowIfFailed(status, "finish eye-tracking calibration");
@@ -247,7 +262,7 @@ public sealed class UFeelProcessor : IDisposable
     public void CancelEyeTrackingCalibration()
     {
         ThrowIfFailed(
-            (UFeelNative.Status)
+            (UFeelStatus)
                 UFeelNative.ufeel_cancel_eye_tracking_calibration(Handle),
             "cancel eye-tracking calibration");
     }
@@ -255,7 +270,7 @@ public sealed class UFeelProcessor : IDisposable
     public EyeTrackingCalibrationProgress GetEyeTrackingCalibrationProgress()
     {
         ThrowIfFailed(
-            (UFeelNative.Status)
+            (UFeelStatus)
                 UFeelNative.ufeel_get_eye_tracking_calibration_progress(
                     Handle,
                     out UFeelNative.NativeEyeTrackingCalibrationProgress progress),
@@ -271,7 +286,7 @@ public sealed class UFeelProcessor : IDisposable
     public EyeTrackingCalibrationDiagnostics GetEyeTrackingCalibrationDiagnostics()
     {
         ThrowIfFailed(
-            (UFeelNative.Status)
+            (UFeelStatus)
                 UFeelNative.ufeel_get_eye_tracking_calibration_diagnostics(
                     Handle,
                     out UFeelNative.NativeEyeTrackingCalibrationDiagnostics diagnostics),
@@ -302,15 +317,15 @@ public sealed class UFeelProcessor : IDisposable
     {
         ValidatePath(path, nameof(path));
 
-        UFeelNative.Status status =
-            (UFeelNative.Status)
+        UFeelStatus status =
+            (UFeelStatus)
                 UFeelNative.ufeel_save_eye_tracking_calibration_profile(
                     Handle, path);
 
-        if (status == UFeelNative.Status.Ok)
+        if (status == UFeelStatus.Ok)
             return true;
 
-        if (status == UFeelNative.Status.EyeTrackingProfileFailed)
+        if (status == UFeelStatus.EyeTrackingProfileFailed)
             return false;
 
         ThrowIfFailed(status, "save the eye-tracking calibration profile");
@@ -321,15 +336,15 @@ public sealed class UFeelProcessor : IDisposable
     {
         ValidatePath(path, nameof(path));
 
-        UFeelNative.Status status =
-            (UFeelNative.Status)
+        UFeelStatus status =
+            (UFeelStatus)
                 UFeelNative.ufeel_load_eye_tracking_calibration_profile(
                     Handle, path);
 
-        if (status == UFeelNative.Status.Ok)
+        if (status == UFeelStatus.Ok)
             return true;
 
-        if (status == UFeelNative.Status.EyeTrackingProfileFailed)
+        if (status == UFeelStatus.EyeTrackingProfileFailed)
             return false;
 
         ThrowIfFailed(status, "load the eye-tracking calibration profile");
@@ -339,26 +354,37 @@ public sealed class UFeelProcessor : IDisposable
     public void SetSpeechToTextEnabled(bool enabled)
     {
         ThrowIfFailed(
-            (UFeelNative.Status)
+            (UFeelStatus)
                 UFeelNative.ufeel_set_speech_to_text_enabled(
                     Handle, enabled ? 1 : 0),
             "change speech-to-text state");
     }
 
-    public string GetSpeechToText()
+    public SpeechToTextResultData GetSpeechToText()
     {
         IntPtr processor = Handle;
 
-        // TODO: use result fully (including status)
-
-        UFeelNative.ufeel_get_speech_to_text_result(processor, speechToTextResult);
-
-        // TODO: check status
+        UFeelStatus status = (UFeelStatus)UFeelNative.ufeel_get_speech_to_text_result(
+            processor, speechToTextResult);
+        if (status != UFeelStatus.Ok && status != UFeelStatus.NoSpeech)
+        {
+            ThrowIfFailed(status, "retrieve speech-to-text result");
+        }
 
         UFeelNative.NativeSpeechToTextResult result =
             Marshal.PtrToStructure<UFeelNative.NativeSpeechToTextResult>(speechToTextResult);
 
-        return Marshal.PtrToStringUTF8(result.Speech) ?? string.Empty;
+        if (!Enum.IsDefined(typeof(SpeechToTextStatus), result.Status))
+            throw new InvalidOperationException(
+                $"The native speech result has an unknown status ({result.Status}).");
+
+        if (result.Speech == IntPtr.Zero)
+            throw new InvalidOperationException(
+                "The native speech-to-text result did not contain a string buffer.");
+
+        return new SpeechToTextResultData(
+            (SpeechToTextStatus)result.Status,
+            Marshal.PtrToStringUTF8(result.Speech) ?? string.Empty);
     }
 
     public HeartRateResultData GetHeartRate()
@@ -368,18 +394,22 @@ public sealed class UFeelProcessor : IDisposable
         Marshal.StructureToPtr(
             default(UFeelNative.NativeHeartRateResult), heartRateResult, false);
 
-        UFeelNative.Status status =
-            (UFeelNative.Status)UFeelNative.ufeel_get_heart_rate_result(
+        UFeelStatus status =
+            (UFeelStatus)UFeelNative.ufeel_get_heart_rate_result(
                 processor, heartRateResult);
 
         UFeelNative.NativeHeartRateResult result =
             Marshal.PtrToStructure<UFeelNative.NativeHeartRateResult>(heartRateResult);
 
-        if (status != UFeelNative.Status.Ok &&
-            status != UFeelNative.Status.NoHeartRate)
+        if (status != UFeelStatus.Ok &&
+            status != UFeelStatus.NoHeartRate)
         {
             ThrowIfFailed(status, "retrieve the heartrate value");
         }
+
+        if (!Enum.IsDefined(typeof(HeartRateStatus), result.Status))
+            throw new InvalidOperationException(
+                $"The native heart-rate result has an unknown status ({result.Status}).");
 
         return new HeartRateResultData(
             (HeartRateStatus)result.Status,
@@ -449,26 +479,34 @@ public sealed class UFeelProcessor : IDisposable
     }
 
     private static void ThrowIfFailed(
-        UFeelNative.Status status, string operation)
+        UFeelStatus status, string operation)
     {
-        if (status == UFeelNative.Status.Ok)
+        if (status == UFeelStatus.Ok)
             return;
 
         string message = status switch
         {
-            UFeelNative.Status.NoEyeTracking =>
+            UFeelStatus.NoEyeTracking =>
                 "A valid gaze estimate is not available.",
-            UFeelNative.Status.NoHeartRate =>
-                "A valid heartrate is not available.",
-            UFeelNative.Status.InvalidArgument =>
+            UFeelStatus.NoEmotions =>
+                "No emotion scores are available.",
+            UFeelStatus.NoSpeech =>
+                "No speech transcription is available.",
+            UFeelStatus.NoHeartRate =>
+                "No heart-rate reading is available.",
+            UFeelStatus.InvalidProcessor =>
+                "The processor handle is invalid.",
+            UFeelStatus.InvalidFrame =>
+                "The frame is unavailable or invalid.",
+            UFeelStatus.InvalidArgument =>
                 "One or more arguments are invalid.",
-            UFeelNative.Status.InvalidState =>
+            UFeelStatus.InvalidState =>
                 "The processor is not in a state that permits this operation.",
-            UFeelNative.Status.EyeTrackingCalibrationFailed =>
+            UFeelStatus.EyeTrackingCalibrationFailed =>
                 "Eye-tracking calibration failed.",
-            UFeelNative.Status.EyeTrackingProfileFailed =>
+            UFeelStatus.EyeTrackingProfileFailed =>
                 "The eye-tracking calibration profile operation failed.",
-            UFeelNative.Status.InternalError =>
+            UFeelStatus.InternalError =>
                 "An internal native-library error occurred.",
             _ => "An unknown native-library error occurred."
         };

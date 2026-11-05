@@ -36,9 +36,13 @@ public partial class MainWindow
 
     private async Task ProcessLoopAsync(CancellationToken token)
     {
-        Dictionary<string, float> emotions = [];
+        EmotionResultData emotions = new(
+            EmotionStatus.FrameUnavailable,
+            new Dictionary<string, float>());
         EyeTrackingResultData eyeTracking = FrameUnavailableEyeTracking;
-        string speechToText = string.Empty;
+        SpeechToTextResultData speechToText = new(
+            SpeechToTextStatus.Disabled,
+            string.Empty);
         HeartRateResultData heartRate = RequestFailedHeartRate;
 
         while (!token.IsCancellationRequested)
@@ -54,15 +58,25 @@ public partial class MainWindow
 
                 try
                 {
-                    processor.UpdateFrame();
-                    updated = due == DetectionType.None || processor.Update(due);
+                    UFeelStatus status = due == DetectionType.None
+                        ? processor.UpdateFrame()
+                        : processor.Update(due);
+                    updated = status == UFeelStatus.Ok;
 
                     if (!updated)
                     {
-                        emotions = [];
+                        if (status != UFeelStatus.InvalidFrame)
+                            throw new InvalidOperationException(
+                                $"Processor update failed with status {status}.");
+
+                        emotions = new EmotionResultData(
+                            EmotionStatus.FrameUnavailable,
+                            new Dictionary<string, float>());
                         eyeTracking = FrameUnavailableEyeTracking;
                         eyeTrackingSmoother.Reset();
-                        speechToText = string.Empty;
+                        speechToText = new SpeechToTextResultData(
+                            SpeechToTextStatus.NoSpeech,
+                            string.Empty);
                         heartRate = RequestFailedHeartRate;
                     }
                     else
@@ -78,7 +92,9 @@ public partial class MainWindow
                         if (due.HasFlag(DetectionType.SpeechToText))
                             speechToText = speechEnabled
                                 ? processor.GetSpeechToText()
-                                : string.Empty;
+                                : new SpeechToTextResultData(
+                                    SpeechToTextStatus.Disabled,
+                                    string.Empty);
 
                         if (due.HasFlag(DetectionType.HeartRate))
                             heartRate = processor.GetHeartRate();
@@ -97,9 +113,9 @@ public partial class MainWindow
                     continue;
                 }
 
-                Dictionary<string, float> shownEmotions = emotions;
+                EmotionResultData shownEmotions = emotions;
                 EyeTrackingResultData shownEyeTracking = eyeTracking;
-                string shownSpeech = speechToText;
+                SpeechToTextResultData shownSpeech = speechToText;
                 HeartRateResultData shownHeartRate = heartRate;
 
                 await Dispatcher.UIThread.InvokeAsync(() =>
@@ -143,15 +159,16 @@ public partial class MainWindow
 
         DirectionsText.Text = DisplayFormatter.FormatDirections(eyeTracking);
         EyeTrackingText.Text = DisplayFormatter.FormatEyeTracking(eyeTracking);
+        StatusText.Text = "Camera frame unavailable";
         lastEyeTracking = eyeTracking;
         EyeTrackingOverlay.IsVisible = false;
     }
 
     private void ShowResults(
         Bitmap? bitmap,
-        Dictionary<string, float> emotions,
+        EmotionResultData emotions,
         EyeTrackingResultData eyeTracking,
-        string speechToText,
+        SpeechToTextResultData speechToText,
         HeartRateResultData heartRate)
     {
         if (closing)
@@ -160,6 +177,7 @@ public partial class MainWindow
         if (bitmap is not null)
             FrameImage.Source = bitmap;
 
+        StatusText.Text = string.Empty;
         EmotionsText.Text = DisplayFormatter.FormatEmotions(emotions);
         DirectionsText.Text = DisplayFormatter.FormatDirections(eyeTracking);
         EyeTrackingText.Text = DisplayFormatter.FormatEyeTracking(eyeTracking);
@@ -167,9 +185,7 @@ public partial class MainWindow
         EyeTrackingOverlay.IsVisible = eyeTracking.IsValid && !CalibrationOverlay.IsVisible;
         if (EyeTrackingOverlay.IsVisible)
             UpdateEyeTrackingMarker(eyeTracking);
-        SpeechToTextText.Text = string.IsNullOrWhiteSpace(speechToText)
-            ? "No speech detected"
-            : speechToText;
+        SpeechToTextText.Text = DisplayFormatter.FormatSpeech(speechToText);
         HeartRateText.Text = DisplayFormatter.FormatHeartRate(heartRate);
     }
 

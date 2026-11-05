@@ -11,6 +11,20 @@
 using ufeel::internal::duplicateUtf8;
 using ufeel::internal::guarded;
 using ufeel::internal::guardedVoid;
+using ufeel::internal::toUFeelStatus;
+
+namespace
+{
+
+void clearSpeechPayload(
+    UFeelSpeechToTextResult& result
+)
+{
+    std::free(result.speech);
+    result = {};
+}
+
+} // namespace
 
 extern "C" {
 
@@ -18,14 +32,26 @@ auto ufeel_update_speech_to_text(
     UFeelProcessor* processor
 ) -> int32_t
 {
-    return guarded("ufeel_update_speech_to_text", int32_t{0}, [processor] -> int32_t {
-        if (processor == nullptr)
-        {
-            return 0; // TODO: update function to return status, and return
-                      // `UFEEL_STATUS_INVALID_PROCESSOR`
+    return guarded(
+        "ufeel_update_speech_to_text",
+        int32_t{UFEEL_STATUS_INTERNAL_ERROR},
+        [processor] -> int32_t {
+            if (processor == nullptr)
+            {
+                return UFEEL_STATUS_INVALID_PROCESSOR;
+            }
+
+            const auto updateStatus = processor->processor.updateSpeechToText();
+            if (updateStatus != DataProcessorStatus::Ok)
+            {
+                return toUFeelStatus(updateStatus);
+            }
+
+            return processor->processor.getSpeechToText().status == SpeechToTextStatus::Valid
+                       ? UFEEL_STATUS_OK
+                       : UFEEL_STATUS_NO_SPEECH;
         }
-        return static_cast<int32_t>(processor->processor.updateSpeechToText());
-    });
+    );
 }
 
 auto ufeel_set_speech_to_text_enabled(
@@ -50,16 +76,31 @@ auto ufeel_get_speech_to_text_result(
     UFeelProcessor* processor, UFeelSpeechToTextResult* result
 ) -> int32_t
 {
-    return guarded("ufeel_get_speech_to_text_result", int32_t{0}, [processor, result] -> int32_t {
-        if (result == nullptr || processor == nullptr)
-        {
-            return UFEEL_STATUS_INVALID_ARGUMENT;
+    return guarded(
+        "ufeel_get_speech_to_text_result",
+        int32_t{UFEEL_STATUS_INTERNAL_ERROR},
+        [processor, result] -> int32_t {
+            if (result == nullptr)
+            {
+                return UFEEL_STATUS_INVALID_ARGUMENT;
+            }
+            clearSpeechPayload(*result);
+            if (processor == nullptr)
+            {
+                return UFEEL_STATUS_INVALID_PROCESSOR;
+            }
+            const auto& speech = processor->processor.getSpeechToText();
+            result->status = static_cast<int32_t>(speech.status);
+            result->speech = duplicateUtf8(speech.text);
+            if (result->speech == nullptr)
+            {
+                return UFEEL_STATUS_INTERNAL_ERROR;
+            }
+
+            return speech.status == SpeechToTextStatus::Valid ? UFEEL_STATUS_OK
+                                                              : UFEEL_STATUS_NO_SPEECH;
         }
-        *result = {};
-        result->status = UFEEL_STATUS_OK;
-        result->speech = duplicateUtf8(processor->processor.getSpeechToText());
-        return result->status;
-    });
+    );
 }
 
 auto ufeel_create_speech_to_text_result() -> UFeelSpeechToTextResult*
@@ -85,10 +126,7 @@ void ufeel_free_speech_to_text_result(
         {
             return;
         }
-        if (speech->speech != nullptr)
-        {
-            std::free(speech->speech);
-        }
+        clearSpeechPayload(*speech);
         delete speech;
     });
 }

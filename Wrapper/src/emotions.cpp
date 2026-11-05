@@ -13,15 +13,48 @@
 #include <map>
 #include <memory>
 #include <new>
+#include <stdexcept>
 #include <string>
 
 using ufeel::internal::convertFrame;
 using ufeel::internal::duplicateUtf8;
+using ufeel::internal::FrameCopyPolicy;
 using ufeel::internal::guarded;
 using ufeel::internal::guardedVoid;
+using ufeel::internal::toUFeelStatus;
 
 namespace
 {
+
+void clearEmotionPayload(
+    UFeelEmotionsResult& result
+)
+{
+    if (result.emotions != nullptr)
+    {
+        for (int32_t index = 0; index < result.count; ++index)
+        {
+            std::free(result.emotions[index].name);
+        }
+        delete[] result.emotions;
+    }
+
+    result = {};
+}
+
+struct EmotionResultDeleter
+{
+    void operator()(
+        UFeelEmotionsResult* result
+    ) const
+    {
+        if (result != nullptr)
+        {
+            clearEmotionPayload(*result);
+            delete result;
+        }
+    }
+};
 
 auto convertEmotionsResultToUFeelPair(
     const std::map<std::string, float>& emotions
@@ -69,89 +102,140 @@ auto ufeel_update_emotions(
     UFeelProcessor* processor
 ) -> int32_t
 {
-    return guarded("ufeel_update_emotions", int32_t{0}, [processor] -> int32_t {
-        if (processor == nullptr)
-        {
-            return 0; // TODO: update function to return status, and return
-                      // `UFEEL_STATUS_INVALID_PROCESSOR`
+    return guarded(
+        "ufeel_update_emotions", int32_t{UFEEL_STATUS_INTERNAL_ERROR}, [processor] -> int32_t {
+            if (processor == nullptr)
+            {
+                return UFEEL_STATUS_INVALID_PROCESSOR;
+            }
+
+            const auto updateStatus = processor->processor.updateEmotions();
+            if (updateStatus != DataProcessorStatus::Ok)
+            {
+                return toUFeelStatus(updateStatus);
+            }
+
+            return processor->processor.getEmotions().status == EmotionStatus::Valid
+                       ? UFEEL_STATUS_OK
+                       : UFEEL_STATUS_NO_EMOTIONS;
         }
-        return static_cast<int32_t>(processor->processor.updateEmotions());
-    });
+    );
 }
 
 auto ufeel_update_emotions_from_frame(
     UFeelProcessor* processor, const UFeelFrame* frame
 ) -> int32_t
 {
-    return guarded("ufeel_update_emotions_from_frame", int32_t{0}, [processor, frame] -> int32_t {
-        if (processor == nullptr)
-        {
-            return 0; // TODO: update function to return status, and return
-                      // `UFEEL_STATUS_INVALID_PROCESSOR`
+    return guarded(
+        "ufeel_update_emotions_from_frame",
+        int32_t{UFEEL_STATUS_INTERNAL_ERROR},
+        [processor, frame] -> int32_t {
+            if (processor == nullptr)
+            {
+                return UFEEL_STATUS_INVALID_PROCESSOR;
+            }
+
+            const cv::Mat frameConverted = convertFrame(frame, FrameCopyPolicy::Borrow);
+
+            if (frameConverted.empty())
+            {
+                return UFEEL_STATUS_INVALID_FRAME;
+            }
+
+            const auto updateStatus = processor->processor.updateEmotionsFromFrame(frameConverted);
+            if (updateStatus != DataProcessorStatus::Ok)
+            {
+                return toUFeelStatus(updateStatus);
+            }
+
+            return processor->processor.getEmotions().status == EmotionStatus::Valid
+                       ? UFEEL_STATUS_OK
+                       : UFEEL_STATUS_NO_EMOTIONS;
         }
-
-        const cv::Mat frameConverted = convertFrame(frame);
-
-        if (frameConverted.empty())
-        {
-            return 0; // TODO: update function to return status, and return
-                      // `UFEEL_STATUS_INVALID_FRAME`
-        }
-
-        return static_cast<int32_t>(processor->processor.updateEmotionsFromFrame(frameConverted));
-    });
+    );
 }
 
 auto ufeel_get_emotions_result(
     UFeelProcessor* processor, UFeelEmotionsResult* result
 ) -> int32_t
 {
-    return guarded("ufeel_get_emotions_result", int32_t{0}, [processor, result] -> int32_t {
-        if (result == nullptr || processor == nullptr)
-        {
-            return UFEEL_STATUS_INVALID_ARGUMENT;
+    return guarded(
+        "ufeel_get_emotions_result",
+        int32_t{UFEEL_STATUS_INTERNAL_ERROR},
+        [processor, result] -> int32_t {
+            if (result == nullptr)
+            {
+                return UFEEL_STATUS_INVALID_ARGUMENT;
+            }
+
+            clearEmotionPayload(*result);
+            if (processor == nullptr)
+            {
+                return UFEEL_STATUS_INVALID_PROCESSOR;
+            }
+
+            const auto& emotionResult = processor->processor.getEmotions();
+
+            result->emotions = convertEmotionsResultToUFeelPair(emotionResult.emotions);
+            if (!emotionResult.emotions.empty() && result->emotions == nullptr)
+            {
+                return UFEEL_STATUS_INTERNAL_ERROR;
+            }
+
+            result->count = static_cast<int32_t>(emotionResult.emotions.size());
+            result->status = static_cast<int32_t>(emotionResult.status);
+            if (emotionResult.status == EmotionStatus::Valid)
+            {
+                return UFEEL_STATUS_OK;
+            }
+
+            return emotionResult.status == EmotionStatus::FrameUnavailable
+                       ? UFEEL_STATUS_INVALID_FRAME
+                       : UFEEL_STATUS_NO_EMOTIONS;
         }
-
-        *result = {};
-
-        const auto emotions = processor->processor.getEmotions();
-
-        result->emotions = convertEmotionsResultToUFeelPair(emotions);
-        result->count = emotions.size();
-        result->status = UFEEL_EMOTIONS_STATUS_VALID;
-        return UFEEL_STATUS_OK;
-    });
+    );
 }
 
 void ufeel_get_emotions_result_from_frame(
     UFeelProcessor* processor, UFeelFrame* frame, void (*handler)(UFeelEmotionsResult* emotions)
 )
 {
-    guardedVoid("ufeel_get_emotions_result_from_frame", [processor, frame, handler] {
-        auto result = std::make_unique<UFeelEmotionsResult>();
+    guardedVoid("ufeel_get_emotions_result_from_frame", [processor, frame, handler] -> void {
+        if (handler == nullptr)
+        {
+            throw std::invalid_argument("emotion result handler must not be null");
+        }
 
-        *result = {};
+        auto result =
+            std::unique_ptr<UFeelEmotionsResult, EmotionResultDeleter>(new UFeelEmotionsResult{});
 
         if (processor == nullptr)
         {
-            result->status = UFEEL_STATUS_INVALID_PROCESSOR;
+            result->status = UFEEL_EMOTIONS_STATUS_INVALID_PROCESSOR;
             handler(result.get());
             return;
         }
 
-        const cv::Mat frameConverted = convertFrame(frame);
+        const cv::Mat frameConverted = convertFrame(frame, FrameCopyPolicy::Borrow);
 
         if (frameConverted.empty())
         {
-            result->status = UFEEL_STATUS_INVALID_FRAME;
+            result->status = UFEEL_EMOTIONS_STATUS_FRAME_UNAVAILABLE;
             handler(result.get());
             return;
         }
-        const auto emotions = processor->processor.getEmotionsFromFrame(frameConverted);
+        const auto emotionResult = processor->processor.getEmotionsFromFrame(frameConverted);
 
-        result->emotions = convertEmotionsResultToUFeelPair(emotions);
-        result->count = emotions.size();
-        result->status = UFEEL_EMOTIONS_STATUS_VALID;
+        result->emotions = convertEmotionsResultToUFeelPair(emotionResult.emotions);
+        if (!emotionResult.emotions.empty() && result->emotions == nullptr)
+        {
+            result->status = UFEEL_EMOTIONS_STATUS_INTERNAL_ERROR;
+            handler(result.get());
+            return;
+        }
+
+        result->count = static_cast<int32_t>(emotionResult.emotions.size());
+        result->status = static_cast<int32_t>(emotionResult.status);
 
         handler(result.get());
     });
@@ -180,15 +264,8 @@ void ufeel_free_emotions_result(
         {
             return;
         }
-        if (emotions->emotions != nullptr)
-        {
-            for (int32_t index = 0; index < emotions->count; ++index)
-            {
-                std::free(emotions->emotions[index].name);
-            }
-            delete[] emotions->emotions;
-        }
-        delete[] emotions;
+        clearEmotionPayload(*emotions);
+        delete emotions;
     });
 }
 }

@@ -9,11 +9,14 @@
 #include <cstdint>
 #include <memory>
 #include <new>
+#include <stdexcept>
 #include <string>
 
 using ufeel::internal::convertFrame;
+using ufeel::internal::FrameCopyPolicy;
 using ufeel::internal::guarded;
 using ufeel::internal::guardedVoid;
+using ufeel::internal::toUFeelStatus;
 
 extern "C" {
 
@@ -21,14 +24,23 @@ auto ufeel_update_eye_tracking(
     UFeelProcessor* processor
 ) -> int32_t
 {
-    return guarded("ufeel_update_eye_tracking", int32_t{0}, [processor] -> int32_t {
-        if (processor == nullptr)
-        {
-            return 0; // TODO: update function to return status, and return
-                      // `UFEEL_STATUS_INVALID_PROCESSOR`
+    return guarded(
+        "ufeel_update_eye_tracking", int32_t{UFEEL_STATUS_INTERNAL_ERROR}, [processor] -> int32_t {
+            if (processor == nullptr)
+            {
+                return UFEEL_STATUS_INVALID_PROCESSOR;
+            }
+            const auto updateStatus = processor->processor.updateEyeTracking();
+            if (updateStatus != DataProcessorStatus::Ok)
+            {
+                return toUFeelStatus(updateStatus);
+            }
+
+            return processor->processor.getEyeTracking().status == EyeTrackingStatus::Valid
+                       ? UFEEL_STATUS_OK
+                       : UFEEL_STATUS_NO_EYE_TRACKING;
         }
-        return static_cast<int32_t>(processor->processor.updateEyeTracking());
-    });
+    );
 }
 
 auto ufeel_update_eye_tracking_from_frame(
@@ -36,23 +48,31 @@ auto ufeel_update_eye_tracking_from_frame(
 ) -> int32_t
 {
     return guarded(
-        "ufeel_update_eye_tracking_from_frame", int32_t{0}, [processor, frame] -> int32_t {
+        "ufeel_update_eye_tracking_from_frame",
+        int32_t{UFEEL_STATUS_INTERNAL_ERROR},
+        [processor, frame] -> int32_t {
             if (processor == nullptr)
             {
-                return 0; // TODO: update function to return status, and return
-                          // `UFEEL_STATUS_INVALID_PROCESSOR`
+                return UFEEL_STATUS_INVALID_PROCESSOR;
             }
 
-            const cv::Mat frameConverted = convertFrame(frame);
+            const cv::Mat frameConverted = convertFrame(frame, FrameCopyPolicy::Borrow);
 
             if (frameConverted.empty())
             {
-                return 0; // TODO: update function to return status, and return
-                          // `UFEEL_STATUS_INVALID_FRAME`
+                return UFEEL_STATUS_INVALID_FRAME;
             }
-            return static_cast<int32_t>(
-                processor->processor.updateEyeTrackingFromFrame(frameConverted)
-            );
+
+            const auto updateStatus =
+                processor->processor.updateEyeTrackingFromFrame(frameConverted);
+            if (updateStatus != DataProcessorStatus::Ok)
+            {
+                return toUFeelStatus(updateStatus);
+            }
+
+            return processor->processor.getEyeTracking().status == EyeTrackingStatus::Valid
+                       ? UFEEL_STATUS_OK
+                       : UFEEL_STATUS_NO_EYE_TRACKING;
         }
     );
 }
@@ -67,7 +87,7 @@ auto ufeel_begin_eye_tracking_calibration(
         [processor] -> UFeelStatus {
             if (processor == nullptr)
             {
-                return UFEEL_STATUS_INVALID_ARGUMENT;
+                return UFEEL_STATUS_INVALID_PROCESSOR;
             }
             processor->processor.beginEyeTrackingCalibration();
             return UFEEL_STATUS_OK;
@@ -85,7 +105,7 @@ auto ufeel_set_eye_tracking_calibration_target(
         [processor, screenX, screenY] -> UFeelStatus {
             if (processor == nullptr)
             {
-                return UFEEL_STATUS_INVALID_ARGUMENT;
+                return UFEEL_STATUS_INVALID_PROCESSOR;
             }
 
             if (!std::isfinite(screenX) || !std::isfinite(screenY))
@@ -109,7 +129,7 @@ auto ufeel_finish_eye_tracking_calibration(
         [processor] -> UFeelStatus {
             if (processor == nullptr)
             {
-                return UFEEL_STATUS_INVALID_ARGUMENT;
+                return UFEEL_STATUS_INVALID_PROCESSOR;
             }
             return processor->processor.finishEyeTrackingCalibration()
                        ? UFEEL_STATUS_OK
@@ -128,7 +148,7 @@ auto ufeel_cancel_eye_tracking_calibration(
         [processor] -> UFeelStatus {
             if (processor == nullptr)
             {
-                return UFEEL_STATUS_INVALID_ARGUMENT;
+                return UFEEL_STATUS_INVALID_PROCESSOR;
             }
             processor->processor.cancelEyeTrackingCalibration();
             return UFEEL_STATUS_OK;
@@ -144,7 +164,11 @@ auto ufeel_get_eye_tracking_result(
         "ufeel_get_eye_tracking_result",
         int32_t{UFEEL_STATUS_INTERNAL_ERROR},
         [processor, result] -> UFeelStatus {
-            if (result == nullptr || processor == nullptr)
+            if (processor == nullptr)
+            {
+                return UFEEL_STATUS_INVALID_PROCESSOR;
+            }
+            if (result == nullptr)
             {
                 return UFEEL_STATUS_INVALID_ARGUMENT;
             }
@@ -167,29 +191,32 @@ auto ufeel_get_eye_tracking_result(
     );
 }
 
-// TODO: User have to free the value once used !!
-// TODO: update description in the ufeel header
 void ufeel_get_eye_tracking_result_from_frame(
     UFeelProcessor* processor, UFeelFrame* frame, void (*handler)(UFeelEyeTrackingResult* gaze)
 )
 {
-    guardedVoid("ufeel_get_eye_tracking_result_from_frame", [processor, frame, handler] {
+    guardedVoid("ufeel_get_eye_tracking_result_from_frame", [processor, frame, handler] -> void {
+        if (handler == nullptr)
+        {
+            throw std::invalid_argument("eye-tracking result handler must not be null");
+        }
+
         auto result = std::make_unique<UFeelEyeTrackingResult>();
 
         *result = {};
 
         if (processor == nullptr)
         {
-            result->status = UFEEL_STATUS_INVALID_PROCESSOR;
+            result->status = UFEEL_GAZE_STATUS_INVALID_PROCESSOR;
             handler(result.get());
             return;
         }
 
-        const cv::Mat frameConverted = convertFrame(frame);
+        const cv::Mat frameConverted = convertFrame(frame, FrameCopyPolicy::Borrow);
 
         if (frameConverted.empty())
         {
-            result->status = UFEEL_STATUS_INVALID_FRAME;
+            result->status = UFEEL_GAZE_STATUS_FRAME_UNAVAILABLE;
             handler(result.get());
             return;
         }
@@ -216,7 +243,11 @@ auto ufeel_get_eye_tracking_calibration_progress(
         "ufeel_get_eye_tracking_calibration_progress",
         int32_t{UFEEL_STATUS_INTERNAL_ERROR},
         [processor, progress] -> UFeelStatus {
-            if (progress == nullptr || processor == nullptr)
+            if (processor == nullptr)
+            {
+                return UFEEL_STATUS_INVALID_PROCESSOR;
+            }
+            if (progress == nullptr)
             {
                 return UFEEL_STATUS_INVALID_ARGUMENT;
             }
@@ -245,7 +276,11 @@ auto ufeel_get_eye_tracking_calibration_diagnostics(
         "ufeel_get_eye_tracking_calibration_diagnostics",
         int32_t{UFEEL_STATUS_INTERNAL_ERROR},
         [processor, diagnostics] -> UFeelStatus {
-            if (diagnostics == nullptr || processor == nullptr)
+            if (processor == nullptr)
+            {
+                return UFEEL_STATUS_INVALID_PROCESSOR;
+            }
+            if (diagnostics == nullptr)
             {
                 return UFEEL_STATUS_INVALID_ARGUMENT;
             }
@@ -300,7 +335,11 @@ auto ufeel_save_eye_tracking_calibration_profile(
         "ufeel_save_eye_tracking_calibration_profile",
         int32_t{UFEEL_STATUS_INTERNAL_ERROR},
         [processor, utf8Path] -> UFeelStatus {
-            if (processor == nullptr || utf8Path == nullptr || utf8Path[0] == '\0')
+            if (processor == nullptr)
+            {
+                return UFEEL_STATUS_INVALID_PROCESSOR;
+            }
+            if (utf8Path == nullptr || utf8Path[0] == '\0')
             {
                 return UFEEL_STATUS_INVALID_ARGUMENT;
             }
@@ -319,7 +358,11 @@ auto ufeel_load_eye_tracking_calibration_profile(
         "ufeel_load_eye_tracking_calibration_profile",
         int32_t{UFEEL_STATUS_INTERNAL_ERROR},
         [processor, utf8Path] -> UFeelStatus {
-            if (processor == nullptr || utf8Path == nullptr || utf8Path[0] == '\0')
+            if (processor == nullptr)
+            {
+                return UFEEL_STATUS_INVALID_PROCESSOR;
+            }
+            if (utf8Path == nullptr || utf8Path[0] == '\0')
             {
                 return UFEEL_STATUS_INVALID_ARGUMENT;
             }

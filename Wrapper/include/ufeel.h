@@ -21,7 +21,8 @@ extern "C" {
 
 typedef struct UFeelProcessor UFeelProcessor;
 
-/** An image frame returned by the library. Release it with ufeel_free_frame(). */
+/** An image frame or frame-info record. For input frames, dataSize is the readable buffer size.
+ * Release frames returned by ufeel_get_frame() with ufeel_free_frame(). */
 typedef struct
 {
     uint8_t* data;
@@ -29,8 +30,8 @@ typedef struct
     int32_t height;
     int32_t channels;
     int32_t stride;
-} UFeelFrame; // ! should probably expose its buffer size, with a `uint64_t dataSize` member for
-              // example
+    uint64_t dataSize;
+} UFeelFrame;
 
 /** Status returned by functions that can fail. */
 typedef enum
@@ -45,9 +46,7 @@ typedef enum
     UFEEL_STATUS_EYE_TRACKING_CALIBRATION_FAILED = 7,
     UFEEL_STATUS_EYE_TRACKING_PROFILE_FAILED = 8,
     UFEEL_STATUS_INTERNAL_ERROR = 9,
-    UFEEL_STATUS_INVALID_PROCESSOR =
-        10, // ? do we need separate status for each kind of invalid argument, or does invalid
-            // processor and frame count as `UFEEL_STATUS_INVALID_ARGUMENT`?
+    UFEEL_STATUS_INVALID_PROCESSOR = 10,
     UFEEL_STATUS_INVALID_FRAME = 11,
 } UFeelStatus;
 
@@ -60,15 +59,18 @@ typedef struct
     float value;
 } UFeelPair;
 
-/** Status describing whether a emotions detection is valid. */
+/** Status describing whether an emotion result is usable. */
 typedef enum
 {
-    UFEEL_EMOTIONS_STATUS_FACE_UNAVAILABLE = 0,
+    UFEEL_EMOTIONS_STATUS_FACE_UNAVAILABLE = 0, // TODO: keep the same position for similar names
     UFEEL_EMOTIONS_STATUS_VALID = 1,
-    UFEEL_EMOTIONS_STATUS_FRAME_UNAVAILABLE = 2
+    UFEEL_EMOTIONS_STATUS_FRAME_UNAVAILABLE = 2,
+    UFEEL_EMOTIONS_STATUS_INVALID_PROCESSOR = 3,
+    UFEEL_EMOTIONS_STATUS_INTERNAL_ERROR = 4
 } UFeelEmotionsStatus;
 
-/** Estimated emotions and diagnostics for the current video frame. */
+/** Estimated emotions and diagnostics for the current video frame. `status` is a
+ * UFeelEmotionsStatus value. */
 typedef struct
 {
     int32_t status;
@@ -78,7 +80,7 @@ typedef struct
 
 //? GAZE
 
-/** Status describing whether a eye_tracking estimate is currently usable. */
+/** Status describing whether an eye-tracking estimate is currently usable. */
 typedef enum
 {
     UFEEL_GAZE_STATUS_NOT_CALIBRATED = 0,
@@ -88,7 +90,9 @@ typedef enum
     UFEEL_GAZE_STATUS_CALIBRATING = 4,
     UFEEL_GAZE_STATUS_VALID = 5,
     UFEEL_GAZE_STATUS_DISABLED = 6,
-    UFEEL_GAZE_STATUS_FRAME_UNAVAILABLE = 7
+    UFEEL_GAZE_STATUS_FRAME_UNAVAILABLE = 7,
+    UFEEL_GAZE_STATUS_INVALID_PROCESSOR = 8,
+    UFEEL_GAZE_STATUS_INTERNAL_ERROR = 9
 } UFeelEyeTrackingStatus;
 
 /** Bit flags indicating the estimated eye_tracking direction. Multiple flags may be set. */
@@ -102,7 +106,8 @@ typedef enum
     UFEEL_GAZE_DIRECTION_CENTER = 1 << 4
 } UFeelEyeTrackingDirection;
 
-/** Estimated eye_tracking coordinates and diagnostics for the current video frame. */
+/** Estimated eye-tracking coordinates and diagnostics for the current video frame. `status` is a
+ * UFeelEyeTrackingStatus value. */
 typedef struct
 {
     int32_t status;
@@ -150,11 +155,12 @@ typedef struct
 
 typedef enum
 {
-    UFEEL_SPEECH_STATUS_FACE_UNAVAILABLE = 0,
-    UFEEL_SPEECH_STATUS_VALID = 1,
-    UFEEL_SPEECH_STATUS_FRAME_UNAVAILABLE = 2
+    UFEEL_SPEECH_STATUS_DISABLED = 0,
+    UFEEL_SPEECH_STATUS_NO_SPEECH = 1,
+    UFEEL_SPEECH_STATUS_VALID = 2
 } UFeelSpeechStatus;
 
+/** Latest speech transcription and its UFeelSpeechStatus value. */
 typedef struct
 {
     int32_t status;
@@ -168,7 +174,7 @@ typedef enum
     UFEEL_HEARTRATE_STATUS_JSON_PARSE_ERROR = 0,
     UFEEL_HEARTRATE_STATUS_JSON_PARSE_OUT_OF_RANGE = 1,
     UFEEL_HEARTRATE_STATUS_REQUEST_FAILED = 2,
-    UFEEL_HEARTRATE_STATUS_NULL_PROCESSOR = 3,
+    UFEEL_HEARTRATE_STATUS_VALID = 3,
     UFEEL_HEARTRATE_STATUS_NO_DATA = 4,
 } UFeelHeartRateStatus;
 
@@ -185,32 +191,40 @@ ufeel_create(const char* utf8ModelDirectory, const char* utf8SpeechModelPath);
 /** Destroys a processor created by ufeel_create(). Accepts NULL. */
 UFEEL_API void ufeel_destroy(UFeelProcessor* processor);
 
-/** Processes the next input frame. Returns 1 when processing succeeds, otherwise 0. */
+/** Processes the requested features. Returns a UFeelStatus code. */
 UFEEL_API int32_t ufeel_update(UFeelProcessor* processor, int32_t detectionType);
 
-/** Processes the next input frame. Returns 1 when processing succeeds, otherwise 0. */
+/** Processes the requested features synchronously from frame. dataSize must be at least
+ * stride * height bytes. The processor copies any frame data it retains. Returns a UFeelStatus
+ * code. */
 UFEEL_API int32_t
 ufeel_update_from_frame(UFeelProcessor* processor, int32_t detectionType, const UFeelFrame* frame);
 
-/** Processes the next input frame. Returns 1 when processing succeeds, otherwise 0. */
+/** Captures the next camera frame. Returns a UFeelStatus code. */
 UFEEL_API int32_t ufeel_update_frame(UFeelProcessor* processor);
 
-/** Set the lasted processed image to the one you gave. */
+/** Copies frame into processor-owned storage. dataSize must be at least stride * height bytes.
+ * Returns a UFeelStatus code. */
 UFEEL_API int32_t ufeel_set_frame(UFeelProcessor* processor, const UFeelFrame* frame);
 
-/** Returns a copy of the latest processed image, or NULL if no frame is available. */
+/** Returns a library-owned copy of the latest frame. It can be released with ufeel_free_frame(). */
 UFEEL_API UFeelFrame* ufeel_get_frame(UFeelProcessor* processor);
 
 /** Releases a frame returned by ufeel_get_frame(). Accepts NULL. */
 UFEEL_API void ufeel_free_frame(UFeelFrame* frame);
 
-// TODO: add comment
+/** Gets the latest frame's dimensions, stride, and required packed-buffer size without copying
+ * pixel data. Returns a UFeelStatus code. */
 UFEEL_API int32_t ufeel_get_frame_info(UFeelProcessor* processor, UFeelFrame* info);
 
-// TODO: add comment
+/** Copies the latest frame into caller-owned tightly packed storage. destinationSize must be at
+ * least width * height * channels bytes. Returns a UFeelStatus code. */
 UFEEL_API int32_t
 ufeel_copy_frame(UFeelProcessor* processor, uint8_t* destination, int32_t destinationSize);
 
+/** Converts the latest frame to BGRA in caller-owned storage. destinationRowBytes must be at least
+ * width * 4, and the destination must hold destinationRowBytes * height bytes. Returns a
+ * UFeelStatus code. */
 UFEEL_API int32_t ufeel_copy_frame_bgra(
     UFeelProcessor* processor,
     uint8_t* destination,
@@ -219,16 +233,16 @@ UFEEL_API int32_t ufeel_copy_frame_bgra(
     int32_t height
 );
 
-// TODO: add logic to create and free the buffer used for `ufeel_copy_frame` and `ufeel_copy_frame_bgra`
-
-/** Processes the next input frame for emotions. Returns 1 when processing succeeds, otherwise 0. */
+/** Updates emotion detection from the next camera frame. Returns a UFeelStatus code. */
 UFEEL_API int32_t ufeel_update_emotions(UFeelProcessor* processor);
 
-/** Processes the next input frame for emotions. Returns 1 when processing succeeds, otherwise 0. */
+/** Updates emotion detection synchronously from frame. Returns a UFeelStatus code. */
 UFEEL_API int32_t
 ufeel_update_emotions_from_frame(UFeelProcessor* processor, const UFeelFrame* frame);
 
-/** Returns the current emotion scores. Set *count to zero if no scores are available. */
+/** Retrieves emotion scores and status into a result created with ufeel_create_emotions_result().
+ * Reusing a result releases its previously owned emotion data. May return
+ * UFEEL_STATUS_NO_EMOTIONS or UFEEL_STATUS_INVALID_FRAME. */
 UFEEL_API int32_t ufeel_get_emotions_result(UFeelProcessor* processor, UFeelEmotionsResult* result);
 
 /** Processes the input frame for emotion detection and passes the result to the handler. The result
@@ -243,12 +257,10 @@ UFEEL_API UFeelEmotionsResult* ufeel_create_emotions_result();
 /** Releases emotion results returned by ufeel_get_emotions_result(). Accepts NULL. */
 UFEEL_API void ufeel_free_emotions_result(UFeelEmotionsResult* emotions);
 
-/** Processes the next input frame for eye_tracking. Returns 1 when processing succeeds, otherwise
- * 0.*/
+/** Updates eye tracking from the next camera frame. Returns a UFeelStatus code. */
 UFEEL_API int32_t ufeel_update_eye_tracking(UFeelProcessor* processor);
 
-/** Processes the next input frame for eye_tracking. Returns 1 when processing succeeds, otherwise
- * 0.*/
+/** Updates eye tracking synchronously from frame. Returns a UFeelStatus code. */
 UFEEL_API int32_t
 ufeel_update_eye_tracking_from_frame(UFeelProcessor* processor, const UFeelFrame* frame);
 
@@ -298,16 +310,17 @@ ufeel_load_eye_tracking_calibration_profile(UFeelProcessor* processor, const cha
 /** Create eye tracking results. */
 UFEEL_API UFeelEyeTrackingResult* ufeel_create_eye_tracking_result();
 
-/** Releases eye_ racking results returned by ufeel_get_eye_tracking_result(). Accepts NULL. */
+/** Releases eye-tracking results returned by ufeel_get_eye_tracking_result(). Accepts NULL. */
 UFEEL_API void ufeel_free_eye_tracking_result(UFeelEyeTrackingResult* eyetracking);
 
-/** Processes the next input frame for speech. Returns 1 when processing succeeds, otherwise 0. */
+/** Updates speech-to-text from the latest captured audio. Returns a UFeelStatus code. */
 UFEEL_API int32_t ufeel_update_speech_to_text(UFeelProcessor* processor);
 
 /** Enables or disables speech-to-text processing. */
 UFEEL_API int32_t ufeel_set_speech_to_text_enabled(UFeelProcessor* processor, int32_t enabled);
 
-/** Returns the latest speech-to-text result as a library-allocated UTF-8 string. */
+/** Retrieves speech and status into a result created with
+ * ufeel_create_speech_to_text_result(). Reusing a result releases its previous string. */
 UFEEL_API int32_t
 ufeel_get_speech_to_text_result(UFeelProcessor* processor, UFeelSpeechToTextResult* result);
 
@@ -317,8 +330,7 @@ UFEEL_API UFeelSpeechToTextResult* ufeel_create_speech_to_text_result();
 /** Releases speech result returned by ufeel_get_speech_to_text_result(). Accepts NULL. */
 UFEEL_API void ufeel_free_speech_to_text_result(UFeelSpeechToTextResult* speech);
 
-/** Processes the next input frame for heartrate. Returns 1 when processing succeeds, otherwise 0.
- */
+/** Updates heart rate. Returns a UFeelStatus code, including UFEEL_STATUS_NO_HEARTRATE. */
 UFEEL_API int32_t ufeel_update_heart_rate(UFeelProcessor* processor);
 
 /** Fetches and returns the current heartrate and its validity status. */
@@ -328,7 +340,7 @@ ufeel_get_heart_rate_result(UFeelProcessor* processor, UFeelHeartRateResult* res
 /** Create heartrate results. */
 UFEEL_API UFeelHeartRateResult* ufeel_create_heart_rate_result();
 
-/** Releases heartrate result returned by ufeel_get_heartrate(). Accepts NULL. */
+/** Releases heart-rate result returned by ufeel_get_heart_rate_result(). Accepts NULL. */
 UFEEL_API void ufeel_free_heart_rate_result(UFeelHeartRateResult* heartrate);
 
 #ifdef __cplusplus
