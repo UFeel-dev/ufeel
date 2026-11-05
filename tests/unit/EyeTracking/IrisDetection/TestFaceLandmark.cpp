@@ -126,3 +126,59 @@ TEST_F(
     EXPECT_FALSE(original.empty());
     EXPECT_EQ(original.size(), image.size());
 }
+
+TEST_F(
+    TestFaceLandmark, ReturnsZeroPointForNegativeLandmarkIndex
+)
+{
+    EXPECT_EQ(landmark_->getFaceLandmarkAt(-1), cv::Point());
+}
+
+TEST_F(
+    TestFaceLandmark, ReturnsZeroPointForLandmarkIndexAboveRange
+)
+{
+    EXPECT_EQ(landmark_->getFaceLandmarkAt(468), cv::Point());
+}
+
+TEST_F(
+    TestFaceLandmark, ReturnsZeroPointForLargeLandmarkIndex
+)
+{
+    EXPECT_EQ(landmark_->getFaceLandmarkAt(999), cv::Point());
+}
+
+TEST_F(
+    TestFaceLandmark, ReturnsZeroPoint3DForNegativeLandmarkIndex
+)
+{
+    EXPECT_EQ(landmark_->getFaceLandmark3DAt(-1), cv::Point3f());
+}
+
+TEST_F(
+    TestFaceLandmark, ReturnsZeroPoint3DForLandmarkIndexAboveRange
+)
+{
+    EXPECT_EQ(landmark_->getFaceLandmark3DAt(468), cv::Point3f());
+}
+
+TEST_F(
+    TestFaceLandmark, ReturnsZeroPoint3DForLargeLandmarkIndex
+)
+{
+    EXPECT_EQ(landmark_->getFaceLandmark3DAt(999), cv::Point3f());
+}
+
+TEST_F(
+    TestFaceLandmark, ReturnsZeroPointWhenNoFaceRoiExists
+)
+{
+    EXPECT_EQ(landmark_->getFaceLandmarkAt(0), cv::Point());
+}
+
+TEST_F(
+    TestFaceLandmark, ReturnsZeroPoint3DWhenNoFaceRoiExists
+)
+{
+    EXPECT_EQ(landmark_->getFaceLandmark3DAt(0), cv::Point3f());
+}
