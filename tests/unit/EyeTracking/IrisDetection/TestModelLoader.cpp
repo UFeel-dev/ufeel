@@ -164,3 +164,49 @@ TEST_F(
 {
     EXPECT_GT(loader_->getNumberOfOutputs(), 0);
 }
+
+TEST_F(
+    TestModelLoader, LoadsBytesToInput
+)
+{
+    std::vector<std::uint8_t> data(loader_->getInputSize(), 0);
+
+    EXPECT_NO_THROW(loader_->loadBytesToInput(data.data()));
+}
+
+TEST_F(
+    TestModelLoader, ThrowsWhenLoadingNullBytes
+)
+{
+    EXPECT_THROW(loader_->loadBytesToInput(nullptr), std::invalid_argument);
+}
+
+TEST_F(
+    TestModelLoader, ThrowsWhenLoadingBytesWithInvalidNegativeIndex
+)
+{
+    std::vector<std::uint8_t> data(loader_->getInputSize(), 0);
+
+    EXPECT_THROW(loader_->loadBytesToInput(data.data(), -1), std::out_of_range);
+}
+
+TEST_F(
+    TestModelLoader, ThrowsWhenLoadingBytesWithInvalidLargeIndex
+)
+{
+    std::vector<std::uint8_t> data(loader_->getInputSize(), 0);
+
+    EXPECT_THROW(loader_->loadBytesToInput(data.data(), 999), std::out_of_range);
+}
+
+TEST_F(
+    TestModelLoader, LoadsBytesToEveryInput
+)
+{
+    for (int index = 0; index < loader_->getNumberOfInputs(); ++index)
+    {
+        std::vector<std::uint8_t> data(loader_->getInputSize(index), 0);
+
+        EXPECT_NO_THROW(loader_->loadBytesToInput(data.data(), index));
+    }
+}
