@@ -106,3 +106,21 @@ TEST_F(
 
     EXPECT_THROW(detector_->loadImageToInput(image, 0), std::invalid_argument);
 }
+
+TEST_F(
+    TestFaceDetection, ReturnsFaceRegressor
+)
+{
+    auto const regressor = detector_->getFaceRegressor();
+
+    EXPECT_FALSE(regressor.empty());
+}
+
+TEST_F(
+    TestFaceDetection, ReturnsFaceClassificator
+)
+{
+    auto const classificator = detector_->getFaceClassificator();
+
+    EXPECT_FALSE(classificator.empty());
+}
