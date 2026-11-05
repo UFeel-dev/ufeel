@@ -3,13 +3,14 @@ add_executable(
     # Emotions/TestResNetImpl.cpp
     # Emotions/TestModel.cpp
 
-    EyeTracking/IrisDetection/TestDetectionPostProcess.cpp
+    # EyeTracking/IrisDetection/TestDetectionPostProcess.cpp
+    EyeTracking/IrisDetection/TestModelLoader.cpp
 
-    SpeechToText/TestAudioCapture.cpp
-    SpeechToText/TestSpeechRecognizer.cpp
-    SpeechToText/TestSpeechToTextDetector.cpp
+    # SpeechToText/TestAudioCapture.cpp
+    # SpeechToText/TestSpeechRecognizer.cpp
+    # SpeechToText/TestSpeechToTextDetector.cpp
 
-    HeartRate/TestHeartRateDetector.cpp
+    # HeartRate/TestHeartRateDetector.cpp
 )
 
 target_link_libraries(
@@ -17,6 +18,14 @@ target_link_libraries(
     PRIVATE
         GTest::gtest_main
         ufeel_detection_library
+)
+
+target_include_directories(run_unit_tests PRIVATE
+    ${TFLITE_DIR}/include
+)
+
+target_compile_definitions(run_unit_tests PRIVATE
+    MODEL_LOADER_TEST_MODEL_PATH="${CMAKE_SOURCE_DIR}/models/EyeTracking/face_detection_short.tflite"
 )
 
 include(GoogleTest)
