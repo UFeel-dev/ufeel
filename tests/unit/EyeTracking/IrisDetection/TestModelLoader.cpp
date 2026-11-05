@@ -110,3 +110,57 @@ TEST_F(
 {
     EXPECT_GT(loader_->getNumberOfInputs(), 0);
 }
+
+TEST_F(
+    TestModelLoader, ReturnsOutputShapeForValidIndex
+)
+{
+    auto const shape = loader_->getOutputShape();
+
+    EXPECT_FALSE(shape.empty());
+}
+
+TEST_F(
+    TestModelLoader, ReturnsEmptyOutputShapeForInvalidIndex
+)
+{
+    EXPECT_TRUE(loader_->getOutputShape(-1).empty());
+    EXPECT_TRUE(loader_->getOutputShape(999).empty());
+}
+
+TEST_F(
+    TestModelLoader, ReturnsOutputDataForValidIndex
+)
+{
+    EXPECT_NE(loader_->getOutputData(), nullptr);
+}
+
+TEST_F(
+    TestModelLoader, ReturnsNullOutputDataForInvalidIndex
+)
+{
+    EXPECT_EQ(loader_->getOutputData(-1), nullptr);
+    EXPECT_EQ(loader_->getOutputData(999), nullptr);
+}
+
+TEST_F(
+    TestModelLoader, ReturnsOutputSizeForValidIndex
+)
+{
+    EXPECT_GT(loader_->getOutputSize(), 0);
+}
+
+TEST_F(
+    TestModelLoader, ReturnsZeroOutputSizeForInvalidIndex
+)
+{
+    EXPECT_EQ(loader_->getOutputSize(-1), 0);
+    EXPECT_EQ(loader_->getOutputSize(999), 0);
+}
+
+TEST_F(
+    TestModelLoader, ReturnsNumberOfOutputs
+)
+{
+    EXPECT_GT(loader_->getNumberOfOutputs(), 0);
+}
