@@ -5,6 +5,7 @@ add_executable(
 
     EyeTracking/IrisDetection/TestDetectionPostProcess.cpp
     EyeTracking/IrisDetection/TestModelLoader.cpp
+    EyeTracking/IrisDetection/TestFaceDetection.cpp
 
     SpeechToText/TestAudioCapture.cpp
     SpeechToText/TestSpeechRecognizer.cpp
@@ -26,6 +27,7 @@ target_include_directories(run_unit_tests PRIVATE
 
 target_compile_definitions(run_unit_tests PRIVATE
     MODEL_LOADER_TEST_MODEL_PATH="${CMAKE_SOURCE_DIR}/models/EyeTracking/face_detection_short.tflite"
+    MODEL_DIR_PATH="${CMAKE_SOURCE_DIR}/models/EyeTracking"
 )
 
 include(GoogleTest)
