@@ -124,3 +124,66 @@ TEST_F(
 
     EXPECT_FALSE(classificator.empty());
 }
+
+TEST_F(
+    TestFaceDetection, ReturnsEmptyRoiBeforeInference
+)
+{
+    auto const roi = detector_->getFaceRoi();
+
+    EXPECT_TRUE(roi.empty());
+}
+
+TEST_F(
+    TestFaceDetection, ReturnsEmptyRoiAfterLoadingImage
+)
+{
+    auto const image = createImage();
+
+    detector_->loadImageToInput(image, 0);
+
+    auto const roi = detector_->getFaceRoi();
+
+    EXPECT_TRUE(roi.empty());
+}
+
+TEST_F(
+    TestFaceDetection, RunsInferenceAfterLoadingImage
+)
+{
+    auto const image = createImage();
+
+    detector_->loadImageToInput(image, 0);
+
+    EXPECT_NO_THROW(detector_->runInference());
+}
+
+TEST_F(
+    TestFaceDetection, ReturnsOriginalImageAfterInference
+)
+{
+    auto const image = createImage();
+
+    detector_->loadImageToInput(image, 0);
+    detector_->runInference();
+
+    auto const original = detector_->getOriginalImage();
+
+    EXPECT_FALSE(original.empty());
+    EXPECT_EQ(original.size(), image.size());
+}
+
+TEST_F(
+    TestFaceDetection, ReturnsFaceRoiAfterInference
+)
+{
+    auto const image = createImage();
+
+    detector_->loadImageToInput(image, 0);
+    detector_->runInference();
+
+    auto const roi = detector_->getFaceRoi();
+
+    EXPECT_GE(roi.width, 0);
+    EXPECT_GE(roi.height, 0);
+}
