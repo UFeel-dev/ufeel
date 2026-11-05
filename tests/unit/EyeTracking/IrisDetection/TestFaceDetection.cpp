@@ -187,3 +187,123 @@ TEST_F(
     EXPECT_GE(roi.width, 0);
     EXPECT_GE(roi.height, 0);
 }
+
+TEST_F(
+    TestFaceDetection, ReturnsEmptyImageWhenOriginalImageIsEmpty
+)
+{
+    auto const cropped = detector_->cropFrame(cv::Rect(10, 10, 100, 100));
+
+    EXPECT_TRUE(cropped.empty());
+}
+
+TEST_F(
+    TestFaceDetection, ReturnsEmptyImageForZeroWidthRoi
+)
+{
+    auto const image = createImage();
+
+    detector_->loadImageToInput(image, 0);
+
+    auto const cropped = detector_->cropFrame(cv::Rect(10, 10, 0, 100));
+
+    EXPECT_TRUE(cropped.empty());
+}
+
+TEST_F(
+    TestFaceDetection, ReturnsEmptyImageForZeroHeightRoi
+)
+{
+    auto const image = createImage();
+
+    detector_->loadImageToInput(image, 0);
+
+    auto const cropped = detector_->cropFrame(cv::Rect(10, 10, 100, 0));
+
+    EXPECT_TRUE(cropped.empty());
+}
+
+TEST_F(
+    TestFaceDetection, CropsImageInsideFrame
+)
+{
+    auto const image = createImage();
+
+    detector_->loadImageToInput(image, 0);
+
+    cv::Rect const roi(100, 100, 200, 150);
+
+    auto const cropped = detector_->cropFrame(roi);
+
+    EXPECT_EQ(cropped.size(), roi.size());
+    EXPECT_EQ(cropped.type(), image.type());
+    EXPECT_FALSE(cropped.empty());
+}
+
+TEST_F(
+    TestFaceDetection, CropsImageWithRoiOutsideLeftBoundary
+)
+{
+    auto const image = createImage();
+
+    detector_->loadImageToInput(image, 0);
+
+    cv::Rect const roi(-50, 100, 200, 150);
+
+    auto const cropped = detector_->cropFrame(roi);
+
+    ASSERT_EQ(cropped.size(), roi.size());
+    EXPECT_EQ(cropped.at<cv::Vec3b>(0, 0), cv::Vec3b(0, 0, 0));
+    EXPECT_EQ(cropped.at<cv::Vec3b>(0, 50), image.at<cv::Vec3b>(100, 0));
+}
+
+TEST_F(
+    TestFaceDetection, CropsImageWithRoiOutsideRightBoundary
+)
+{
+    auto const image = createImage();
+
+    detector_->loadImageToInput(image, 0);
+
+    cv::Rect const roi(600, 100, 100, 150);
+
+    auto const cropped = detector_->cropFrame(roi);
+
+    ASSERT_EQ(cropped.size(), roi.size());
+    EXPECT_EQ(cropped.at<cv::Vec3b>(0, 0), image.at<cv::Vec3b>(100, 600));
+    EXPECT_EQ(cropped.at<cv::Vec3b>(0, 50), cv::Vec3b(0, 0, 0));
+}
+
+TEST_F(
+    TestFaceDetection, CropsImageWithRoiOutsideTopBoundary
+)
+{
+    auto const image = createImage();
+
+    detector_->loadImageToInput(image, 0);
+
+    cv::Rect const roi(100, -50, 200, 150);
+
+    auto const cropped = detector_->cropFrame(roi);
+
+    ASSERT_EQ(cropped.size(), roi.size());
+    EXPECT_EQ(cropped.at<cv::Vec3b>(0, 0), cv::Vec3b(0, 0, 0));
+    EXPECT_EQ(cropped.at<cv::Vec3b>(50, 0), image.at<cv::Vec3b>(0, 100));
+}
+
+TEST_F(
+    TestFaceDetection, CropsImageWithRoiOutsideBottomBoundary
+)
+{
+    auto const image = createImage();
+
+    detector_->loadImageToInput(image, 0);
+
+    cv::Rect const roi(100, 400, 200, 150);
+
+    auto const cropped = detector_->cropFrame(roi);
+
+    ASSERT_EQ(cropped.size(), roi.size());
+    EXPECT_EQ(cropped.at<cv::Vec3b>(0, 0), image.at<cv::Vec3b>(400, 100));
+    EXPECT_EQ(cropped.at<cv::Vec3b>(100, 0), cv::Vec3b(0, 0, 0));
+}
