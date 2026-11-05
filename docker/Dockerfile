@@ -32,7 +32,6 @@ RUN apt-get update && \
         libfontconfig1 \
         libice6 \
         libsm6 \
-        libyaml-cpp-dev \
         patchelf \
         iwyu \
         libcurl4-openssl-dev \

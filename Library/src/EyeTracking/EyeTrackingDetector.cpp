@@ -209,7 +209,7 @@ using Vector3 = std::array<double, 3>;
 EyeTrackingDetector::EyeTrackingDetector(
     const std::string& modelDirectory
 )
-    : irisLandmarker_(modelDirectory)
+    : irisLandmarker_(modelDirectory + "/EyeTracking")
 {
 }
 
