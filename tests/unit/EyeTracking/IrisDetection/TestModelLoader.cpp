@@ -56,3 +56,57 @@ TEST(
 {
     EXPECT_THROW(my::ModelLoader loader("invalid_model_path.tflite"), std::runtime_error);
 }
+
+TEST_F(
+    TestModelLoader, ReturnsInputShapeForValidIndex
+)
+{
+    auto const shape = loader_->getInputShape();
+
+    EXPECT_FALSE(shape.empty());
+}
+
+TEST_F(
+    TestModelLoader, ReturnsEmptyInputShapeForInvalidIndex
+)
+{
+    EXPECT_TRUE(loader_->getInputShape(-1).empty());
+    EXPECT_TRUE(loader_->getInputShape(999).empty());
+}
+
+TEST_F(
+    TestModelLoader, ReturnsInputDataForValidIndex
+)
+{
+    EXPECT_NE(loader_->getInputData(), nullptr);
+}
+
+TEST_F(
+    TestModelLoader, ReturnsNullInputDataForInvalidIndex
+)
+{
+    EXPECT_EQ(loader_->getInputData(-1), nullptr);
+    EXPECT_EQ(loader_->getInputData(999), nullptr);
+}
+
+TEST_F(
+    TestModelLoader, ReturnsInputSizeForValidIndex
+)
+{
+    EXPECT_GT(loader_->getInputSize(), 0);
+}
+
+TEST_F(
+    TestModelLoader, ReturnsZeroInputSizeForInvalidIndex
+)
+{
+    EXPECT_EQ(loader_->getInputSize(-1), 0);
+    EXPECT_EQ(loader_->getInputSize(999), 0);
+}
+
+TEST_F(
+    TestModelLoader, ReturnsNumberOfInputs
+)
+{
+    EXPECT_GT(loader_->getNumberOfInputs(), 0);
+}

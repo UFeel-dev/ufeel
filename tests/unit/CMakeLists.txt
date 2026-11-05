@@ -3,14 +3,14 @@ add_executable(
     # Emotions/TestResNetImpl.cpp
     # Emotions/TestModel.cpp
 
-    # EyeTracking/IrisDetection/TestDetectionPostProcess.cpp
+    EyeTracking/IrisDetection/TestDetectionPostProcess.cpp
     EyeTracking/IrisDetection/TestModelLoader.cpp
 
-    # SpeechToText/TestAudioCapture.cpp
-    # SpeechToText/TestSpeechRecognizer.cpp
-    # SpeechToText/TestSpeechToTextDetector.cpp
+    SpeechToText/TestAudioCapture.cpp
+    SpeechToText/TestSpeechRecognizer.cpp
+    SpeechToText/TestSpeechToTextDetector.cpp
 
-    # HeartRate/TestHeartRateDetector.cpp
+    HeartRate/TestHeartRateDetector.cpp
 )
 
 target_link_libraries(
