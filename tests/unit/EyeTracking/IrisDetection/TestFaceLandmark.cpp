@@ -51,3 +51,45 @@ TEST_F(
 {
     EXPECT_NE(landmark_, nullptr);
 }
+
+TEST_F(
+    TestFaceLandmark, LoadsThreeChannelImage
+)
+{
+    auto const image = createImage();
+
+    EXPECT_NO_THROW(landmark_->loadImageToInput(image, 0));
+}
+
+TEST_F(
+    TestFaceLandmark, StoresOriginalImage
+)
+{
+    auto const image = createImage();
+
+    landmark_->loadImageToInput(image, 0);
+
+    auto const original = landmark_->getOriginalImage();
+
+    EXPECT_FALSE(original.empty());
+    EXPECT_EQ(original.size(), image.size());
+    EXPECT_EQ(original.type(), image.type());
+}
+
+TEST_F(
+    TestFaceLandmark, ThrowsWhenLoadingEmptyImage
+)
+{
+    cv::Mat const image;
+
+    EXPECT_THROW(landmark_->loadImageToInput(image, 0), std::invalid_argument);
+}
+
+TEST_F(
+    TestFaceLandmark, ThrowsWhenLoadingUnsupportedImageType
+)
+{
+    cv::Mat const image(480, 640, CV_8UC1);
+
+    EXPECT_THROW(landmark_->loadImageToInput(image, 0), std::invalid_argument);
+}
