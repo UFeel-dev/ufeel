@@ -93,3 +93,36 @@ TEST_F(
 
     EXPECT_THROW(landmark_->loadImageToInput(image, 0), std::invalid_argument);
 }
+
+TEST_F(
+    TestFaceLandmark, ThrowsWhenRunningInferenceWithoutImage
+)
+{
+    EXPECT_THROW(landmark_->runInference(), std::runtime_error);
+}
+
+TEST_F(
+    TestFaceLandmark, RunsInferenceAfterLoadingImage
+)
+{
+    auto const image = createImage();
+
+    landmark_->loadImageToInput(image, 0);
+
+    EXPECT_NO_THROW(landmark_->runInference());
+}
+
+TEST_F(
+    TestFaceLandmark, ReturnsOriginalImageAfterInference
+)
+{
+    auto const image = createImage();
+
+    landmark_->loadImageToInput(image, 0);
+    landmark_->runInference();
+
+    auto const original = landmark_->getOriginalImage();
+
+    EXPECT_FALSE(original.empty());
+    EXPECT_EQ(original.size(), image.size());
+}
