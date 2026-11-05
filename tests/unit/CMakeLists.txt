@@ -6,6 +6,7 @@ add_executable(
     EyeTracking/IrisDetection/TestDetectionPostProcess.cpp
     EyeTracking/IrisDetection/TestModelLoader.cpp
     EyeTracking/IrisDetection/TestFaceDetection.cpp
+    EyeTracking/IrisDetection/TestFaceLandmark.cpp
 
     SpeechToText/TestAudioCapture.cpp
     SpeechToText/TestSpeechRecognizer.cpp
