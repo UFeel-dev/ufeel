@@ -210,3 +210,65 @@ TEST_F(
         EXPECT_NO_THROW(loader_->loadBytesToInput(data.data(), index));
     }
 }
+
+TEST_F(
+    TestModelLoader, LoadsThreeChannelImage
+)
+{
+    auto const image = createImage(3);
+
+    ASSERT_FALSE(image.empty());
+
+    EXPECT_NO_THROW(loader_->loadImageToInput(image));
+}
+
+TEST_F(
+    TestModelLoader, LoadsFourChannelImage
+)
+{
+    auto const image = createImage(4);
+
+    ASSERT_FALSE(image.empty());
+
+    EXPECT_NO_THROW(loader_->loadImageToInput(image));
+}
+
+TEST_F(
+    TestModelLoader, ThrowsWhenLoadingEmptyImage
+)
+{
+    cv::Mat const image;
+
+    EXPECT_THROW(loader_->loadImageToInput(image), std::invalid_argument);
+}
+
+TEST_F(
+    TestModelLoader, ThrowsWhenLoadingImageWithUnsupportedType
+)
+{
+    cv::Mat const image(128, 128, CV_8UC1);
+
+    EXPECT_THROW(loader_->loadImageToInput(image), std::invalid_argument);
+}
+
+TEST_F(
+    TestModelLoader, ThrowsWhenLoadingImageWithInvalidNegativeIndex
+)
+{
+    auto const image = createImage();
+
+    ASSERT_FALSE(image.empty());
+
+    EXPECT_THROW(loader_->loadImageToInput(image, -1), std::out_of_range);
+}
+
+TEST_F(
+    TestModelLoader, ThrowsWhenLoadingImageWithInvalidLargeIndex
+)
+{
+    auto const image = createImage();
+
+    ASSERT_FALSE(image.empty());
+
+    EXPECT_THROW(loader_->loadImageToInput(image, 999), std::out_of_range);
+}
