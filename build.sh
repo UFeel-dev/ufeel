@@ -46,6 +46,7 @@ configure()
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_CXX_COMPILER=clang++-22 \
         -DUFEEL_BUILD_TESTS=OFF \
+        -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
         "${CMAKE_ARGS[@]}"
 }
 
@@ -154,7 +155,7 @@ all()
     configure
     build
     package
-    test # Maybe remove test from all and update documentation
+    test # TODO: maybe remove test from all and update documentation
 }
 
 usage()

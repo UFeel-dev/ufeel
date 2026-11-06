@@ -1,17 +1,46 @@
 #include "DataProcessor.hpp"
 
 #include "Emotions/EmotionDetector.hpp"
+#include "EyeTracking/EyeTrackingCalibrationModel.hpp"
 #include "EyeTracking/EyeTrackingDetector.hpp"
-#include "EyeTracking/GazeCalibrationModel.hpp"
 #include "HeartRate/HeartRateDetector.hpp"
+#include "HeartRate/HeartRateSource.hpp"
 #include "SpeechToText/SpeechToTextDetector.hpp"
 
+#include <cstdint>
 #include <iostream>
 #include <map>
 #include <memory>
 #include <opencv2/core/mat.hpp>
 #include <opencv2/videoio.hpp>
 #include <string>
+#include <utility>
+
+namespace
+{
+
+constexpr auto kValidDetectionMask =
+    static_cast<std::uint32_t>(Emotions) | static_cast<std::uint32_t>(EyeTracking) |
+    static_cast<std::uint32_t>(Speech) | static_cast<std::uint32_t>(HeartRate);
+
+constexpr auto needsVideoFrame(
+    std::uint32_t detectionType
+) noexcept -> bool
+{
+    return hasDetection(detectionType, Emotions) || hasDetection(detectionType, EyeTracking);
+}
+
+auto makeEmotionResult(
+    std::map<std::string, float> emotions
+) -> EmotionResult
+{
+    return {
+        .status = emotions.empty() ? EmotionStatus::FaceUnavailable : EmotionStatus::Valid,
+        .emotions = std::move(emotions),
+    };
+}
+
+} // namespace
 
 DataProcessor::DataProcessor(
     const std::string& modelDirectory, const std::string& speechModelPath
@@ -29,30 +58,39 @@ DataProcessor::DataProcessor(
 
     speechToTextDetector_ = std::make_unique<SpeechToTextDetector>(speechModelPath);
 
-    // heartRateSensorDetector_ = std::make_unique<HeartRateSensorDetector>();
+    heartRateSensorDetector_ = std::make_unique<HeartRateSensorDetector>();
 }
 
-auto DataProcessor::update() -> bool
+auto DataProcessor::updateFrame() -> DataProcessorStatus
 {
-    cap_ >> frame_;
-
-    if (frame_.empty())
+    cv::Mat capturedFrame;
+    if (!cap_.read(capturedFrame) || capturedFrame.empty())
     {
-        emotions_.clear();
-        gaze_ = {};
-        gaze_.status = GazeStatus::FrameUnavailable;
-        return false;
+        frame_.release();
+        return DataProcessorStatus::FrameUnavailable;
     }
 
-    emotions_ = emotionDetector_->process(frame_);
+    frame_ = std::move(capturedFrame);
+    return DataProcessorStatus::Ok;
+}
 
-    gaze_ = eyeTrackingDetector_->process(frame_);
+auto DataProcessor::setFrame(
+    const cv::Mat& frame
+) -> DataProcessorStatus
+{
+    if (frame.empty())
+    {
+        return DataProcessorStatus::InvalidFrame;
+    }
 
-    speech_ = speechToTextDetector_->process();
+    cv::Mat ownedFrame = frame.clone();
+    if (ownedFrame.empty())
+    {
+        return DataProcessorStatus::InvalidFrame;
+    }
 
-    heartrate_ = HeartRateSensorDetector::process();
-
-    return true;
+    frame_ = std::move(ownedFrame);
+    return DataProcessorStatus::Ok;
 }
 
 auto DataProcessor::getFrame() const -> cv::Mat
@@ -60,19 +98,195 @@ auto DataProcessor::getFrame() const -> cv::Mat
     return frame_;
 }
 
-auto DataProcessor::getEmotions() const -> const std::map<std::string, float>&
+auto DataProcessor::updateFromFrame(
+    uint32_t detectionType, const cv::Mat& image
+) -> DataProcessorStatus
+{
+    if ((detectionType & ~kValidDetectionMask) != 0)
+    {
+        return DataProcessorStatus::InvalidDetectionType;
+    }
+
+    if (needsVideoFrame(detectionType))
+    {
+        const auto frameStatus = setFrame(image);
+        if (frameStatus != DataProcessorStatus::Ok)
+        {
+            if (hasDetection(detectionType, Emotions))
+            {
+                emotions_ = {.status = EmotionStatus::FrameUnavailable};
+            }
+            if (hasDetection(detectionType, EyeTracking))
+            {
+                eyeTracking_ = {.status = EyeTrackingStatus::FrameUnavailable};
+            }
+            return frameStatus;
+        }
+    }
+
+    if (hasDetection(detectionType, Emotions))
+    {
+        emotions_ = makeEmotionResult(emotionDetector_->process(frame_));
+    }
+
+    if (hasDetection(detectionType, EyeTracking))
+    {
+        eyeTracking_ = eyeTrackingDetector_->process(frame_);
+    }
+
+    if (hasDetection(detectionType, Speech))
+    {
+        const auto text = speechToTextDetector_->process();
+        speechToText_ = {
+            .status = !speechToTextEnabled_ ? SpeechToTextStatus::Disabled
+                                            : (text.empty() ? SpeechToTextStatus::NoSpeech
+                                                            : SpeechToTextStatus::Valid),
+            .text = speechToTextEnabled_ ? text : std::string{},
+        };
+    }
+
+    if (hasDetection(detectionType, HeartRate))
+    {
+        heartRate_ = heartRateSensorDetector_->process();
+    }
+
+    return DataProcessorStatus::Ok;
+}
+
+auto DataProcessor::update(
+    uint32_t detectionType
+) -> DataProcessorStatus
+{
+    if ((detectionType & ~kValidDetectionMask) != 0)
+    {
+        return DataProcessorStatus::InvalidDetectionType;
+    }
+
+    if (needsVideoFrame(detectionType))
+    {
+        const auto frameStatus = updateFrame();
+        if (frameStatus != DataProcessorStatus::Ok)
+        {
+            if (hasDetection(detectionType, Emotions))
+            {
+                emotions_ = {.status = EmotionStatus::FrameUnavailable};
+            }
+            if (hasDetection(detectionType, EyeTracking))
+            {
+                eyeTracking_ = {.status = EyeTrackingStatus::FrameUnavailable};
+            }
+            return frameStatus;
+        }
+    }
+
+    return updateFromFrame(detectionType, frame_);
+}
+
+auto DataProcessor::updateEmotions() -> DataProcessorStatus
+{
+    const auto frameStatus = updateFrame();
+    if (frameStatus != DataProcessorStatus::Ok)
+    {
+        emotions_ = {.status = EmotionStatus::FrameUnavailable};
+        return frameStatus;
+    }
+
+    emotions_ = makeEmotionResult(emotionDetector_->process(frame_));
+    return DataProcessorStatus::Ok;
+}
+
+auto DataProcessor::updateEmotionsFromFrame(
+    const cv::Mat& frame
+) -> DataProcessorStatus
+{
+    const auto frameStatus = setFrame(frame);
+    if (frameStatus != DataProcessorStatus::Ok)
+    {
+        emotions_ = {.status = EmotionStatus::FrameUnavailable};
+        return frameStatus;
+    }
+
+    emotions_ = makeEmotionResult(emotionDetector_->process(frame_));
+    return DataProcessorStatus::Ok;
+}
+
+auto DataProcessor::getEmotions() const -> const EmotionResult&
 {
     return emotions_;
 }
 
-auto DataProcessor::getGaze() const -> GazeResult
+auto DataProcessor::getEmotionsFromFrame(
+    const cv::Mat& frame
+) const -> EmotionResult
 {
-    return gaze_;
+    if (frame.empty())
+    {
+        return {.status = EmotionStatus::FrameUnavailable};
+    }
+
+    return makeEmotionResult(emotionDetector_->process(frame));
 }
 
-auto DataProcessor::getSpeech() const -> const std::string&
+auto DataProcessor::updateEyeTracking() -> DataProcessorStatus
 {
-    return speech_;
+    const auto frameStatus = updateFrame();
+    if (frameStatus != DataProcessorStatus::Ok)
+    {
+        eyeTracking_ = {.status = EyeTrackingStatus::FrameUnavailable};
+        return frameStatus;
+    }
+
+    eyeTracking_ = eyeTrackingDetector_->process(frame_);
+    return DataProcessorStatus::Ok;
+}
+
+auto DataProcessor::updateEyeTrackingFromFrame(
+    const cv::Mat& frame
+) -> DataProcessorStatus
+{
+    const auto frameStatus = setFrame(frame);
+    if (frameStatus != DataProcessorStatus::Ok)
+    {
+        eyeTracking_ = {.status = EyeTrackingStatus::FrameUnavailable};
+        return frameStatus;
+    }
+
+    eyeTracking_ = eyeTrackingDetector_->process(frame_);
+    return DataProcessorStatus::Ok;
+}
+
+auto DataProcessor::getEyeTracking() const -> EyeTrackingResult
+{
+    return eyeTracking_;
+}
+
+auto DataProcessor::getEyeTrackingFromFrame(
+    const cv::Mat& frame
+) const -> EyeTrackingResult
+{
+    if (frame.empty())
+    {
+        return {.status = EyeTrackingStatus::FrameUnavailable};
+    }
+
+    return eyeTrackingDetector_->process(frame);
+}
+
+auto DataProcessor::updateSpeechToText() -> DataProcessorStatus
+{
+    const auto text = speechToTextDetector_->process();
+    speechToText_ = {
+        .status = !speechToTextEnabled_
+                      ? SpeechToTextStatus::Disabled
+                      : (text.empty() ? SpeechToTextStatus::NoSpeech : SpeechToTextStatus::Valid),
+        .text = speechToTextEnabled_ ? text : std::string{},
+    };
+    return DataProcessorStatus::Ok;
+}
+
+auto DataProcessor::getSpeechToText() const -> const SpeechToTextResult&
+{
+    return speechToText_;
 }
 
 void DataProcessor::beginEyeTrackingCalibration()
@@ -121,15 +335,27 @@ auto DataProcessor::loadEyeTrackingCalibrationProfile(
     return eyeTrackingDetector_->loadCalibrationProfile(path);
 }
 
+auto DataProcessor::updateHeartRate() -> DataProcessorStatus
+{
+    heartRate_ = heartRateSensorDetector_->process();
+    return DataProcessorStatus::Ok;
+}
+
 auto DataProcessor::getHeartRate() const -> HeartRateResult
 {
-    return heartrate_;
+    return heartRate_;
 }
 
 void DataProcessor::toggleSpeechToText(
     bool state
 )
 {
+    speechToTextEnabled_ = state;
+    if (!state)
+    {
+        speechToText_ = {.status = SpeechToTextStatus::Disabled};
+    }
+
     speechToTextDetector_->toggle(state);
 }
 
@@ -139,9 +365,4 @@ DataProcessor::~DataProcessor()
     {
         cap_.release();
     }
-
-    // emotionDetector_->close();
-    // eyeTrackingDetector_->close();
-    // speechToTextDetector_->close();
-    // heartRateSensorDetector_->close();
 }

@@ -120,7 +120,7 @@
                                     TextWrapping="Wrap"
                                     FontFamily="Monospace" />
                                 <TextBlock
-                                    x:Name="GazeText"
+                                    x:Name="EyeTrackingText"
                                     Text="Calibrate to estimate gaze"
                                     TextWrapping="Wrap"
                                     FontFamily="Monospace" />
@@ -157,33 +157,30 @@
                                     FontSize="20"
                                     FontWeight="SemiBold" />
                                 <TextBlock
-                                    x:Name="SpeechText"
+                                    x:Name="SpeechToTextText"
                                     Text="Speech disabled"
                                     TextWrapping="Wrap"
                                     MinHeight="48" />
                             </StackPanel>
                         </Border>
 
-                    <Border
-                        Background="#FFFFFF"
-                        CornerRadius="10"
-                        Padding="16">
-
-                        <StackPanel Spacing="10">
-                            <TextBlock
-                                Text="HeartRate BPM"
-                                FontSize="20"
-                                FontWeight="SemiBold" />
-
-                            <TextBlock
-                                x:Name="HeartRate"
-                                Text="Heart Sensor disabled"
-                                TextWrapping="Wrap"
-                                MinHeight="48" />
-                        </StackPanel>
-                    </Border>
-
-                </StackPanel>
+                        <Border
+                            Background="#FFFFFF"
+                            CornerRadius="10"
+                            Padding="16">
+                            <StackPanel Spacing="10">
+                                <TextBlock
+                                    Text="HeartRate BPM"
+                                    FontSize="20"
+                                    FontWeight="SemiBold" />
+                                <TextBlock
+                                    x:Name="HeartRateText"
+                                    Text="Heart Sensor disabled"
+                                    TextWrapping="Wrap"
+                                    MinHeight="48" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
                 </ScrollViewer>
             </Grid>
 
@@ -201,10 +198,10 @@
                         TextWrapping="Wrap" />
                     <Button
                         Grid.Column="1"
-                        x:Name="SpeechButton"
+                        x:Name="SpeechToTextButton"
                         Theme="{StaticResource IntegrationButtonTheme}"
                         Content="Enable speech"
-                        Click="SpeechButton_OnClick"
+                        Click="SpeechToTextButton_OnClick"
                         Padding="16,8" />
                     <Button
                         Grid.Column="2"
@@ -218,12 +215,12 @@
         </Grid>
 
         <Grid
-            x:Name="GazeOverlay"
+            x:Name="EyeTrackingOverlay"
             IsVisible="False"
             IsHitTestVisible="False">
-            <Canvas x:Name="GazeCanvas">
+            <Canvas x:Name="EyeTrackingCanvas">
                 <Ellipse
-                    x:Name="GazeMarker"
+                    x:Name="EyeTrackingMarker"
                     Width="24"
                     Height="24"
                     Fill="#F2C94C"

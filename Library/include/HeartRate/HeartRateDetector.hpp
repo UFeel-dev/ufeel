@@ -1,21 +1,26 @@
 #ifndef HEARTRATE_HEARTRATEDETECTOR_HPP
 #define HEARTRATE_HEARTRATEDETECTOR_HPP
 
-#include "UFeelHeartRateStatus.hpp"
+#include "HeartRate/HeartRateSource.hpp"
 
 #include <cstdint>
+#include <memory>
+#include <vector>
 
-struct HeartRateResult
+enum class HeartRateSourceType : std::uint8_t
 {
-    std::uint32_t bpm;
-    HeartRateStatus status;
+    Auto = 0,
+    Sensor = 1,
+    Watch = 2,
 };
 
 class HeartRateSensorDetector
 {
 public:
 
-    HeartRateSensorDetector() = default;
+    explicit HeartRateSensorDetector(
+        HeartRateSourceType source = HeartRateSourceType::Auto, std::uint16_t watchPort = 9999
+    );
 
     ~HeartRateSensorDetector() = default;
 
@@ -25,11 +30,11 @@ public:
     auto operator=(HeartRateSensorDetector&&) -> HeartRateSensorDetector& = delete;
 
     [[nodiscard]]
-    static auto process() -> HeartRateResult;
+    auto process() const -> HeartRateResult;
 
 private:
 
-    std::uint32_t bpm_{};
+    std::vector<std::unique_ptr<HeartRateSource>> sources_;
 };
 
 #endif // HEARTRATE_HEARTRATEDETECTOR_HPP
