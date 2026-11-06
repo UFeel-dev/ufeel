@@ -61,7 +61,9 @@ TEST(
     FaceDetectorTest, RejectsNullInjectedDetector
 )
 {
-    EXPECT_THROW(FaceDetector::fromDetector(cv::Ptr<cv::FaceDetectorYN>{}), std::runtime_error); // NOLINT
+    EXPECT_THROW(
+        FaceDetector::fromDetector(cv::Ptr<cv::FaceDetectorYN>{}), std::runtime_error
+    ); // NOLINT
 }
 
 TEST(

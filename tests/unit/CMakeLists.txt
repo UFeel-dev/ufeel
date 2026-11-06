@@ -20,6 +20,9 @@ add_executable(
     SpeechToText/TestSpeechToTextDetector.cpp
 
     HeartRate/TestHeartRateDetector.cpp
+    HeartRate/TestHeartRateSource.cpp
+    HeartRate/TestSensorHeartRateSource.cpp
+    HeartRate/TestWatchHeartRateSource.cpp
 )
 
 target_link_libraries(
