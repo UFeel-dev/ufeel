@@ -3,7 +3,7 @@
 ## astronaut.png
 
 | | |
-|---|---|
+| --- | --- |
 | **Description** | Color portrait photograph of Eileen Collins, an American NASA astronaut |
 | **Used for** | Unit tests of face detection and face landmark code (`TestFaceLandmark`) |
 | **Original source** | NASA Great Images database, image ID GPN-2000-001177 |
@@ -30,5 +30,5 @@ license applies to the source code only.
 
 ### References
 
-- scikit-image data documentation: https://scikit-image.org/docs/stable/api/skimage.data.html
-- image downloaded from the NASA Great Images database: https://www.flickr.com/photos/nasacommons/16504233985/
+- scikit-image data documentation: <https://scikit-image.org/docs/stable/api/skimage.data.html>
+- image downloaded from the NASA Great Images database: <https://www.flickr.com/photos/nasacommons/16504233985/>

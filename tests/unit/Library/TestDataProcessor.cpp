@@ -64,6 +64,43 @@ TEST(
 }
 
 TEST(
+    DataProcessorTest, SpeechToggleUpdatesStoredResult
+)
+{
+    auto processor = createProcessor();
+
+    processor.toggleSpeechToText(true);
+    EXPECT_EQ(processor.updateSpeechToText(), DataProcessorStatus::Ok);
+    EXPECT_EQ(processor.getSpeechToText().status, SpeechToTextStatus::NoSpeech);
+
+    processor.toggleSpeechToText(false);
+    EXPECT_EQ(processor.getSpeechToText().status, SpeechToTextStatus::Disabled);
+    EXPECT_TRUE(processor.getSpeechToText().text.empty());
+}
+
+TEST(
+    DataProcessorTest, FrameFailureUpdatesOnlyRequestedFeatureResults
+)
+{
+    auto processor = createProcessor();
+    const cv::Mat frame(480, 640, CV_8UC3, cv::Scalar(0, 0, 0));
+    ASSERT_EQ(processor.updateFromFrame(Emotions | EyeTracking, frame), DataProcessorStatus::Ok);
+
+    EXPECT_EQ(
+        processor.updateFromFrame(Emotions | EyeTracking, cv::Mat{}),
+        DataProcessorStatus::InvalidFrame
+    );
+    EXPECT_EQ(processor.getEmotions().status, EmotionStatus::FrameUnavailable);
+    EXPECT_EQ(processor.getEyeTracking().status, EyeTrackingStatus::FrameUnavailable);
+
+    ASSERT_EQ(processor.updateEmotionsFromFrame(frame), DataProcessorStatus::Ok);
+    ASSERT_EQ(processor.updateEyeTrackingFromFrame(frame), DataProcessorStatus::Ok);
+    EXPECT_EQ(processor.updateFromFrame(Emotions, cv::Mat{}), DataProcessorStatus::InvalidFrame);
+    EXPECT_EQ(processor.getEmotions().status, EmotionStatus::FrameUnavailable);
+    EXPECT_EQ(processor.getEyeTracking().status, EyeTrackingStatus::FaceUnavailable);
+}
+
+TEST(
     DataProcessorTest, EmptyFramesSetFeatureResultsToUnavailable
 )
 {

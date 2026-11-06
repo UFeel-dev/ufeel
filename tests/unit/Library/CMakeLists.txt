@@ -17,6 +17,9 @@ add_executable(
     EyeTracking/IrisDetection/TestModelLoader.cpp
     EyeTracking/IrisDetection/TestFaceDetection.cpp
     EyeTracking/IrisDetection/TestFaceLandmark.cpp
+    EyeTracking/TestEyeTrackingCalibrationModel.cpp
+    EyeTracking/TestEyeTrackingDetector.cpp
+    EyeTracking/TestEyeTrackingKalmanFilter.cpp
 
     Utils/TestFrameChecker.cpp
 
