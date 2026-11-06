@@ -80,7 +80,8 @@ struct CalibrationProgress
     std::uint32_t requiredSamplesPerTarget = 0;
 };
 
-enum EyeTrackingDirectionFlags : std::uint8_t
+enum EyeTrackingDirectionFlags : std::uint8_t // NOLINT(cppcoreguidelines-use-enum-class): unscoped
+                                              // bit flags are part of the existing public API.
 {
     EyeTrackingLeft = 1U << 0U,
     EyeTrackingRight = 1U << 1U,

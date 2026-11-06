@@ -1,5 +1,5 @@
-#ifndef FRAMECONVERSION_HPP
-#define FRAMECONVERSION_HPP
+#ifndef INTERNAL_FRAMECONVERSION_HPP
+#define INTERNAL_FRAMECONVERSION_HPP
 
 #include "opencv2/core/hal/interface.h"
 #include "opencv2/core/mat.hpp"
@@ -63,11 +63,11 @@ inline auto convertFrame(
 
     const int type = CV_MAKETYPE(CV_8U, frame->channels);
 
-    cv::Mat converted(frame->height, frame->width, type, frame->data, stride);
+    const cv::Mat converted(frame->height, frame->width, type, frame->data, stride);
 
     return copyPolicy == FrameCopyPolicy::Copy ? converted.clone() : converted;
 }
 
 } // namespace ufeel::internal
 
-#endif // FRAMECONVERSION_HPP
+#endif // INTERNAL_FRAMECONVERSION_HPP

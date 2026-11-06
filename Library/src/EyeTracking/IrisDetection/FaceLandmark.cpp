@@ -91,9 +91,12 @@ auto my::FaceLandmark::getFaceLandmarkAt(
     }
 
     int const imageX =
-        static_cast<int>(x / static_cast<float>(inputShape.at(2)) * roi.width) + roi.x;
-    int const imageY =
-        static_cast<int>(y / static_cast<float>(inputShape.at(1)) * roi.height) + roi.y;
+        static_cast<int>(x / static_cast<float>(inputShape.at(2)) * static_cast<float>(roi.width)) +
+        roi.x;
+    int const imageY = static_cast<int>(
+                           y / static_cast<float>(inputShape.at(1)) * static_cast<float>(roi.height)
+                       ) +
+                       roi.y;
 
     return {imageX, imageY};
 }

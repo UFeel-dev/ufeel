@@ -1,5 +1,5 @@
-#ifndef MEMORY_HPP
-#define MEMORY_HPP
+#ifndef INTERNAL_MEMORY_HPP
+#define INTERNAL_MEMORY_HPP
 
 #include <cstddef>
 #include <cstdlib>
@@ -32,4 +32,4 @@ inline auto duplicateUtf8(
 
 } // namespace ufeel::internal
 
-#endif // MEMORY_HPP
+#endif // INTERNAL_MEMORY_HPP

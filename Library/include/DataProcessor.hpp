@@ -17,7 +17,8 @@ class EmotionDetector;
 class SpeechToTextDetector;
 class HeartRateSensorDetector;
 
-enum DetectionType : std::uint8_t
+enum DetectionType : std::uint8_t // NOLINT(cppcoreguidelines-use-enum-class): unscoped bit flags
+                                  // are part of the existing public API.
 {
     None = 0U,
     Emotions = 1U << 0U,

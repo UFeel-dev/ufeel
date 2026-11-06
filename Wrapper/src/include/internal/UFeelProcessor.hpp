@@ -1,5 +1,5 @@
-#ifndef UFEELPROCESSOR_HPP
-#define UFEELPROCESSOR_HPP
+#ifndef INTERNAL_UFEELPROCESSOR_HPP
+#define INTERNAL_UFEELPROCESSOR_HPP
 
 #include "DataProcessor.hpp"
 #include "EyeTracking/EyeTrackingCalibrationModel.hpp"
@@ -161,4 +161,4 @@ struct UFeelProcessor
     }
 };
 
-#endif // UFEELPROCESSOR_HPP
+#endif // INTERNAL_UFEELPROCESSOR_HPP

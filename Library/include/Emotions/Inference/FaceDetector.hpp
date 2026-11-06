@@ -37,7 +37,7 @@ private:
     {
     };
 
-    FaceDetector(cv::Ptr<cv::FaceDetectorYN> detector, DetectorTag);
+    FaceDetector(cv::Ptr<cv::FaceDetectorYN> detector, DetectorTag tag);
 
     cv::Ptr<cv::FaceDetectorYN> detector_;
 };

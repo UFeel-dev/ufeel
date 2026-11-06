@@ -1,5 +1,5 @@
-#ifndef ERRORHANDLING_HPP
-#define ERRORHANDLING_HPP
+#ifndef INTERNAL_ERRORHANDLING_HPP
+#define INTERNAL_ERRORHANDLING_HPP
 
 #include <exception>
 #include <iostream>
@@ -50,4 +50,4 @@ void guardedVoid(
 
 } // namespace ufeel::internal
 
-#endif // ERRORHANDLING_HPP
+#endif // INTERNAL_ERRORHANDLING_HPP

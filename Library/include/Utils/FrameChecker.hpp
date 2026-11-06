@@ -1,5 +1,5 @@
-#ifndef UTILS_FRAMECHECKER_HPP_
-#define UTILS_FRAMECHECKER_HPP_
+#ifndef UTILS_FRAMECHECKER_HPP
+#define UTILS_FRAMECHECKER_HPP
 
 #include "opencv2/core.hpp"
 #include "opencv2/core/mat.hpp"
@@ -57,12 +57,12 @@ public:
         previousResult_ = result;
     }
 
-    auto getResult() const -> const T&
+    [[nodiscard]] auto getResult() const -> const T&
     {
         return previousResult_;
     }
 
-    auto hasPreviousFrame() const -> bool
+    [[nodiscard]] auto hasPreviousFrame() const -> bool
     {
         return hasPreviousFrame_;
     }
@@ -74,4 +74,4 @@ private:
     bool hasPreviousFrame_ = false;
 };
 
-#endif // UTILS_FRAMECHECKER_HPP_
+#endif // UTILS_FRAMECHECKER_HPP

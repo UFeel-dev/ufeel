@@ -195,10 +195,14 @@ private:
 }
 
 [[nodiscard]] auto subtract(
-    const Vector3& left, const Vector3& right
+    const Vector3& minuend, const Vector3& subtrahend
 ) -> Vector3
 {
-    return {left.at(0) - right.at(0), left.at(1) - right.at(1), left.at(2) - right.at(2)};
+    return {
+        minuend.at(0) - subtrahend.at(0),
+        minuend.at(1) - subtrahend.at(1),
+        minuend.at(2) - subtrahend.at(2),
+    };
 }
 
 [[nodiscard]] auto dot(
@@ -596,8 +600,7 @@ auto EyeTrackingDetector::extractFeatures(
         return std::nullopt;
     }
 
-    Vector3 const eyeAxis =
-        subtract(rightOuter, leftOuter); // ! we might be swapping left and right here, TODO: check
+    Vector3 const eyeAxis = subtract(rightOuter, leftOuter);
     double const eyeSpan = std::sqrt(dot(eyeAxis, eyeAxis));
     auto const leftOuter2d = landmarkProvider_->getFaceLandmarkAt(33);
     auto const rightOuter2d = landmarkProvider_->getFaceLandmarkAt(263);

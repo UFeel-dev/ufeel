@@ -373,7 +373,7 @@ auto ufeel_get_frame(
                 return static_cast<UFeelFrame*>(nullptr);
             }
 
-            const size_t stride = frame.step[0];
+            const size_t stride = frame.step1(0) * frame.elemSize1();
             const auto height = static_cast<size_t>(frame.rows);
 
             const auto width = static_cast<size_t>(frame.cols);

@@ -11,6 +11,7 @@
 #include <limits>
 #include <map>
 #include <memory>
+#include <span>
 #include <stdexcept>
 #include <string>
 
@@ -70,22 +71,22 @@ auto convertEmotionsResultToUFeelPair(
         return static_cast<UFeelPair*>(nullptr);
     }
 
-    int32_t index = 0;
-    for (const auto& [name, value] : emotions)
+    auto emotion = emotions.begin();
+    for (auto& pair : std::span<UFeelPair>(output.get(), emotions.size()))
     {
-        output[index].name = allocator.duplicateString(name);
-        if (output[index].name == nullptr)
+        const auto& [name, value] = *emotion++;
+        pair.name = allocator.duplicateString(name);
+        if (pair.name == nullptr)
         {
-            for (int32_t allocated = 0; allocated < index; ++allocated)
+            for (auto& allocatedPair : std::span<UFeelPair>(output.get(), emotions.size()))
             {
-                std::free(output[allocated].name);
+                std::free(allocatedPair.name);
             }
 
             return static_cast<UFeelPair*>(nullptr);
         }
 
-        output[index].value = static_cast<float>(value);
-        ++index;
+        pair.value = static_cast<float>(value);
     }
 
     return output.release();

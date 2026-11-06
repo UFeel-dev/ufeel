@@ -18,6 +18,7 @@
 #include <numeric>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <system_error>
 #include <utility>
 #include <vector>
@@ -31,7 +32,7 @@ constexpr double RIDGE_PENALTY = 0.08;
 constexpr double INTERCEPT_PENALTY = 1.0e-8;
 constexpr double MAXIMUM_MEAN_CALIBRATION_ERROR = 0.4;
 constexpr double MAXIMUM_TARGET_CALIBRATION_ERROR = 0.60;
-constexpr char PROFILE_SIGNATURE[] = "UFEEL_GAZE_PROFILE";
+constexpr std::string_view PROFILE_SIGNATURE = "UFEEL_GAZE_PROFILE";
 constexpr std::uint32_t PROFILE_VERSION = 3;
 
 template <typename Values>

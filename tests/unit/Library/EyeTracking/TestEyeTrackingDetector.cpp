@@ -326,17 +326,21 @@ TEST(
     EXPECT_EQ(detector.process(makeTestFrame(6)).status, EyeTrackingStatus::LowQuality);
     providerState->faceLandmarks3d.at(33).x = 0.0F;
 
+    providerState->faceLandmarks3d.at(151).x = std::numeric_limits<float>::quiet_NaN();
+    EXPECT_EQ(detector.process(makeTestFrame(7)).status, EyeTrackingStatus::LowQuality);
+    providerState->faceLandmarks3d.at(151).x = 0.0F;
+
     providerState->faceLandmarks.at(386) = {220, 104};
     providerState->faceLandmarks.at(374) = {222, 104};
-    EXPECT_EQ(detector.process(makeTestFrame(7)).status, EyeTrackingStatus::LowQuality);
+    EXPECT_EQ(detector.process(makeTestFrame(8)).status, EyeTrackingStatus::LowQuality);
     providerState->faceLandmarks.at(374) = {220, 112};
 
     providerState->faceLandmarks3d.at(263).x = 1.0F;
-    EXPECT_EQ(detector.process(makeTestFrame(8)).status, EyeTrackingStatus::LowQuality);
+    EXPECT_EQ(detector.process(makeTestFrame(9)).status, EyeTrackingStatus::LowQuality);
     providerState->faceLandmarks3d.at(263).x = 40.0F;
 
     providerState->faceLandmarks3d.at(10) = {20.0F, 0.0F, 0.0F};
-    EXPECT_EQ(detector.process(makeTestFrame(9)).status, EyeTrackingStatus::LowQuality);
+    EXPECT_EQ(detector.process(makeTestFrame(10)).status, EyeTrackingStatus::LowQuality);
 }
 
 TEST(

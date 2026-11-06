@@ -16,7 +16,7 @@ add_executable(
 
 target_include_directories(run_wrapper_unit_tests PRIVATE
     "${WRAPPER_DIR}/include"
-    "${WRAPPER_DIR}/src"
+    "${WRAPPER_DIR}/src/include"
     "${LIBRARY_DIR}/include"
 )
 

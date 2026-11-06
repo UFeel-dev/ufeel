@@ -7,13 +7,17 @@
 namespace
 {
 
-int32_t callbackStatus = -1;
+auto callbackStatus() -> int32_t&
+{
+    static int32_t status = -1;
+    return status;
+}
 
 void recordEyeTrackingResult(
     UFeelEyeTrackingResult* result
 )
 {
-    callbackStatus = result->status;
+    callbackStatus() = result->status;
 }
 
 } // namespace
@@ -107,11 +111,11 @@ TEST(
     EyeTrackingApiTest, FrameCallbackReportsInvalidProcessor
 )
 {
-    callbackStatus = -1;
+    callbackStatus() = -1;
 
     ufeel_get_eye_tracking_result_from_frame(nullptr, nullptr, recordEyeTrackingResult);
 
-    EXPECT_EQ(callbackStatus, UFEEL_GAZE_STATUS_INVALID_PROCESSOR);
+    EXPECT_EQ(callbackStatus(), UFEEL_GAZE_STATUS_INVALID_PROCESSOR);
 }
 
 TEST(

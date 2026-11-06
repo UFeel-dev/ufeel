@@ -51,10 +51,11 @@ FaceDetector::FaceDetector(
 }
 
 FaceDetector::FaceDetector(
-    cv::Ptr<cv::FaceDetectorYN> detector, DetectorTag
+    cv::Ptr<cv::FaceDetectorYN> detector, DetectorTag tag
 )
     : detector_(requireDetector(std::move(detector), "Face detector must not be null"))
 {
+    static_cast<void>(tag);
 }
 
 auto FaceDetector::fromDetector(
