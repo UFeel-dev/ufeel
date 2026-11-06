@@ -1,4 +1,5 @@
 #include "SpeechToText/AudioCapture.hpp"
+#include "TestDoubles.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -6,17 +7,8 @@
 #include <portaudio.h>
 #include <vector>
 
-void resetFakePortAudioState();
-void setFakePortAudioInitializeResult(PaError error);
-void setFakePortAudioDeviceCount(PaDeviceIndex count);
-void setFakePortAudioDeviceInfoAvailable(bool available);
-void setFakePortAudioDeviceCapabilities(int channels, double sampleRate, const char* name);
-void setFakePortAudioFormatResult(PaError error);
-void setFakePortAudioOpenResult(PaError error);
-void setFakePortAudioStartResult(PaError error);
-void setFakePortAudioStopResult(PaError error);
-void setFakePortAudioCallbackInputAvailable(bool available);
-void setFakePortAudioCallbackFrameCount(unsigned long frameCount);
+namespace
+{
 
 class AudioCaptureTest : public ::testing::Test
 {
@@ -24,14 +16,16 @@ protected:
 
     void SetUp() override
     {
-        resetFakePortAudioState();
+        speech_to_text_test::PortAudioFake::reset();
     }
 
     void TearDown() override
     {
-        resetFakePortAudioState();
+        speech_to_text_test::PortAudioFake::reset();
     }
 };
+
+} // namespace
 
 TEST_F(
     AudioCaptureTest, ReadReturnsFalseBeforeStart
@@ -91,7 +85,7 @@ TEST_F(
     AudioCaptureTest, FailsToStartWhenPortAudioInitializationFails
 )
 {
-    setFakePortAudioInitializeResult(paNotInitialized);
+    speech_to_text_test::PortAudioFake::setInitializeResult(paNotInitialized);
     {
         AudioCapture capture;
         EXPECT_FALSE(capture.start());
@@ -102,13 +96,13 @@ TEST_F(
     AudioCaptureTest, FailsToStartWhenNoInputDeviceIsAvailable
 )
 {
-    setFakePortAudioDeviceCount(-1);
+    speech_to_text_test::PortAudioFake::setDeviceCount(-1);
     {
         AudioCapture capture;
         EXPECT_FALSE(capture.start());
     }
 
-    setFakePortAudioDeviceCount(0);
+    speech_to_text_test::PortAudioFake::setDeviceCount(0);
     {
         AudioCapture capture;
         EXPECT_FALSE(capture.start());
@@ -119,21 +113,23 @@ TEST_F(
     AudioCaptureTest, SkipsIncompatibleInputDevices
 )
 {
-    setFakePortAudioDeviceInfoAvailable(false);
+    speech_to_text_test::PortAudioFake::setDeviceInfoAvailable(false);
     {
         AudioCapture capture;
         EXPECT_FALSE(capture.start());
     }
 
-    setFakePortAudioDeviceInfoAvailable(true);
-    setFakePortAudioDeviceCapabilities(1, AudioCapture::sampleRate, "Mono input");
+    speech_to_text_test::PortAudioFake::setDeviceInfoAvailable(true);
+    speech_to_text_test::PortAudioFake::setDeviceCapabilities(
+        1, AudioCapture::sampleRate, "Mono input"
+    );
     {
         AudioCapture capture;
         EXPECT_FALSE(capture.start());
     }
 
-    setFakePortAudioDeviceCapabilities(2, 44100.0, "Other sample rate");
-    setFakePortAudioFormatResult(paInvalidSampleRate);
+    speech_to_text_test::PortAudioFake::setDeviceCapabilities(2, 44100.0, "Other sample rate");
+    speech_to_text_test::PortAudioFake::setFormatResult(paInvalidSampleRate);
     {
         AudioCapture capture;
         EXPECT_FALSE(capture.start());
@@ -144,14 +140,14 @@ TEST_F(
     AudioCaptureTest, FailsWhenStreamCannotBeOpenedOrStarted
 )
 {
-    setFakePortAudioOpenResult(paUnanticipatedHostError);
+    speech_to_text_test::PortAudioFake::setOpenResult(paUnanticipatedHostError);
     {
         AudioCapture capture;
         EXPECT_FALSE(capture.start());
     }
 
-    setFakePortAudioOpenResult(paNoError);
-    setFakePortAudioStartResult(paUnanticipatedHostError);
+    speech_to_text_test::PortAudioFake::setOpenResult(paNoError);
+    speech_to_text_test::PortAudioFake::setStartResult(paUnanticipatedHostError);
     {
         AudioCapture capture;
         EXPECT_FALSE(capture.start());
@@ -172,7 +168,7 @@ TEST_F(
         EXPECT_EQ(buffer.back(), 100);
         capture.stop();
     }
-    setFakePortAudioCallbackInputAvailable(false);
+    speech_to_text_test::PortAudioFake::setCallbackInputAvailable(false);
     {
         AudioCapture capture;
         ASSERT_TRUE(capture.start());
@@ -185,7 +181,7 @@ TEST_F(
     AudioCaptureTest, DropsIncomingAudioWhenTheQueueIsFull
 )
 {
-    setFakePortAudioCallbackFrameCount(
+    speech_to_text_test::PortAudioFake::setCallbackFrameCount(
         static_cast<unsigned long>(AudioCapture::framesPerBuffer * (AudioCapture::bufferCount + 1))
     );
 
@@ -208,7 +204,7 @@ TEST_F(
     AudioCaptureTest, HandlesStopErrorsAndRepeatedStop
 )
 {
-    setFakePortAudioStopResult(paUnanticipatedHostError);
+    speech_to_text_test::PortAudioFake::setStopResult(paUnanticipatedHostError);
     {
         AudioCapture capture;
         ASSERT_TRUE(capture.start());

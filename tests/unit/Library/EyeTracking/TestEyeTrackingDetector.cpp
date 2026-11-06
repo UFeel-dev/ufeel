@@ -103,7 +103,8 @@ TEST(
     for (std::size_t index = 0; index < GAZE_MAXIMUM_CALIBRATION_TARGETS; ++index)
     {
         const auto x = static_cast<float>(index % 8) / 7.0F;
-        const auto y = static_cast<float>(index / 8) / 7.0F;
+        const auto row = index / 8;
+        const auto y = static_cast<float>(row) / 7.0F;
         ASSERT_TRUE(detector.setCalibrationTarget(x, y));
     }
 

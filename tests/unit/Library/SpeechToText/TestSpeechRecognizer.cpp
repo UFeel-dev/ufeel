@@ -1,170 +1,193 @@
 #include "SpeechToText/SpeechRecognizer.hpp"
+#include "TestDoubles.hpp"
 #include "vosk_api.h"
 
+#include <array>
 #include <atomic>
 #include <cstdint>
 #include <gtest/gtest.h>
 #include <stdexcept>
 #include <string>
 
-class FakeVosk
+namespace
 {
-public:
 
-    static inline bool modelCreationSucceeds = true;
-    static inline bool recognizerCreationSucceeds = true;
-    static inline bool finalizedResultIsNull = false;
+struct FakeVoskState
+{
+    bool modelCreationSucceeds = true;
+    bool recognizerCreationSucceeds = true;
+    bool finalizedResultIsNull = false;
 
-    static inline int modelHandle = 1;
-    static inline int recognizerHandle = 2;
+    int modelHandle = 1;
+    int recognizerHandle = 2;
 
-    static inline bool modelFree = false;
-    static inline bool recognizerFree = false;
-    static inline bool recognizerReset = false;
+    bool modelFree = false;
+    bool recognizerFree = false;
+    bool recognizerReset = false;
 
-    static inline int waveformResult = 0;
+    int waveformResult = 0;
 
-    static inline std::string finalResult = R"({"text": "hello world"})";
-    static inline std::string partialResult = R"({"partial": "hello"})";
-    static inline std::string finalizedResult = R"({"text": "final sentence"})";
+    std::string finalResult = R"({"text": "hello world"})";
+    std::string partialResult = R"({"partial": "hello"})";
+    std::string finalizedResult = R"({"text": "final sentence"})";
 
-    static inline int lastSampleCount = 0;
-    static inline std::atomic<bool> audioProcessed = false;
-
-    static auto model() -> VoskModel*
-    {
-        return reinterpret_cast<VoskModel*>(&modelHandle);
-    }
-
-    static auto recognizer() -> VoskRecognizer*
-    {
-        return reinterpret_cast<VoskRecognizer*>(&recognizerHandle);
-    }
-
-    static void reset()
-    {
-        modelCreationSucceeds = true;
-        recognizerCreationSucceeds = true;
-
-        modelFree = false;
-        recognizerFree = false;
-        recognizerReset = false;
-
-        waveformResult = 0;
-
-        finalResult = R"({"text": "hello world"})";
-        partialResult = R"({"partial": "hello"})";
-        finalizedResult = R"({"text": "final sentence"})";
-
-        lastSampleCount = 0;
-        audioProcessed = false;
-    }
+    int lastSampleCount = 0;
+    std::atomic<bool> audioProcessed = false;
 };
 
-void resetFakeVoskForDetector()
+auto fakeVoskState() -> FakeVoskState&
 {
-    FakeVosk::reset();
+    static FakeVoskState state;
+    return state;
 }
 
-void setFakeVoskFinalizedResult(
+auto fakeModel() -> VoskModel*
+{
+    return reinterpret_cast<VoskModel*>(&fakeVoskState().modelHandle);
+}
+
+auto fakeRecognizer() -> VoskRecognizer*
+{
+    return reinterpret_cast<VoskRecognizer*>(&fakeVoskState().recognizerHandle);
+}
+
+} // namespace
+
+namespace speech_to_text_test
+{
+
+void VoskFake::reset()
+{
+    FakeVoskState& state = fakeVoskState();
+    state.modelCreationSucceeds = true;
+    state.recognizerCreationSucceeds = true;
+    state.finalizedResultIsNull = false;
+    state.modelFree = false;
+    state.recognizerFree = false;
+    state.recognizerReset = false;
+    state.waveformResult = 0;
+    state.finalResult = R"({"text": "hello world"})";
+    state.partialResult = R"({"partial": "hello"})";
+    state.finalizedResult = R"({"text": "final sentence"})";
+    state.lastSampleCount = 0;
+    state.audioProcessed.store(false);
+}
+
+void VoskFake::setFinalizedResult(
     const std::string& result
 )
 {
-    FakeVosk::finalizedResult = result;
-    FakeVosk::finalizedResultIsNull = false;
+    fakeVoskState().finalizedResult = result;
+    fakeVoskState().finalizedResultIsNull = false;
 }
 
-void setFakeVoskWaveformResult(
+void VoskFake::setWaveformResult(
     int result
 )
 {
-    FakeVosk::waveformResult = result;
+    fakeVoskState().waveformResult = result;
 }
 
-auto fakeVoskHasProcessedAudio() -> bool
+auto VoskFake::hasProcessedAudio() -> bool
 {
-    return FakeVosk::audioProcessed.load();
+    return fakeVoskState().audioProcessed.load();
 }
+
+} // namespace speech_to_text_test
 
 void vosk_model_free(
-    VoskModel*
+    VoskModel* model
 )
 {
-    FakeVosk::modelFree = true;
+    (void)model;
+    fakeVoskState().modelFree = true;
 }
 
 void vosk_recognizer_free(
-    VoskRecognizer*
+    VoskRecognizer* recognizer
 )
 {
-    FakeVosk::recognizerFree = true;
+    (void)recognizer;
+    fakeVoskState().recognizerFree = true;
 }
 
 auto vosk_model_new(
-    const char*
+    const char* model_path // NOLINT(readability-identifier-naming)
 ) -> VoskModel*
 {
-    if (!FakeVosk::modelCreationSucceeds)
+    (void)model_path;
+    if (!fakeVoskState().modelCreationSucceeds)
     {
         return nullptr;
     }
 
-    return FakeVosk::model();
+    return fakeModel();
 }
 
 auto vosk_recognizer_new(
-    VoskModel*, float
+    VoskModel* model, float sample_rate // NOLINT(readability-identifier-naming)
 ) -> VoskRecognizer*
 {
-    if (!FakeVosk::recognizerCreationSucceeds)
+    (void)model;
+    (void)sample_rate;
+    if (!fakeVoskState().recognizerCreationSucceeds)
     {
         return nullptr;
     }
 
-    return FakeVosk::recognizer();
+    return fakeRecognizer();
 }
 
 auto vosk_recognizer_accept_waveform(
-    VoskRecognizer*, const char*, int length
+    VoskRecognizer* recognizer, const char* data, int length
 ) -> int
 {
-    FakeVosk::lastSampleCount = length;
-    FakeVosk::audioProcessed = true;
-    return FakeVosk::waveformResult;
+    (void)recognizer;
+    (void)data;
+    fakeVoskState().lastSampleCount = length;
+    fakeVoskState().audioProcessed = true;
+    return fakeVoskState().waveformResult;
 }
 
 auto vosk_recognizer_result(
-    VoskRecognizer*
+    VoskRecognizer* recognizer
 ) -> const char*
 {
-    return FakeVosk::finalResult.c_str();
+    (void)recognizer;
+    return fakeVoskState().finalResult.c_str();
 }
 
 auto vosk_recognizer_partial_result(
-    VoskRecognizer*
+    VoskRecognizer* recognizer
 ) -> const char*
 {
-    return FakeVosk::partialResult.c_str();
+    (void)recognizer;
+    return fakeVoskState().partialResult.c_str();
 }
 
-const char* vosk_recognizer_final_result(
-    VoskRecognizer*
-)
+auto vosk_recognizer_final_result(
+    VoskRecognizer* recognizer
+) -> const char*
 {
-    if (FakeVosk::finalizedResultIsNull)
+    (void)recognizer;
+    if (fakeVoskState().finalizedResultIsNull)
     {
         return nullptr;
     }
 
-    return FakeVosk::finalizedResult.c_str();
+    return fakeVoskState().finalizedResult.c_str();
 }
 
 void vosk_recognizer_reset(
-    VoskRecognizer*
+    VoskRecognizer* recognizer
 )
 {
-    FakeVosk::recognizerReset = true;
+    (void)recognizer;
+    fakeVoskState().recognizerReset = true;
 }
+
+namespace
+{
 
 class TestSpeechRecognizer : public ::testing::Test
 {
@@ -172,7 +195,7 @@ protected:
 
     void SetUp() override
     {
-        FakeVosk::reset();
+        speech_to_text_test::VoskFake::reset();
     }
 };
 
@@ -180,29 +203,29 @@ TEST_F(
     TestSpeechRecognizer, ConstructorSucceeds
 )
 {
-    EXPECT_NO_THROW(SpeechRecognizer recognizer("fake-model-path"));
+    EXPECT_NO_THROW(const SpeechRecognizer recognizer("fake-model-path"));
 }
 
 TEST_F(
     TestSpeechRecognizer, ConstructorThrowsWhenModelCreationFails
 )
 {
-    FakeVosk::modelCreationSucceeds = false;
+    fakeVoskState().modelCreationSucceeds = false;
 
-    EXPECT_THROW(SpeechRecognizer recognizer("invalid-model-path"), std::runtime_error);
+    EXPECT_THROW(const SpeechRecognizer recognizer("invalid-model-path"), std::runtime_error);
 
-    EXPECT_FALSE(FakeVosk::modelFree);
+    EXPECT_FALSE(fakeVoskState().modelFree);
 }
 
 TEST_F(
     TestSpeechRecognizer, ConstructorThrowsWhenRecognizerCreationFails
 )
 {
-    FakeVosk::recognizerCreationSucceeds = false;
+    fakeVoskState().recognizerCreationSucceeds = false;
 
-    EXPECT_THROW(SpeechRecognizer recognizer("fake-model-path"), std::runtime_error);
+    EXPECT_THROW(const SpeechRecognizer recognizer("fake-model-path"), std::runtime_error);
 
-    EXPECT_TRUE(FakeVosk::modelFree);
+    EXPECT_TRUE(fakeVoskState().modelFree);
 }
 
 TEST_F(
@@ -210,11 +233,11 @@ TEST_F(
 )
 {
     {
-        SpeechRecognizer recognizer("fake-model-path");
+        const SpeechRecognizer recognizer("fake-model-path");
     }
 
-    EXPECT_TRUE(FakeVosk::recognizerFree);
-    EXPECT_TRUE(FakeVosk::modelFree);
+    EXPECT_TRUE(fakeVoskState().recognizerFree);
+    EXPECT_TRUE(fakeVoskState().modelFree);
 }
 
 TEST_F(
@@ -225,59 +248,61 @@ TEST_F(
 
     recognizer.reset();
 
-    EXPECT_TRUE(FakeVosk::recognizerReset);
+    EXPECT_TRUE(fakeVoskState().recognizerReset);
 }
 
 TEST_F(
     TestSpeechRecognizer, ProcessReturnsPartialText
 )
 {
-    const int16_t samples[] = {100, 200, 300};
+    constexpr std::array<int16_t, 3> samples{100, 200, 300};
 
     SpeechRecognizer recognizer("fake-model-path");
 
-    FakeVosk::waveformResult = 0;
+    fakeVoskState().waveformResult = 0;
 
-    EXPECT_EQ(recognizer.process(samples, 3), "hello");
+    EXPECT_EQ(recognizer.process(samples.data(), samples.size()), "hello");
 
-    EXPECT_EQ(FakeVosk::lastSampleCount, 3 * sizeof(int16_t));
+    EXPECT_EQ(fakeVoskState().lastSampleCount, 3 * sizeof(int16_t));
 }
 
 TEST_F(
     TestSpeechRecognizer, ProcessReturnsFinalText
 )
 {
-    const int16_t samples[] = {100, 200, 300};
+    constexpr std::array<int16_t, 3> samples{100, 200, 300};
 
     SpeechRecognizer recognizer("fake-model-path");
 
-    FakeVosk::waveformResult = 1;
+    fakeVoskState().waveformResult = 1;
 
-    EXPECT_EQ(recognizer.process(samples, 3), "hello world");
+    EXPECT_EQ(recognizer.process(samples.data(), samples.size()), "hello world");
 }
 
 TEST_F(
     TestSpeechRecognizer, ProcessReturnsEmptyTextWhenJsonKeyIsMissing
 )
 {
-    FakeVosk::partialResult = R"({"other": "value"})";
+    fakeVoskState().partialResult = R"({"other": "value"})";
 
-    const int16_t samples[] = {100};
+    constexpr std::array<int16_t, 1> samples{100};
 
     SpeechRecognizer recognizer("fake-model-path");
 
-    FakeVosk::waveformResult = 0;
+    fakeVoskState().waveformResult = 0;
 
-    EXPECT_TRUE(recognizer.process(samples, 1).empty());
+    EXPECT_TRUE(recognizer.process(samples.data(), samples.size()).empty());
 }
 
 TEST_F(
     TestSpeechRecognizer, FinalizeReturnsEmptyTextWhenJsonIsNull
 )
 {
-    FakeVosk::finalizedResultIsNull = true;
+    fakeVoskState().finalizedResultIsNull = true;
 
     SpeechRecognizer recognizer("fake-model-path");
 
     EXPECT_TRUE(recognizer.finalize().empty());
 }
+
+} // namespace

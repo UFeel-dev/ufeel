@@ -2,6 +2,7 @@
 #include "EyeTracking/EyeTrackingCalibrationModel.hpp"
 #include "EyeTracking/EyeTrackingDetector.hpp"
 #include "HeartRate/UFeelHeartRateStatus.hpp"
+#include "SpeechToText/TestDoubles.hpp"
 #include "opencv2/core/hal/interface.h"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/core/types.hpp"
@@ -11,9 +12,6 @@
 #include <gtest/gtest.h>
 #include <thread>
 
-void resetFakeVoskForDetector();
-auto fakeVoskHasProcessedAudio() -> bool;
-
 namespace
 {
 
@@ -21,7 +19,7 @@ auto createProcessor(
     int cameraIndex = 0
 ) -> DataProcessor
 {
-    return DataProcessor(DATA_PROCESSOR_MODEL_DIR_PATH, "fake-model", cameraIndex);
+    return {DATA_PROCESSOR_MODEL_DIR_PATH, "fake-model", cameraIndex};
 }
 
 } // namespace
@@ -91,17 +89,18 @@ TEST(
     DataProcessorTest, SpeechToggleUpdatesStoredResult
 )
 {
-    resetFakeVoskForDetector();
+    speech_to_text_test::VoskFake::reset();
     auto processor = createProcessor();
 
     processor.toggleSpeechToText(true);
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
-    while (!fakeVoskHasProcessedAudio() && std::chrono::steady_clock::now() < deadline)
+    while (!speech_to_text_test::VoskFake::hasProcessedAudio() &&
+           std::chrono::steady_clock::now() < deadline)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
-    ASSERT_TRUE(fakeVoskHasProcessedAudio());
+    ASSERT_TRUE(speech_to_text_test::VoskFake::hasProcessedAudio());
     EXPECT_EQ(processor.updateSpeechToText(), DataProcessorStatus::Ok);
     EXPECT_EQ(processor.getSpeechToText().status, SpeechToTextStatus::Valid);
     EXPECT_EQ(processor.getSpeechToText().text, "hello");

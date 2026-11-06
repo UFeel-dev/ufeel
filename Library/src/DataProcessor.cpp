@@ -144,10 +144,18 @@ auto DataProcessor::updateFromFrame(
     if (hasDetection(detectionType, Speech))
     {
         const auto text = speechToTextDetector_->process();
+        SpeechToTextStatus status = SpeechToTextStatus::Valid;
+        if (!speechToTextEnabled_)
+        {
+            status = SpeechToTextStatus::Disabled;
+        }
+        else if (text.empty())
+        {
+            status = SpeechToTextStatus::NoSpeech;
+        }
+
         speechToText_ = {
-            .status = !speechToTextEnabled_ ? SpeechToTextStatus::Disabled
-                                            : (text.empty() ? SpeechToTextStatus::NoSpeech
-                                                            : SpeechToTextStatus::Valid),
+            .status = status,
             .text = speechToTextEnabled_ ? text : std::string{},
         };
     }
@@ -282,10 +290,18 @@ auto DataProcessor::getEyeTrackingFromFrame(
 auto DataProcessor::updateSpeechToText() -> DataProcessorStatus
 {
     const auto text = speechToTextDetector_->process();
+    SpeechToTextStatus status = SpeechToTextStatus::Valid;
+    if (!speechToTextEnabled_)
+    {
+        status = SpeechToTextStatus::Disabled;
+    }
+    else if (text.empty())
+    {
+        status = SpeechToTextStatus::NoSpeech;
+    }
+
     speechToText_ = {
-        .status = !speechToTextEnabled_
-                      ? SpeechToTextStatus::Disabled
-                      : (text.empty() ? SpeechToTextStatus::NoSpeech : SpeechToTextStatus::Valid),
+        .status = status,
         .text = speechToTextEnabled_ ? text : std::string{},
     };
     return DataProcessorStatus::Ok;

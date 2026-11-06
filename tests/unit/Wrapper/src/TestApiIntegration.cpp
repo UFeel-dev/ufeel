@@ -10,21 +10,30 @@
 namespace
 {
 
-int32_t emotionCallbackStatus = -1;
-int32_t gazeCallbackStatus = -1;
+auto emotionCallbackStatus() -> int32_t&
+{
+    static int32_t status = -1;
+    return status;
+}
+
+auto gazeCallbackStatus() -> int32_t&
+{
+    static int32_t status = -1;
+    return status;
+}
 
 void recordEmotionResult(
     UFeelEmotionsResult* result
 )
 {
-    emotionCallbackStatus = result->status;
+    emotionCallbackStatus() = result->status;
 }
 
 void recordEyeTrackingResult(
     UFeelEyeTrackingResult* result
 )
 {
-    gazeCallbackStatus = result->status;
+    gazeCallbackStatus() = result->status;
 }
 
 struct ProcessorDeleter
@@ -83,7 +92,7 @@ TEST(
     WrapperIntegrationTest, ExercisesPublicApiWithOwnedProcessor
 )
 {
-    std::unique_ptr<UFeelProcessor, ProcessorDeleter> processor(
+    const std::unique_ptr<UFeelProcessor, ProcessorDeleter> processor(
         ufeel_create(UFEEL_TEST_MODEL_DIR, UFEEL_TEST_SPEECH_MODEL_DIR)
     );
     ASSERT_NE(processor, nullptr);
@@ -149,7 +158,7 @@ TEST(
 
     std::array<std::uint8_t, static_cast<std::size_t>(height * width)> grayscale{};
     grayscale.fill(64);
-    UFeelFrame grayFrame{
+    const UFeelFrame grayFrame{
         .data = grayscale.data(),
         .width = width,
         .height = height,
@@ -169,7 +178,7 @@ TEST(
 
     std::array<std::uint8_t, static_cast<std::size_t>(height * width * 4)> fourChannel{};
     fourChannel.fill(24);
-    UFeelFrame fourChannelFrame{
+    const UFeelFrame fourChannelFrame{
         .data = fourChannel.data(),
         .width = width,
         .height = height,
@@ -190,7 +199,7 @@ TEST(
     EXPECT_TRUE(
         emotionUpdateStatus == UFEEL_STATUS_NO_EMOTIONS || emotionUpdateStatus == UFEEL_STATUS_OK
     );
-    std::unique_ptr<UFeelEmotionsResult, EmotionResultDeleter> emotions(
+    const std::unique_ptr<UFeelEmotionsResult, EmotionResultDeleter> emotions(
         ufeel_create_emotions_result()
     );
     ASSERT_NE(emotions, nullptr);
@@ -198,26 +207,26 @@ TEST(
     EXPECT_TRUE(
         emotionResultStatus == UFEEL_STATUS_NO_EMOTIONS || emotionResultStatus == UFEEL_STATUS_OK
     );
-    emotionCallbackStatus = -1;
+    emotionCallbackStatus() = -1;
     ufeel_get_emotions_result_from_frame(processor.get(), &input, recordEmotionResult);
     EXPECT_TRUE(
-        emotionCallbackStatus == UFEEL_EMOTIONS_STATUS_FACE_UNAVAILABLE ||
-        emotionCallbackStatus == UFEEL_EMOTIONS_STATUS_VALID
+        emotionCallbackStatus() == UFEEL_EMOTIONS_STATUS_FACE_UNAVAILABLE ||
+        emotionCallbackStatus() == UFEEL_EMOTIONS_STATUS_VALID
     );
 
     EXPECT_EQ(
         ufeel_update_eye_tracking_from_frame(processor.get(), &input), UFEEL_STATUS_NO_EYE_TRACKING
     );
-    std::unique_ptr<UFeelEyeTrackingResult, EyeTrackingResultDeleter> gaze(
+    const std::unique_ptr<UFeelEyeTrackingResult, EyeTrackingResultDeleter> gaze(
         ufeel_create_eye_tracking_result()
     );
     ASSERT_NE(gaze, nullptr);
     EXPECT_EQ(
         ufeel_get_eye_tracking_result(processor.get(), gaze.get()), UFEEL_STATUS_NO_EYE_TRACKING
     );
-    gazeCallbackStatus = -1;
+    gazeCallbackStatus() = -1;
     ufeel_get_eye_tracking_result_from_frame(processor.get(), &input, recordEyeTrackingResult);
-    EXPECT_EQ(gazeCallbackStatus, UFEEL_GAZE_STATUS_FACE_UNAVAILABLE);
+    EXPECT_EQ(gazeCallbackStatus(), UFEEL_GAZE_STATUS_FACE_UNAVAILABLE);
 
     UFeelEyeTrackingCalibrationProgress progress{};
     EXPECT_EQ(
@@ -255,7 +264,7 @@ TEST(
     EXPECT_EQ(ufeel_cancel_eye_tracking_calibration(processor.get()), UFEEL_STATUS_OK);
 
     EXPECT_EQ(ufeel_update_heart_rate(processor.get()), UFEEL_STATUS_NO_HEARTRATE);
-    std::unique_ptr<UFeelHeartRateResult, HeartRateResultDeleter> heartRate(
+    const std::unique_ptr<UFeelHeartRateResult, HeartRateResultDeleter> heartRate(
         ufeel_create_heart_rate_result()
     );
     ASSERT_NE(heartRate, nullptr);
