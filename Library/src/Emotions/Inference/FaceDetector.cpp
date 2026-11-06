@@ -1,5 +1,6 @@
 #include "Emotions/Inference/FaceDetector.hpp"
 
+#include "opencv2/core/cvstd_wrapper.hpp"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/core/types.hpp"
 #include "opencv2/dnn/dnn.hpp"
@@ -16,12 +17,24 @@ namespace
 constexpr int kFirstEyeColumn = 4;
 constexpr int kSecondEyeColumn = 6;
 
+auto requireDetector(
+    cv::Ptr<cv::FaceDetectorYN> detector, const std::string& error
+) -> cv::Ptr<cv::FaceDetectorYN>
+{
+    if (detector.empty())
+    {
+        throw std::runtime_error(error);
+    }
+
+    return detector;
+}
+
 } // namespace
 
 FaceDetector::FaceDetector(
     const std::string& modelPath, float scoreThreshold, float nmsThreshold, int topK
 )
-    : detector_(
+    : detector_(requireDetector(
           cv::FaceDetectorYN::create(
               modelPath,
               "",
@@ -31,13 +44,24 @@ FaceDetector::FaceDetector(
               topK,
               cv::dnn::DNN_BACKEND_OPENCV,
               cv::dnn::DNN_TARGET_CPU
-          )
-      )
+          ),
+          "Failed to load face detector: " + modelPath
+      ))
 {
-    if (detector_.empty())
-    {
-        throw std::runtime_error("Failed to load face detector: " + modelPath);
-    }
+}
+
+FaceDetector::FaceDetector(
+    cv::Ptr<cv::FaceDetectorYN> detector, DetectorTag
+)
+    : detector_(requireDetector(std::move(detector), "Face detector must not be null"))
+{
+}
+
+auto FaceDetector::fromDetector(
+    cv::Ptr<cv::FaceDetectorYN> detector
+) -> FaceDetector
+{
+    return FaceDetector(std::move(detector), DetectorTag{});
 }
 
 auto FaceDetector::detect(

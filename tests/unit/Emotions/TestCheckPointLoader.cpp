@@ -26,6 +26,10 @@ public:
                 ("ufeel-checkpoint-" + std::to_string(timestamp) + ".bin");
     }
 
+    TemporaryCheckpoint(const TemporaryCheckpoint&) = default;
+    TemporaryCheckpoint(TemporaryCheckpoint&&) = delete;
+    auto operator=(const TemporaryCheckpoint&) -> TemporaryCheckpoint& = default;
+    auto operator=(TemporaryCheckpoint&&) -> TemporaryCheckpoint& = delete;
     ~TemporaryCheckpoint()
     {
         std::error_code error;
@@ -59,15 +63,23 @@ auto append(
     bytes.insert(bytes.end(), data, data + sizeof(value));
 }
 
-auto entryHeader(
-    const std::string& name, const std::vector<std::int64_t>& shape, std::uint64_t elementCount
+auto tensorPrefix(
+    const std::string& name, std::uint32_t dimensions
 ) -> std::vector<char>
 {
     std::vector<char> bytes;
     append(bytes, std::uint32_t{1});
     append(bytes, static_cast<std::uint32_t>(name.size()));
     bytes.insert(bytes.end(), name.begin(), name.end());
-    append(bytes, static_cast<std::uint32_t>(shape.size()));
+    append(bytes, dimensions);
+    return bytes;
+}
+
+auto entryHeader(
+    const std::string& name, const std::vector<std::int64_t>& shape, std::uint64_t elementCount
+) -> std::vector<char>
+{
+    auto bytes = tensorPrefix(name, static_cast<std::uint32_t>(shape.size()));
     for (const auto dimension : shape)
     {
         append(bytes, dimension);
@@ -101,6 +113,30 @@ TEST(
 }
 
 TEST(
+    CheckPointLoaderTest, ThrowsWhenTensorShapeDimensionIsTruncated
+)
+{
+    EmotionModel model("resnet34");
+    TemporaryCheckpoint checkpoint;
+    checkpoint.write(tensorPrefix("heads.angry.linear.bias", 1));
+
+    EXPECT_THROW(loadCheckpoint(model, checkpoint.path()), std::runtime_error);
+}
+
+TEST(
+    CheckPointLoaderTest, ThrowsWhenTensorElementCountIsTruncated
+)
+{
+    EmotionModel model("resnet34");
+    TemporaryCheckpoint checkpoint;
+    auto bytes = tensorPrefix("heads.angry.linear.bias", 1);
+    append(bytes, std::int64_t{1});
+    checkpoint.write(bytes);
+
+    EXPECT_THROW(loadCheckpoint(model, checkpoint.path()), std::runtime_error);
+}
+
+TEST(
     CheckPointLoaderTest, ThrowsWhenCheckpointContainsUnexpectedTensor
 )
 {
@@ -118,6 +154,17 @@ TEST(
     EmotionModel model("resnet34");
     TemporaryCheckpoint checkpoint;
     checkpoint.write(entryHeader("heads.angry.linear.bias", {2}, 2));
+
+    EXPECT_THROW(loadCheckpoint(model, checkpoint.path()), std::runtime_error);
+}
+
+TEST(
+    CheckPointLoaderTest, ThrowsWhenTensorElementCountDoesNotMatch
+)
+{
+    EmotionModel model("resnet34");
+    TemporaryCheckpoint checkpoint;
+    checkpoint.write(entryHeader("heads.angry.linear.bias", {1}, 2));
 
     EXPECT_THROW(loadCheckpoint(model, checkpoint.path()), std::runtime_error);
 }

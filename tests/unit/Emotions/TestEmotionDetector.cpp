@@ -23,9 +23,7 @@ TEST(
     EXPECT_EQ(cachedResult, firstResult);
     for (const auto& [label, score] : firstResult)
     {
-        EXPECT_NE(
-            std::ranges::find(kEmotionLabels, label), kEmotionLabels.end()
-        );
+        EXPECT_NE(std::ranges::find(kEmotionLabels, label), kEmotionLabels.end());
         EXPECT_TRUE(std::isfinite(score));
         EXPECT_GE(score, 0.0F);
         EXPECT_LE(score, 1.0F);
