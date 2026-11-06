@@ -30,14 +30,11 @@ add_gid()
 add_device()
 {
     local device="$1"
-    local gid
 
     [[ -c "$device" ]] || return 0
 
-    gid="$(stat -c '%g' -- "$device")" || return 0
-
     DOCKER_ARGS+=(--device="$device")
-    add_gid "$gid"
+    add_gid "$(stat -c '%g' -- "$device")"
 }
 
 mount_runtime_dir()
@@ -116,44 +113,22 @@ configure_x11()
         return 1
     fi
 
-    local xauthority_host="${XAUTHORITY:-${HOME:-}/.Xauthority}"
-
-    if [[ -f "$xauthority_host" ]]; then
-        xauthority_host="$(realpath -e -- "$xauthority_host")"
-
-        DOCKER_ARGS+=(
-            -e XAUTHORITY=/tmp/.Xauthority
-            -v "$xauthority_host:/tmp/.Xauthority:ro"
-        )
-    else
-        if ! command -v xhost >/dev/null 2>&1; then
-            echo "xhost or a valid XAUTHORITY file is required." >&2
-            return 1
-        fi
-
-        if ! xhost +SI:localuser:root >/dev/null; then
-            echo "Could not grant X11 access to the container." >&2
-            return 1
-        fi
-
-        XHOST_ENABLED=1
+    if ! command -v xhost >/dev/null 2>&1; then
+        echo "xhost is required for X11 access." >&2
+        return 1
     fi
+
+    if ! xhost +SI:localuser:root >/dev/null; then
+        echo "Could not grant X11 access to the container." >&2
+        return 1
+    fi
+
+    XHOST_ENABLED=1
 
     DOCKER_ARGS+=(
         -e DISPLAY="$DISPLAY"
         -v /tmp/.X11-unix:/tmp/.X11-unix:ro
     )
-}
-
-create_missing_groups()
-{
-    local gid="$1"
-
-    [[ "$gid" =~ ^[0-9]+$ ]] || return 0
-
-    if ! getent group "$gid" >/dev/null; then
-        groupadd --gid "$gid" "hostgroup_$gid"
-    fi
 }
 
 trap cleanup EXIT
@@ -163,9 +138,8 @@ DOCKER_ARGS+=(
     -w /mnt
 )
 
-if [[ -n "${UFEEL_DOCKER_NETWORK:-}" ]]; then
-    DOCKER_ARGS+=(--network "$UFEEL_DOCKER_NETWORK")
-fi
+DOCKER_NETWORK="${UFEEL_DOCKER_NETWORK:-host}"
+DOCKER_ARGS+=(--network "$DOCKER_NETWORK")
 
 if [[ -n "${UFEEL_DOCKER_GPUS:-}" ]]; then
     DOCKER_ARGS+=(--gpus "$UFEEL_DOCKER_GPUS")
@@ -287,21 +261,38 @@ if [[ -d /dev/dri ]]; then
     done
 fi
 
-if [[ -t 0 && -t 1 ]]; then
-    RUN_ARGS+=(-t)
-fi
-
 if [[ "${UFEEL_USB_DEVICES:-0}" == 1 && -d /dev/bus/usb ]]; then
     for device in /dev/bus/usb/*/*; do
         add_device "$device"
     done
 fi
 
+if [[ -t 0 && -t 1 ]]; then
+    RUN_ARGS+=(-t)
+fi
+
+DEVICE_GIDS_STRING="${DEVICE_GIDS[*]:-}"
+
 docker run \
     --rm \
     "${RUN_ARGS[@]}" \
     "${DOCKER_ARGS[@]}" \
+    -e UFEEL_DEVICE_GIDS="$DEVICE_GIDS_STRING" \
     --entrypoint /bin/bash \
     "$IMAGE" \
-    -lc 'if (($#)); then exec "$@"; else exec bash; fi' \
+    -lc '
+        read -r -a gids <<< "${UFEEL_DEVICE_GIDS:-}"
+
+        for gid in "${gids[@]}"; do
+            if ! getent group "$gid" >/dev/null; then
+                groupadd --gid "$gid" "hostgroup_$gid"
+            fi
+        done
+
+        if (($#)); then
+            exec "$@"
+        else
+            exec bash
+        fi
+    ' \
     -- "$@"
