@@ -16,7 +16,7 @@ add_executable(
     EyeTracking/IrisDetection/TestDetectionPostProcess.cpp
     EyeTracking/IrisDetection/TestModelLoader.cpp
     EyeTracking/IrisDetection/TestFaceDetection.cpp
-    # EyeTracking/IrisDetection/TestFaceLandmark.cpp
+    EyeTracking/IrisDetection/TestFaceLandmark.cpp
 
     Utils/TestFrameChecker.cpp
 
@@ -46,6 +46,7 @@ target_compile_definitions(run_library_unit_tests PRIVATE
     EMOTIONS_MODEL_DIR_PATH="${CMAKE_SOURCE_DIR}/models"
     MODEL_LOADER_TEST_MODEL_PATH="${CMAKE_SOURCE_DIR}/models/EyeTracking/face_detection_short.tflite"
     MODEL_DIR_PATH="${CMAKE_SOURCE_DIR}/models/EyeTracking"
+    RESOURCES_DIR_PATH="${CMAKE_SOURCE_DIR}/tests/resources"
 )
 
 include(GoogleTest)
