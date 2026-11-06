@@ -30,7 +30,7 @@ git submodule update --init --recursive
 git lfs pull
 
 cd docker
-docker build -t ufeeldocker .
+docker build --pull --no-cache -t ufeeldocker:latest .
 cd ..
 ./docker/run.sh
 

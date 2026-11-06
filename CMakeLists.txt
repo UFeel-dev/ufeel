@@ -270,3 +270,5 @@ install(
     DIRECTORY "${MODELS_DIR}/"
     DESTINATION models
 )
+
+# TODO: improve device discovery logic
