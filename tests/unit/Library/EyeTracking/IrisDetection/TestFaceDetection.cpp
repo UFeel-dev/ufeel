@@ -13,14 +13,7 @@ protected:
 
     void SetUp() override
     {
-#ifndef MODEL_DIR_PATH
-        FAIL() << "MODEL_DIR_PATH is not defined.";
-        return;
-#else
-        modelDir_ = MODEL_DIR_PATH;
-#endif
-
-        detector_ = std::make_unique<my::FaceDetection>(modelDir_);
+        detector_ = std::make_unique<my::FaceDetection>(MODEL_DIR_PATH);
     }
 
     auto createImage(
@@ -30,7 +23,6 @@ protected:
         return cv::Mat(height, width, type, cv::Scalar(100, 150, 200, 255));
     }
 
-    std::string modelDir_;
     std::unique_ptr<my::FaceDetection> detector_;
 };
 

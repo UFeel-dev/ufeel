@@ -17,21 +17,7 @@ protected:
 
     void SetUp() override
     {
-#ifndef MODEL_DIR_PATH
-        FAIL() << "MODEL_DIR_PATH is not defined.";
-        return;
-#else
-        modelDir_ = MODEL_DIR_PATH;
-#endif
-
-#ifndef RESOURCES_DIR_PATH
-        FAIL() << "RESOURCES_DIR_PATH is not defined.";
-        return;
-#else
-        resourcesDir_ = RESOURCES_DIR_PATH;
-#endif
-
-        landmark_ = std::make_unique<my::FaceLandmark>(modelDir_);
+        landmark_ = std::make_unique<my::FaceLandmark>(MODEL_DIR_PATH);
     }
 
     [[nodiscard]] static auto createImage(
@@ -43,8 +29,8 @@ protected:
 
     auto createImageWithFace() -> bool
     {
-        auto const path = resourcesDir_ + "/astronaut.png";
-        auto const image = cv::imread(path, cv::IMREAD_COLOR);
+        cv::Mat image =
+            cv::imread(std::string(RESOURCES_DIR_PATH) + "/astronaut.png", cv::IMREAD_COLOR);
 
         if (image.empty())
         {
@@ -58,8 +44,6 @@ protected:
         return !landmark_->getFaceRoi().empty();
     }
 
-    std::string modelDir_;
-    std::string resourcesDir_;
     std::unique_ptr<my::FaceLandmark> landmark_;
     bool testImageUnavailable_{false};
 

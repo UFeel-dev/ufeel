@@ -13,14 +13,7 @@ protected:
 
     void SetUp() override
     {
-#ifndef MODEL_LOADER_TEST_MODEL_PATH
-        FAIL() << "MODEL_LOADER_TEST_MODEL_PATH is not defined.";
-        return;
-#else
-        modelPath_ = MODEL_LOADER_TEST_MODEL_PATH;
-#endif
-
-        loader_ = std::make_unique<my::ModelLoader>(modelPath_);
+        loader_ = std::make_unique<my::ModelLoader>(MODEL_LOADER_TEST_MODEL_PATH);
     }
 
     auto createImage(
@@ -39,7 +32,6 @@ protected:
         return cv::Mat(shape.at(1), shape.at(2), type, cv::Scalar::all(128));
     }
 
-    std::string modelPath_;
     std::unique_ptr<my::ModelLoader> loader_;
 };
 
