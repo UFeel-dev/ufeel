@@ -72,6 +72,9 @@ class DataProcessor
 public:
 
     DataProcessor(const std::string& modelDirectory, const std::string& speechModelPath);
+    DataProcessor(
+        const std::string& modelDirectory, const std::string& speechModelPath, int cameraIndex
+    );
 
     ~DataProcessor();
 

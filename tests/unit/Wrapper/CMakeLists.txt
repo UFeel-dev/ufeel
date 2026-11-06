@@ -6,6 +6,7 @@ add_executable(
     src/TestHeartRate.cpp
     src/TestProcessor.cpp
     src/TestSpeechToText.cpp
+    src/TestApiIntegration.cpp
 
     src/internal/TestErrorHandling.cpp
     src/internal/TestFrameConversion.cpp
@@ -16,6 +17,11 @@ target_include_directories(run_wrapper_unit_tests PRIVATE
     "${WRAPPER_DIR}/src"
     "${LIBRARY_DIR}/include"
     "${OPENCV_DIR}/include/opencv4"
+)
+
+target_compile_definitions(run_wrapper_unit_tests PRIVATE
+    UFEEL_TEST_MODEL_DIR="${CMAKE_SOURCE_DIR}/models"
+    UFEEL_TEST_SPEECH_MODEL_DIR="${CMAKE_SOURCE_DIR}/models/SpeechToText/vosk-model-small-en-us-0.15"
 )
 
 target_link_libraries(

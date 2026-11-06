@@ -45,7 +45,14 @@ auto makeEmotionResult(
 DataProcessor::DataProcessor(
     const std::string& modelDirectory, const std::string& speechModelPath
 )
-    : cap_(0)
+    : DataProcessor(modelDirectory, speechModelPath, 0)
+{
+}
+
+DataProcessor::DataProcessor(
+    const std::string& modelDirectory, const std::string& speechModelPath, int cameraIndex
+)
+    : cap_(cameraIndex)
 {
     if (!cap_.isOpened())
     {

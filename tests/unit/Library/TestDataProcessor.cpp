@@ -6,15 +6,22 @@
 #include "opencv2/core/mat.hpp"
 #include "opencv2/core/types.hpp"
 
+#include <chrono>
 #include <cstdint>
 #include <gtest/gtest.h>
+#include <thread>
+
+void resetFakeVoskForDetector();
+auto fakeVoskHasProcessedAudio() -> bool;
 
 namespace
 {
 
-auto createProcessor() -> DataProcessor
+auto createProcessor(
+    int cameraIndex = 0
+) -> DataProcessor
 {
-    return DataProcessor(DATA_PROCESSOR_MODEL_DIR_PATH, "fake-model");
+    return DataProcessor(DATA_PROCESSOR_MODEL_DIR_PATH, "fake-model", cameraIndex);
 }
 
 } // namespace
@@ -29,6 +36,23 @@ TEST(
         processor.updateFromFrame(1U << 8U, cv::Mat{}), DataProcessorStatus::InvalidDetectionType
     );
     EXPECT_EQ(processor.update(1U << 8U), DataProcessorStatus::InvalidDetectionType);
+}
+
+TEST(
+    DataProcessorTest, ReportsUnavailableCameraFrames
+)
+{
+    auto processor = createProcessor(999999);
+    const cv::Mat frame(8, 8, CV_8UC3, cv::Scalar(0, 0, 0));
+    ASSERT_EQ(processor.setFrame(frame), DataProcessorStatus::Ok);
+
+    EXPECT_EQ(processor.updateFrame(), DataProcessorStatus::FrameUnavailable);
+    EXPECT_TRUE(processor.getFrame().empty());
+    EXPECT_EQ(processor.update(Emotions | EyeTracking), DataProcessorStatus::FrameUnavailable);
+    EXPECT_EQ(processor.getEmotions().status, EmotionStatus::FrameUnavailable);
+    EXPECT_EQ(processor.getEyeTracking().status, EyeTrackingStatus::FrameUnavailable);
+    EXPECT_EQ(processor.updateEmotions(), DataProcessorStatus::FrameUnavailable);
+    EXPECT_EQ(processor.updateEyeTracking(), DataProcessorStatus::FrameUnavailable);
 }
 
 TEST(
@@ -67,11 +91,22 @@ TEST(
     DataProcessorTest, SpeechToggleUpdatesStoredResult
 )
 {
+    resetFakeVoskForDetector();
     auto processor = createProcessor();
 
     processor.toggleSpeechToText(true);
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while (!fakeVoskHasProcessedAudio() && std::chrono::steady_clock::now() < deadline)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
+    ASSERT_TRUE(fakeVoskHasProcessedAudio());
     EXPECT_EQ(processor.updateSpeechToText(), DataProcessorStatus::Ok);
-    EXPECT_EQ(processor.getSpeechToText().status, SpeechToTextStatus::NoSpeech);
+    EXPECT_EQ(processor.getSpeechToText().status, SpeechToTextStatus::Valid);
+    EXPECT_EQ(processor.getSpeechToText().text, "hello");
+    EXPECT_EQ(processor.updateFromFrame(Speech, cv::Mat{}), DataProcessorStatus::Ok);
+    EXPECT_EQ(processor.getSpeechToText().status, SpeechToTextStatus::Valid);
 
     processor.toggleSpeechToText(false);
     EXPECT_EQ(processor.getSpeechToText().status, SpeechToTextStatus::Disabled);

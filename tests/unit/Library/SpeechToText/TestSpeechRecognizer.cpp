@@ -1,6 +1,7 @@
 #include "SpeechToText/SpeechRecognizer.hpp"
 #include "vosk_api.h"
 
+#include <atomic>
 #include <cstdint>
 #include <gtest/gtest.h>
 #include <stdexcept>
@@ -28,6 +29,7 @@ public:
     static inline std::string finalizedResult = R"({"text": "final sentence"})";
 
     static inline int lastSampleCount = 0;
+    static inline std::atomic<bool> audioProcessed = false;
 
     static auto model() -> VoskModel*
     {
@@ -55,6 +57,7 @@ public:
         finalizedResult = R"({"text": "final sentence"})";
 
         lastSampleCount = 0;
+        audioProcessed = false;
     }
 };
 
@@ -63,15 +66,24 @@ void resetFakeVoskForDetector()
     FakeVosk::reset();
 }
 
-void setFakeVoskFinalizedResult(const std::string& result)
+void setFakeVoskFinalizedResult(
+    const std::string& result
+)
 {
     FakeVosk::finalizedResult = result;
     FakeVosk::finalizedResultIsNull = false;
 }
 
-void setFakeVoskWaveformResult(int result)
+void setFakeVoskWaveformResult(
+    int result
+)
 {
     FakeVosk::waveformResult = result;
+}
+
+auto fakeVoskHasProcessedAudio() -> bool
+{
+    return FakeVosk::audioProcessed.load();
 }
 
 void vosk_model_free(
@@ -88,9 +100,9 @@ void vosk_recognizer_free(
     FakeVosk::recognizerFree = true;
 }
 
-VoskModel* vosk_model_new(
+auto vosk_model_new(
     const char*
-)
+) -> VoskModel*
 {
     if (!FakeVosk::modelCreationSucceeds)
     {
@@ -100,9 +112,9 @@ VoskModel* vosk_model_new(
     return FakeVosk::model();
 }
 
-VoskRecognizer* vosk_recognizer_new(
+auto vosk_recognizer_new(
     VoskModel*, float
-)
+) -> VoskRecognizer*
 {
     if (!FakeVosk::recognizerCreationSucceeds)
     {
@@ -112,24 +124,25 @@ VoskRecognizer* vosk_recognizer_new(
     return FakeVosk::recognizer();
 }
 
-int vosk_recognizer_accept_waveform(
+auto vosk_recognizer_accept_waveform(
     VoskRecognizer*, const char*, int length
-)
+) -> int
 {
     FakeVosk::lastSampleCount = length;
+    FakeVosk::audioProcessed = true;
     return FakeVosk::waveformResult;
 }
 
-const char* vosk_recognizer_result(
+auto vosk_recognizer_result(
     VoskRecognizer*
-)
+) -> const char*
 {
     return FakeVosk::finalResult.c_str();
 }
 
-const char* vosk_recognizer_partial_result(
+auto vosk_recognizer_partial_result(
     VoskRecognizer*
-)
+) -> const char*
 {
     return FakeVosk::partialResult.c_str();
 }

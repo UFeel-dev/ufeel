@@ -3,6 +3,7 @@
 #include "opencv2/core/hal/interface.h"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/core/types.hpp"
+#include "opencv2/imgcodecs.hpp"
 
 #include <cstddef>
 #include <gtest/gtest.h>
@@ -33,6 +34,20 @@ TEST(
     detector.toggleEyeTrackingDetection(true);
     EXPECT_EQ(detector.process(frame).status, EyeTrackingStatus::FaceUnavailable);
     detector.close();
+}
+
+TEST(
+    EyeTrackingDetectorTest, ProcessesAvailableFaceImage
+)
+{
+    auto detector = createDetector();
+    const auto frame =
+        cv::imread(std::string(RESOURCES_DIR_PATH) + "/astronaut.png", cv::IMREAD_COLOR);
+    ASSERT_FALSE(frame.empty());
+
+    const auto result = detector.process(frame);
+    EXPECT_NE(result.status, EyeTrackingStatus::FrameUnavailable);
+    EXPECT_NE(result.status, EyeTrackingStatus::Disabled);
 }
 
 TEST(
