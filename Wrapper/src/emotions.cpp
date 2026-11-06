@@ -1,7 +1,6 @@
 #include "DataProcessor.hpp"
 #include "internal/ErrorHandling.hpp"
 #include "internal/FrameConversion.hpp"
-#include "internal/Memory.hpp"
 #include "internal/UFeelProcessor.hpp" // IWYU pragma: keep
 #include "opencv2/core/mat.hpp"
 #include "ufeel.h"
@@ -12,12 +11,10 @@
 #include <limits>
 #include <map>
 #include <memory>
-#include <new>
 #include <stdexcept>
 #include <string>
 
 using ufeel::internal::convertFrame;
-using ufeel::internal::duplicateUtf8;
 using ufeel::internal::FrameCopyPolicy;
 using ufeel::internal::guarded;
 using ufeel::internal::guardedVoid;
@@ -57,7 +54,7 @@ struct EmotionResultDeleter
 };
 
 auto convertEmotionsResultToUFeelPair(
-    const std::map<std::string, float>& emotions
+    const std::map<std::string, float>& emotions, ufeel::internal::WrapperAllocator& allocator
 ) -> UFeelPair*
 {
     if (emotions.empty() ||
@@ -66,7 +63,7 @@ auto convertEmotionsResultToUFeelPair(
         return static_cast<UFeelPair*>(nullptr);
     }
 
-    auto output = std::unique_ptr<UFeelPair[]>(new (std::nothrow) UFeelPair[emotions.size()]{});
+    auto output = std::unique_ptr<UFeelPair[]>(allocator.allocateEmotionPairs(emotions.size()));
 
     if (!output)
     {
@@ -76,7 +73,7 @@ auto convertEmotionsResultToUFeelPair(
     int32_t index = 0;
     for (const auto& [name, value] : emotions)
     {
-        output[index].name = duplicateUtf8(name);
+        output[index].name = allocator.duplicateString(name);
         if (output[index].name == nullptr)
         {
             for (int32_t allocated = 0; allocated < index; ++allocated)
@@ -109,13 +106,13 @@ auto ufeel_update_emotions(
                 return UFEEL_STATUS_INVALID_PROCESSOR;
             }
 
-            const auto updateStatus = processor->processor.updateEmotions();
+            const auto updateStatus = processor->processor->updateEmotions();
             if (updateStatus != DataProcessorStatus::Ok)
             {
                 return toUFeelStatus(updateStatus);
             }
 
-            return processor->processor.getEmotions().status == EmotionStatus::Valid
+            return processor->processor->getEmotions().status == EmotionStatus::Valid
                        ? UFEEL_STATUS_OK
                        : UFEEL_STATUS_NO_EMOTIONS;
         }
@@ -142,13 +139,13 @@ auto ufeel_update_emotions_from_frame(
                 return UFEEL_STATUS_INVALID_FRAME;
             }
 
-            const auto updateStatus = processor->processor.updateEmotionsFromFrame(frameConverted);
+            const auto updateStatus = processor->processor->updateEmotionsFromFrame(frameConverted);
             if (updateStatus != DataProcessorStatus::Ok)
             {
                 return toUFeelStatus(updateStatus);
             }
 
-            return processor->processor.getEmotions().status == EmotionStatus::Valid
+            return processor->processor->getEmotions().status == EmotionStatus::Valid
                        ? UFEEL_STATUS_OK
                        : UFEEL_STATUS_NO_EMOTIONS;
         }
@@ -174,9 +171,10 @@ auto ufeel_get_emotions_result(
                 return UFEEL_STATUS_INVALID_PROCESSOR;
             }
 
-            const auto& emotionResult = processor->processor.getEmotions();
+            const auto& emotionResult = processor->processor->getEmotions();
 
-            result->emotions = convertEmotionsResultToUFeelPair(emotionResult.emotions);
+            result->emotions =
+                convertEmotionsResultToUFeelPair(emotionResult.emotions, *processor->allocator);
             if (!emotionResult.emotions.empty() && result->emotions == nullptr)
             {
                 return UFEEL_STATUS_INTERNAL_ERROR;
@@ -224,9 +222,10 @@ void ufeel_get_emotions_result_from_frame(
             handler(result.get());
             return;
         }
-        const auto emotionResult = processor->processor.getEmotionsFromFrame(frameConverted);
+        const auto emotionResult = processor->processor->getEmotionsFromFrame(frameConverted);
 
-        result->emotions = convertEmotionsResultToUFeelPair(emotionResult.emotions);
+        result->emotions =
+            convertEmotionsResultToUFeelPair(emotionResult.emotions, *processor->allocator);
         if (!emotionResult.emotions.empty() && result->emotions == nullptr)
         {
             result->status = UFEEL_EMOTIONS_STATUS_INTERNAL_ERROR;

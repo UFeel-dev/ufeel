@@ -4,8 +4,8 @@
 #include <filesystem>
 
 #ifndef EMOTIONS_MODEL_DIR_PATH
-#define EMOTIONS_MODEL_DIR_PATH "" // TODO: find a cleaner way or shutdown any warning on this line
-#endif
+#define EMOTIONS_MODEL_DIR_PATH ""
+#endif // EMOTIONS_MODEL_DIR_PATH
 
 inline auto emotionModelDirectory() -> std::filesystem::path
 {

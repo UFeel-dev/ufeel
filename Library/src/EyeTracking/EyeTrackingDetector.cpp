@@ -1,6 +1,7 @@
 #include "EyeTracking/EyeTrackingDetector.hpp"
 
 #include "EyeTracking/EyeTrackingCalibrationModel.hpp"
+#include "EyeTracking/IrisDetection/IrisLandmark.hpp"
 #include "Utils/FrameChecker.hpp"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/core/types.hpp"
@@ -13,9 +14,12 @@
 #include <cstdint>
 #include <iostream>
 #include <iterator>
+#include <memory>
 #include <numeric>
 #include <optional>
+#include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace
@@ -43,6 +47,67 @@ static_assert(std::ranges::all_of(FACE_FEATURE_LANDMARKS, [](int index) -> bool 
 }));
 
 using Vector3 = std::array<double, 3>;
+
+class IrisLandmarkProvider final : public ufeel::internal::EyeTrackingLandmarkProvider
+{
+public:
+
+    explicit IrisLandmarkProvider(
+        const std::string& modelDirectory
+    )
+        : landmarker_(modelDirectory)
+    {
+    }
+
+    void loadImageToInput(
+        const cv::Mat& frame
+    ) override
+    {
+        landmarker_.loadImageToInput(frame);
+    }
+
+    void runInference() override
+    {
+        landmarker_.runInference();
+    }
+
+    [[nodiscard]] auto getFaceRoi() const -> cv::Rect override
+    {
+        return landmarker_.getFaceRoi();
+    }
+
+    [[nodiscard]] auto getAllEyeLandmarks(
+        bool leftEye, bool iris
+    ) const -> std::vector<cv::Point> override
+    {
+        return landmarker_.getAllEyeLandmarks(leftEye, iris);
+    }
+
+    [[nodiscard]] auto getEyeRoi(
+        bool leftEye
+    ) const -> cv::Rect override
+    {
+        return landmarker_.getEyeRoi(leftEye);
+    }
+
+    [[nodiscard]] auto getFaceLandmarkAt(
+        int index
+    ) const -> cv::Point override
+    {
+        return landmarker_.getFaceLandmarkAt(index);
+    }
+
+    [[nodiscard]] auto getFaceLandmark3DAt(
+        int index
+    ) const -> cv::Point3f override
+    {
+        return landmarker_.getFaceLandmark3DAt(index);
+    }
+
+private:
+
+    my::IrisLandmark landmarker_;
+};
 
 [[nodiscard]] auto normalizedEyePosition(
     cv::Point corner1,
@@ -117,10 +182,6 @@ using Vector3 = std::array<double, 3>;
 ) -> double
 {
     double const width = cv::norm(corner2 - corner1);
-    if (width < 2.0)
-    {
-        return 0.0;
-    }
     double const firstHeight = cv::norm(upper1 - lower1);
     double const secondHeight = cv::norm(upper2 - lower2);
     return (firstHeight + secondHeight) / (2.0 * width);
@@ -210,8 +271,19 @@ using Vector3 = std::array<double, 3>;
 EyeTrackingDetector::EyeTrackingDetector(
     const std::string& modelDirectory
 )
-    : irisLandmarker_(modelDirectory + "/EyeTracking")
+    : EyeTrackingDetector(std::make_unique<IrisLandmarkProvider>(modelDirectory + "/EyeTracking"))
 {
+}
+
+EyeTrackingDetector::EyeTrackingDetector(
+    std::unique_ptr<ufeel::internal::EyeTrackingLandmarkProvider> landmarkProvider
+)
+    : landmarkProvider_(std::move(landmarkProvider))
+{
+    if (!landmarkProvider_)
+    {
+        throw std::invalid_argument("eye tracking landmark provider must not be null");
+    }
 }
 
 EyeTrackingDetector::~EyeTrackingDetector() = default;
@@ -435,34 +507,34 @@ auto EyeTrackingDetector::extractFeatures(
 {
     status = EyeTrackingStatus::FaceUnavailable;
     quality = 0.0F;
-    irisLandmarker_.loadImageToInput(frame);
-    irisLandmarker_.runInference();
-    if (irisLandmarker_.getFaceRoi().empty())
+    landmarkProvider_->loadImageToInput(frame);
+    landmarkProvider_->runInference();
+    if (landmarkProvider_->getFaceRoi().empty())
     {
         return std::nullopt;
     }
 
-    auto const leftIris = irisLandmarker_.getAllEyeLandmarks(true, true);
-    auto const rightIris = irisLandmarker_.getAllEyeLandmarks(false, true);
+    auto const leftIris = landmarkProvider_->getAllEyeLandmarks(true, true);
+    auto const rightIris = landmarkProvider_->getAllEyeLandmarks(false, true);
     if (leftIris.size() != IRIS_LANDMARK_COUNT || rightIris.size() != IRIS_LANDMARK_COUNT ||
-        irisLandmarker_.getEyeRoi(true).empty() || irisLandmarker_.getEyeRoi(false).empty())
+        landmarkProvider_->getEyeRoi(true).empty() || landmarkProvider_->getEyeRoi(false).empty())
     {
         status = EyeTrackingStatus::LowQuality;
         return std::nullopt;
     }
 
     auto const leftPosition = normalizedEyePosition(
-        irisLandmarker_.getFaceLandmarkAt(362),
-        irisLandmarker_.getFaceLandmarkAt(263),
-        irisLandmarker_.getFaceLandmarkAt(386),
-        irisLandmarker_.getFaceLandmarkAt(374),
+        landmarkProvider_->getFaceLandmarkAt(362),
+        landmarkProvider_->getFaceLandmarkAt(263),
+        landmarkProvider_->getFaceLandmarkAt(386),
+        landmarkProvider_->getFaceLandmarkAt(374),
         leftIris
     );
     auto const rightPosition = normalizedEyePosition(
-        irisLandmarker_.getFaceLandmarkAt(33),
-        irisLandmarker_.getFaceLandmarkAt(133),
-        irisLandmarker_.getFaceLandmarkAt(159),
-        irisLandmarker_.getFaceLandmarkAt(145),
+        landmarkProvider_->getFaceLandmarkAt(33),
+        landmarkProvider_->getFaceLandmarkAt(133),
+        landmarkProvider_->getFaceLandmarkAt(159),
+        landmarkProvider_->getFaceLandmarkAt(145),
         rightIris
     );
     if (!leftPosition || !rightPosition)
@@ -472,20 +544,20 @@ auto EyeTrackingDetector::extractFeatures(
     }
 
     double const leftEar = eyeAspectRatio(
-        irisLandmarker_.getFaceLandmarkAt(362),
-        irisLandmarker_.getFaceLandmarkAt(263),
-        irisLandmarker_.getFaceLandmarkAt(386),
-        irisLandmarker_.getFaceLandmarkAt(374),
-        irisLandmarker_.getFaceLandmarkAt(387),
-        irisLandmarker_.getFaceLandmarkAt(373)
+        landmarkProvider_->getFaceLandmarkAt(362),
+        landmarkProvider_->getFaceLandmarkAt(263),
+        landmarkProvider_->getFaceLandmarkAt(386),
+        landmarkProvider_->getFaceLandmarkAt(374),
+        landmarkProvider_->getFaceLandmarkAt(387),
+        landmarkProvider_->getFaceLandmarkAt(373)
     );
     double const rightEar = eyeAspectRatio(
-        irisLandmarker_.getFaceLandmarkAt(33),
-        irisLandmarker_.getFaceLandmarkAt(133),
-        irisLandmarker_.getFaceLandmarkAt(159),
-        irisLandmarker_.getFaceLandmarkAt(145),
-        irisLandmarker_.getFaceLandmarkAt(158),
-        irisLandmarker_.getFaceLandmarkAt(153)
+        landmarkProvider_->getFaceLandmarkAt(33),
+        landmarkProvider_->getFaceLandmarkAt(133),
+        landmarkProvider_->getFaceLandmarkAt(159),
+        landmarkProvider_->getFaceLandmarkAt(145),
+        landmarkProvider_->getFaceLandmarkAt(158),
+        landmarkProvider_->getFaceLandmarkAt(153)
     );
     double const averageEar = (leftEar + rightEar) * 0.5;
     double blinkThreshold = INITIAL_BLINK_EAR_THRESHOLD;
@@ -515,9 +587,9 @@ auto EyeTrackingDetector::extractFeatures(
         }
     };
 
-    auto const leftOuter = vectorFrom(irisLandmarker_.getFaceLandmark3DAt(33));
-    auto const rightOuter = vectorFrom(irisLandmarker_.getFaceLandmark3DAt(263));
-    auto const topOfHead = vectorFrom(irisLandmarker_.getFaceLandmark3DAt(10));
+    auto const leftOuter = vectorFrom(landmarkProvider_->getFaceLandmark3DAt(33));
+    auto const rightOuter = vectorFrom(landmarkProvider_->getFaceLandmark3DAt(263));
+    auto const topOfHead = vectorFrom(landmarkProvider_->getFaceLandmark3DAt(10));
     if (!finite(leftOuter) || !finite(rightOuter) || !finite(topOfHead))
     {
         status = EyeTrackingStatus::LowQuality;
@@ -527,8 +599,8 @@ auto EyeTrackingDetector::extractFeatures(
     Vector3 const eyeAxis =
         subtract(rightOuter, leftOuter); // ! we might be swapping left and right here, TODO: check
     double const eyeSpan = std::sqrt(dot(eyeAxis, eyeAxis));
-    auto const leftOuter2d = irisLandmarker_.getFaceLandmarkAt(33);
-    auto const rightOuter2d = irisLandmarker_.getFaceLandmarkAt(263);
+    auto const leftOuter2d = landmarkProvider_->getFaceLandmarkAt(33);
+    auto const rightOuter2d = landmarkProvider_->getFaceLandmarkAt(263);
     double const imageEyeSpan = cv::norm(rightOuter2d - leftOuter2d);
     auto const minimumFrameDimension = static_cast<double>(std::min(frame.cols, frame.rows));
     if (!std::isfinite(eyeSpan) || eyeSpan < 2.0 || imageEyeSpan < minimumFrameDimension * 0.025)
@@ -584,7 +656,7 @@ auto EyeTrackingDetector::extractFeatures(
     }
 
     auto appendLandmarkFeatures = [&](int landmarkIndex) -> bool {
-        auto const landmark = vectorFrom(irisLandmarker_.getFaceLandmark3DAt(landmarkIndex));
+        auto const landmark = vectorFrom(landmarkProvider_->getFaceLandmark3DAt(landmarkIndex));
         if (!finite(landmark))
         {
             return false;

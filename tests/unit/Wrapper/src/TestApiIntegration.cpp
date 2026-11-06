@@ -7,6 +7,13 @@
 #include <gtest/gtest.h>
 #include <memory>
 
+#ifndef UFEEL_TEST_MODEL_DIR
+#define UFEEL_TEST_MODEL_DIR ""
+#endif // UFEEL_TEST_MODEL_DIR
+#ifndef UFEEL_TEST_SPEECH_MODEL_DIR
+#define UFEEL_TEST_SPEECH_MODEL_DIR ""
+#endif // UFEEL_TEST_SPEECH_MODEL_DIR
+
 namespace
 {
 

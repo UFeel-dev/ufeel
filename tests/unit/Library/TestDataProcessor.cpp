@@ -12,6 +12,10 @@
 #include <gtest/gtest.h>
 #include <thread>
 
+#ifndef DATA_PROCESSOR_MODEL_DIR_PATH
+#define DATA_PROCESSOR_MODEL_DIR_PATH ""
+#endif // DATA_PROCESSOR_MODEL_DIR_PATH
+
 namespace
 {
 

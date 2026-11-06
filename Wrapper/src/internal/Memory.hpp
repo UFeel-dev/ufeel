@@ -1,6 +1,7 @@
 #ifndef MEMORY_HPP
 #define MEMORY_HPP
 
+#include <cstddef>
 #include <cstdlib>
 #include <cstring>
 #include <string>
@@ -9,10 +10,15 @@ namespace ufeel::internal
 {
 
 inline auto duplicateUtf8(
-    const std::string& value
+    const std::string& value, void* (*mallocFunction)(std::size_t) = std::malloc
 ) -> char*
 {
-    auto* result = static_cast<char*>(std::malloc(value.size() + 1));
+    if (mallocFunction == nullptr)
+    {
+        return nullptr;
+    }
+
+    auto* result = static_cast<char*>(mallocFunction(value.size() + 1));
 
     if (result == nullptr)
     {

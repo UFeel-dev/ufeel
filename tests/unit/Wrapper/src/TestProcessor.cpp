@@ -15,6 +15,13 @@ TEST(
 }
 
 TEST(
+    ProcessorApiTest, CreateReturnsNullWhenModelConfigurationCannotBeLoaded
+)
+{
+    EXPECT_EQ(ufeel_create("missing-model-directory", "missing-speech-model"), nullptr);
+}
+
+TEST(
     ProcessorApiTest, NullProcessorOperationsReturnSafeResults
 )
 {

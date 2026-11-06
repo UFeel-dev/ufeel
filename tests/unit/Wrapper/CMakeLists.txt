@@ -7,16 +7,22 @@ add_executable(
     src/TestProcessor.cpp
     src/TestSpeechToText.cpp
     src/TestApiIntegration.cpp
+    src/TestWrapperBehavior.cpp
 
     src/internal/TestErrorHandling.cpp
     src/internal/TestFrameConversion.cpp
+    src/internal/TestMemory.cpp
 )
 
 target_include_directories(run_wrapper_unit_tests PRIVATE
     "${WRAPPER_DIR}/include"
     "${WRAPPER_DIR}/src"
     "${LIBRARY_DIR}/include"
+)
+
+target_include_directories(run_wrapper_unit_tests SYSTEM PRIVATE
     "${OPENCV_DIR}/include/opencv4"
+    "${TFLITE_DIR}/include"
 )
 
 target_compile_definitions(run_wrapper_unit_tests PRIVATE
