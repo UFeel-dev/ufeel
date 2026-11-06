@@ -129,3 +129,4 @@ package
 
 # Coverage
 *.profraw
+cmake_test_discovery*.json

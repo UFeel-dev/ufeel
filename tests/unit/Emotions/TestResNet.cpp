@@ -4,9 +4,9 @@
 #include "torch/nn/modules/batchnorm.h"
 #include "torch/nn/modules/container/sequential.h"
 #include "torch/nn/modules/conv.h"
+#include "torch/nn/options/conv.h"
 
 #include <gtest/gtest.h>
-#include <torch/nn/options/conv.h>
 
 TEST(
     ResNetTest, BasicBlockPreservesShapeWhenDimensionsMatch

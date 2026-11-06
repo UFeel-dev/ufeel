@@ -72,7 +72,7 @@ package()
         --prefix "${PACKAGE_PATH}"
 }
 
-test()
+run_integration_test()
 {
     require_package
 
@@ -154,7 +154,6 @@ all()
     configure
     build
     package
-    test # TODO: maybe remove test from all and update documentation
 }
 
 usage()
@@ -170,6 +169,7 @@ usage()
     echo "  ./build.sh fix [files...]"
     echo "  ./build.sh include-fix [files...]"
     echo "  ./build.sh run-unit-tests"
+    echo "  ./build.sh run-integration-tests"
 }
 
 run_unit_tests()
@@ -221,6 +221,13 @@ run_unit_tests()
         -ignore-filename-regex='(/tests/|googletest|/usr/|3rdparty/)'
 }
 
+test()
+{
+    run_unit_tests
+    run_integration_test
+    # TODO: move csharp integration test to the testing directory under an appropriate subdirectory
+}
+
 case "${1:-}" in
     configure)
         configure
@@ -248,6 +255,9 @@ case "${1:-}" in
         ;;
     include-fix)
         include_fix "${@:2}"
+        ;;
+    run-integration-tests)
+        run_integration_test
         ;;
     run-unit-tests)
         run_unit_tests

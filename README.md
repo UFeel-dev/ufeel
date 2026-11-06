@@ -102,7 +102,7 @@ git lfs pull
 ```text
 .
 ├── build.sh
-├── csharp/        # C# test project
+├── csharp/        # C# integration test
 ├── Library/       # Native sources
 ├── Wrapper/       # C++ wrapper
 ├── 3rdparty/      # External dependencies
@@ -111,14 +111,13 @@ git lfs pull
 └── docs/          # Feature documentation
 ```
 
-## Manual Build
-
-If you prefer running the steps manually:
+## Build and Test
 
 ```bash
-./build.sh configure
-./build.sh build
-./build.sh package
+./build.sh all              # Configure, build, and package
+./build.sh run-unit-tests   # Run native unit tests and generate coverage
+./build.sh test             # Run unit and integration tests
+./build.sh format           # Format C++ sources and tests
 ```
 
 ## Documentation
