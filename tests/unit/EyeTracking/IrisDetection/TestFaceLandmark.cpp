@@ -233,3 +233,22 @@ TEST_F(
     EXPECT_GE(point.x, 0);
     EXPECT_GE(point.y, 0);
 }
+
+TEST_F(
+    TestFaceLandmark, ReturnsLandmarkModelOutput
+)
+{
+    auto const output = landmark_->loadOutput();
+
+    EXPECT_FALSE(output.empty());
+}
+
+TEST_F(
+    TestFaceLandmark, ReturnsSameOutputForDifferentIndices
+)
+{
+    auto const output0 = landmark_->loadOutput(0);
+    auto const output1 = landmark_->loadOutput(1);
+
+    EXPECT_EQ(output0, output1);
+}
