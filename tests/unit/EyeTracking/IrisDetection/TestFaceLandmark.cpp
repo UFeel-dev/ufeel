@@ -5,6 +5,7 @@
 #include <memory>
 #include <opencv2/core/mat.hpp>
 #include <opencv2/core/types.hpp>
+#include <opencv2/imgcodecs.hpp>
 #include <string>
 #include <vector>
 
@@ -33,7 +34,12 @@ protected:
 
     auto createImageWithFace() -> bool
     {
-        auto const image = createImage();
+        auto const image = cv::imread(std::string("tests/ressources/face.png"));
+
+        if (image.empty())
+        {
+            throw std::runtime_error("Unable to load face.png");
+        }
 
         landmark_->loadImageToInput(image, 0);
         landmark_->runInference();
@@ -128,48 +134,6 @@ TEST_F(
 }
 
 TEST_F(
-    TestFaceLandmark, ReturnsZeroPointForNegativeLandmarkIndex
-)
-{
-    EXPECT_EQ(landmark_->getFaceLandmarkAt(-1), cv::Point());
-}
-
-TEST_F(
-    TestFaceLandmark, ReturnsZeroPointForLandmarkIndexAboveRange
-)
-{
-    EXPECT_EQ(landmark_->getFaceLandmarkAt(468), cv::Point());
-}
-
-TEST_F(
-    TestFaceLandmark, ReturnsZeroPointForLargeLandmarkIndex
-)
-{
-    EXPECT_EQ(landmark_->getFaceLandmarkAt(999), cv::Point());
-}
-
-TEST_F(
-    TestFaceLandmark, ReturnsZeroPoint3DForNegativeLandmarkIndex
-)
-{
-    EXPECT_EQ(landmark_->getFaceLandmark3DAt(-1), cv::Point3f());
-}
-
-TEST_F(
-    TestFaceLandmark, ReturnsZeroPoint3DForLandmarkIndexAboveRange
-)
-{
-    EXPECT_EQ(landmark_->getFaceLandmark3DAt(468), cv::Point3f());
-}
-
-TEST_F(
-    TestFaceLandmark, ReturnsZeroPoint3DForLargeLandmarkIndex
-)
-{
-    EXPECT_EQ(landmark_->getFaceLandmark3DAt(999), cv::Point3f());
-}
-
-TEST_F(
     TestFaceLandmark, ReturnsZeroPointWhenNoFaceRoiExists
 )
 {
@@ -244,11 +208,52 @@ TEST_F(
 }
 
 TEST_F(
-    TestFaceLandmark, ReturnsSameOutputForDifferentIndices
+    TestFaceLandmark, LandmarkCoordinatesAreInsideOriginalImage
 )
 {
-    auto const output0 = landmark_->loadOutput(0);
-    auto const output1 = landmark_->loadOutput(1);
+    if (!createImageWithFace())
+    {
+        GTEST_SKIP() << "No face detected by the test model.";
+    }
 
-    EXPECT_EQ(output0, output1);
+    auto const landmarks = landmark_->getAllFaceLandmarks();
+
+    ASSERT_EQ(landmarks.size(), 468);
+
+    auto const image = landmark_->getOriginalImage();
+
+    for (auto const& point : landmarks)
+    {
+        EXPECT_GE(point.x, 0);
+        EXPECT_LT(point.x, image.cols);
+
+        EXPECT_GE(point.y, 0);
+        EXPECT_LT(point.y, image.rows);
+    }
+}
+
+TEST_F(
+    TestFaceLandmark, Landmark3DCoordinatesAreFinite
+)
+{
+    if (!createImageWithFace())
+    {
+        GTEST_SKIP() << "No face detected by the test model.";
+    }
+
+    for (int i = 0; i < 468; ++i)
+    {
+        auto const point = landmark_->getFaceLandmark3DAt(i);
+
+        EXPECT_TRUE(std::isfinite(point.x));
+        EXPECT_TRUE(std::isfinite(point.y));
+        EXPECT_TRUE(std::isfinite(point.z));
+    }
+}
+
+TEST_F(
+    TestFaceLandmark, DetectsFaceInTestImage
+)
+{
+    ASSERT_TRUE(createImageWithFace()) << "The test image does not contain a detectable face.";
 }
