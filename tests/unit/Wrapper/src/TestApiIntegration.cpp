@@ -96,6 +96,14 @@ TEST(
         ufeel_create(UFEEL_TEST_MODEL_DIR, UFEEL_TEST_SPEECH_MODEL_DIR)
     );
     ASSERT_NE(processor, nullptr);
+    const std::unique_ptr<UFeelEmotionsResult, EmotionResultDeleter> emotions(
+        ufeel_create_emotions_result()
+    );
+    ASSERT_NE(emotions, nullptr);
+    const std::unique_ptr<UFeelEyeTrackingResult, EyeTrackingResultDeleter> gaze(
+        ufeel_create_eye_tracking_result()
+    );
+    ASSERT_NE(gaze, nullptr);
 
     constexpr int width = 640;
     constexpr int height = 480;
@@ -114,6 +122,33 @@ TEST(
     UFeelFrame frameInfo{};
     EXPECT_EQ(ufeel_get_frame_info(processor.get(), &frameInfo), UFEEL_STATUS_INVALID_FRAME);
     EXPECT_EQ(ufeel_get_frame(processor.get()), nullptr);
+    std::array<std::uint8_t, 4> noFrameDestination{};
+    EXPECT_EQ(
+        ufeel_copy_frame(processor.get(), noFrameDestination.data(), 4), UFEEL_STATUS_INVALID_FRAME
+    );
+    EXPECT_EQ(
+        ufeel_copy_frame_bgra(processor.get(), noFrameDestination.data(), 4, 1, 1),
+        UFEEL_STATUS_INVALID_FRAME
+    );
+    EXPECT_EQ(ufeel_set_frame(processor.get(), nullptr), UFEEL_STATUS_INVALID_FRAME);
+    EXPECT_EQ(
+        ufeel_get_emotions_result(processor.get(), emotions.get()), UFEEL_STATUS_INVALID_FRAME
+    );
+    EXPECT_EQ(
+        ufeel_get_eye_tracking_result(processor.get(), gaze.get()), UFEEL_STATUS_NO_EYE_TRACKING
+    );
+    EXPECT_EQ(
+        ufeel_update_emotions_from_frame(processor.get(), nullptr), UFEEL_STATUS_INVALID_FRAME
+    );
+    emotionCallbackStatus() = -1;
+    ufeel_get_emotions_result_from_frame(processor.get(), nullptr, recordEmotionResult);
+    EXPECT_EQ(emotionCallbackStatus(), UFEEL_EMOTIONS_STATUS_FRAME_UNAVAILABLE);
+    EXPECT_EQ(
+        ufeel_update_eye_tracking_from_frame(processor.get(), nullptr), UFEEL_STATUS_INVALID_FRAME
+    );
+    gazeCallbackStatus() = -1;
+    ufeel_get_eye_tracking_result_from_frame(processor.get(), nullptr, recordEyeTrackingResult);
+    EXPECT_EQ(gazeCallbackStatus(), UFEEL_GAZE_STATUS_FRAME_UNAVAILABLE);
     EXPECT_EQ(
         ufeel_update_from_frame(processor.get(), 1 << 8, &input), UFEEL_STATUS_INVALID_ARGUMENT
     );
@@ -144,6 +179,10 @@ TEST(
         ufeel_copy_frame(processor.get(), copiedPixels.data(), copiedPixels.size()), UFEEL_STATUS_OK
     );
     EXPECT_EQ(copiedPixels, pixels);
+    EXPECT_EQ(
+        ufeel_copy_frame(processor.get(), noFrameDestination.data(), 4),
+        UFEEL_STATUS_INVALID_ARGUMENT
+    );
 
     std::array<std::uint8_t, static_cast<std::size_t>(height * width * 4)> bgra{};
     EXPECT_EQ(
@@ -193,16 +232,27 @@ TEST(
     );
     EXPECT_EQ(bgra.at(0), 24U);
     EXPECT_EQ(bgra.at(3), 24U);
+
+    std::array<std::uint8_t, static_cast<std::size_t>(height * width * 2)> twoChannel{};
+    const UFeelFrame twoChannelFrame{
+        .data = twoChannel.data(),
+        .width = width,
+        .height = height,
+        .channels = 2,
+        .stride = width * 2,
+        .dataSize = twoChannel.size(),
+    };
+    EXPECT_EQ(ufeel_set_frame(processor.get(), &twoChannelFrame), UFEEL_STATUS_OK);
+    EXPECT_EQ(
+        ufeel_copy_frame_bgra(processor.get(), bgra.data(), width * 4, width, height),
+        UFEEL_STATUS_INVALID_FRAME
+    );
     EXPECT_EQ(ufeel_set_frame(processor.get(), &input), UFEEL_STATUS_OK);
 
     const auto emotionUpdateStatus = ufeel_update_emotions_from_frame(processor.get(), &input);
     EXPECT_TRUE(
         emotionUpdateStatus == UFEEL_STATUS_NO_EMOTIONS || emotionUpdateStatus == UFEEL_STATUS_OK
     );
-    const std::unique_ptr<UFeelEmotionsResult, EmotionResultDeleter> emotions(
-        ufeel_create_emotions_result()
-    );
-    ASSERT_NE(emotions, nullptr);
     const auto emotionResultStatus = ufeel_get_emotions_result(processor.get(), emotions.get());
     EXPECT_TRUE(
         emotionResultStatus == UFEEL_STATUS_NO_EMOTIONS || emotionResultStatus == UFEEL_STATUS_OK
@@ -217,10 +267,6 @@ TEST(
     EXPECT_EQ(
         ufeel_update_eye_tracking_from_frame(processor.get(), &input), UFEEL_STATUS_NO_EYE_TRACKING
     );
-    const std::unique_ptr<UFeelEyeTrackingResult, EyeTrackingResultDeleter> gaze(
-        ufeel_create_eye_tracking_result()
-    );
-    ASSERT_NE(gaze, nullptr);
     EXPECT_EQ(
         ufeel_get_eye_tracking_result(processor.get(), gaze.get()), UFEEL_STATUS_NO_EYE_TRACKING
     );

@@ -86,6 +86,20 @@ TEST(
 }
 
 TEST(
+    DataProcessorTest, RoutesEyeTrackingAndHeartRateDetectionFlags
+)
+{
+    auto processor = createProcessor();
+    const cv::Mat frame(480, 640, CV_8UC3, cv::Scalar(0, 0, 0));
+
+    EXPECT_EQ(processor.updateFromFrame(EyeTracking, frame), DataProcessorStatus::Ok);
+    EXPECT_EQ(processor.getEyeTracking().status, EyeTrackingStatus::FaceUnavailable);
+
+    EXPECT_EQ(processor.updateFromFrame(HeartRate, cv::Mat{}), DataProcessorStatus::Ok);
+    EXPECT_EQ(processor.getHeartRate().status, HeartRateStatus::NoData);
+}
+
+TEST(
     DataProcessorTest, SpeechToggleUpdatesStoredResult
 )
 {
@@ -110,6 +124,31 @@ TEST(
     processor.toggleSpeechToText(false);
     EXPECT_EQ(processor.getSpeechToText().status, SpeechToTextStatus::Disabled);
     EXPECT_TRUE(processor.getSpeechToText().text.empty());
+}
+
+TEST(
+    DataProcessorTest, ReportsNoSpeechWhenRecognitionHasNoText
+)
+{
+    speech_to_text_test::VoskFake::reset();
+    speech_to_text_test::VoskFake::setPartialResult(R"({"partial": ""})");
+    speech_to_text_test::VoskFake::setFinalizedResult(R"({"text": ""})");
+    auto processor = createProcessor();
+
+    processor.toggleSpeechToText(true);
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while (!speech_to_text_test::VoskFake::hasProcessedAudio() &&
+           std::chrono::steady_clock::now() < deadline)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
+    ASSERT_TRUE(speech_to_text_test::VoskFake::hasProcessedAudio());
+    EXPECT_EQ(processor.updateSpeechToText(), DataProcessorStatus::Ok);
+    EXPECT_EQ(processor.getSpeechToText().status, SpeechToTextStatus::NoSpeech);
+    EXPECT_EQ(processor.updateFromFrame(Speech, cv::Mat{}), DataProcessorStatus::Ok);
+    EXPECT_EQ(processor.getSpeechToText().status, SpeechToTextStatus::NoSpeech);
+    processor.toggleSpeechToText(false);
 }
 
 TEST(

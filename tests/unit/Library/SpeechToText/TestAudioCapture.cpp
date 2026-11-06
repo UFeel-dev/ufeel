@@ -137,6 +137,17 @@ TEST_F(
 }
 
 TEST_F(
+    AudioCaptureTest, HandlesDeviceInfoDisappearingBeforeStreamOpen
+)
+{
+    speech_to_text_test::PortAudioFake::returnNullDeviceInfoAfterFirstQuery(true);
+
+    AudioCapture capture;
+
+    EXPECT_FALSE(capture.start());
+}
+
+TEST_F(
     AudioCaptureTest, FailsWhenStreamCannotBeOpenedOrStarted
 )
 {
@@ -152,6 +163,21 @@ TEST_F(
         AudioCapture capture;
         EXPECT_FALSE(capture.start());
     }
+}
+
+TEST_F(
+    AudioCaptureTest, StartsRepeatedlyAndSelectsNamedHardwareDevice
+)
+{
+    speech_to_text_test::PortAudioFake::setDeviceCapabilities(
+        2, AudioCapture::sampleRate, "default (hw:1,0)"
+    );
+
+    AudioCapture capture;
+
+    ASSERT_TRUE(capture.start());
+    EXPECT_TRUE(capture.start());
+    capture.stop();
 }
 
 TEST_F(
@@ -175,6 +201,17 @@ TEST_F(
         capture.stop();
         EXPECT_FALSE(capture.read(buffer));
     }
+}
+
+TEST_F(
+    AudioCaptureTest, IgnoresCallbackAudioAfterCaptureStops
+)
+{
+    speech_to_text_test::PortAudioFake::invokeCallbackOnStop(true);
+
+    AudioCapture capture;
+    ASSERT_TRUE(capture.start());
+    capture.stop();
 }
 
 TEST_F(

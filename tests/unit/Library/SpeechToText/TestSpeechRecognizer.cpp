@@ -17,6 +17,8 @@ struct FakeVoskState
     bool modelCreationSucceeds = true;
     bool recognizerCreationSucceeds = true;
     bool finalizedResultIsNull = false;
+    bool resultIsNull = false;
+    bool partialResultIsNull = false;
 
     int modelHandle = 1;
     int recognizerHandle = 2;
@@ -62,6 +64,8 @@ void VoskFake::reset()
     state.modelCreationSucceeds = true;
     state.recognizerCreationSucceeds = true;
     state.finalizedResultIsNull = false;
+    state.resultIsNull = false;
+    state.partialResultIsNull = false;
     state.modelFree = false;
     state.recognizerFree = false;
     state.recognizerReset = false;
@@ -79,6 +83,36 @@ void VoskFake::setFinalizedResult(
 {
     fakeVoskState().finalizedResult = result;
     fakeVoskState().finalizedResultIsNull = false;
+}
+
+void VoskFake::setFinalResult(
+    const std::string& result
+)
+{
+    fakeVoskState().finalResult = result;
+    fakeVoskState().resultIsNull = false;
+}
+
+void VoskFake::setPartialResult(
+    const std::string& result
+)
+{
+    fakeVoskState().partialResult = result;
+    fakeVoskState().partialResultIsNull = false;
+}
+
+void VoskFake::setResultNull(
+    bool isNull
+)
+{
+    fakeVoskState().resultIsNull = isNull;
+}
+
+void VoskFake::setPartialResultNull(
+    bool isNull
+)
+{
+    fakeVoskState().partialResultIsNull = isNull;
 }
 
 void VoskFake::setWaveformResult(
@@ -154,6 +188,11 @@ auto vosk_recognizer_result(
 ) -> const char*
 {
     (void)recognizer;
+    if (fakeVoskState().resultIsNull)
+    {
+        return nullptr;
+    }
+
     return fakeVoskState().finalResult.c_str();
 }
 
@@ -162,6 +201,11 @@ auto vosk_recognizer_partial_result(
 ) -> const char*
 {
     (void)recognizer;
+    if (fakeVoskState().partialResultIsNull)
+    {
+        return nullptr;
+    }
+
     return fakeVoskState().partialResult.c_str();
 }
 
@@ -291,6 +335,27 @@ TEST_F(
 
     fakeVoskState().waveformResult = 0;
 
+    EXPECT_TRUE(recognizer.process(samples.data(), samples.size()).empty());
+}
+
+TEST_F(
+    TestSpeechRecognizer, ProcessReturnsEmptyTextForNullOrMalformedJson
+)
+{
+    constexpr std::array<int16_t, 1> samples{100};
+    SpeechRecognizer recognizer("fake-model-path");
+
+    speech_to_text_test::VoskFake::setPartialResultNull(true);
+    EXPECT_TRUE(recognizer.process(samples.data(), samples.size()).empty());
+
+    speech_to_text_test::VoskFake::setPartialResult(R"({"partial": )");
+    EXPECT_TRUE(recognizer.process(samples.data(), samples.size()).empty());
+
+    speech_to_text_test::VoskFake::setPartialResult(R"({"partial": "unfinished)");
+    EXPECT_TRUE(recognizer.process(samples.data(), samples.size()).empty());
+
+    speech_to_text_test::VoskFake::setWaveformResult(1);
+    speech_to_text_test::VoskFake::setResultNull(true);
     EXPECT_TRUE(recognizer.process(samples.data(), samples.size()).empty());
 }
 

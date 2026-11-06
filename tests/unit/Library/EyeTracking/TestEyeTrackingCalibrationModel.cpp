@@ -7,6 +7,7 @@
 #include <gtest/gtest.h>
 #include <ios>
 #include <limits>
+#include <sstream>
 #include <string>
 #include <system_error>
 #include <utility>
@@ -53,6 +54,30 @@ auto makeGridTargets(
     }
 
     return targets;
+}
+
+auto makeProfileContent(
+    const std::string& header,
+    const std::string& means,
+    const std::string& scales,
+    const std::string& coefficients,
+    const std::string& trailing = {}
+) -> std::string
+{
+    return header + '\n' + means + '\n' + scales + '\n' + coefficients + '\n' + trailing;
+}
+
+auto repeatedValues(
+    std::size_t count, const std::string& value
+) -> std::string
+{
+    std::ostringstream output;
+    for (std::size_t index = 0; index < count; ++index)
+    {
+        output << value << ' ';
+    }
+
+    return output.str();
 }
 
 class EyeTrackingCalibrationModelTest : public ::testing::Test
@@ -104,6 +129,62 @@ TEST_F(
 }
 
 TEST_F(
+    EyeTrackingCalibrationModelTest, RejectsEveryInvalidTargetCoordinate
+)
+{
+    auto targets = makeGridTargets();
+
+    auto target = targets.front();
+    target.target.x = std::numeric_limits<float>::quiet_NaN();
+    targets.push_back(target);
+    target = targets.front();
+    target.target.y = std::numeric_limits<float>::quiet_NaN();
+    targets.push_back(target);
+    target.target = {-0.1F, 0.5F};
+    targets.push_back(target);
+    target.target = {1.1F, 0.5F};
+    targets.push_back(target);
+    target.target = {0.5F, -0.1F};
+    targets.push_back(target);
+    target.target = {0.5F, 1.1F};
+    targets.push_back(target);
+
+    CalibrationDiagnostics diagnostics;
+    EXPECT_TRUE(EyeTrackingCalibrationModel::fit(targets, &diagnostics));
+    EXPECT_EQ(diagnostics.invalidTargetCount, 6U);
+}
+
+TEST_F(
+    EyeTrackingCalibrationModelTest, RejectsTargetsWithoutFiniteSamples
+)
+{
+    auto targets = makeGridTargets();
+    for (auto& sample : targets.front().samples)
+    {
+        sample.fill(std::numeric_limits<double>::quiet_NaN());
+    }
+
+    CalibrationDiagnostics diagnostics;
+    EXPECT_FALSE(EyeTrackingCalibrationModel::fit(targets, &diagnostics));
+    EXPECT_EQ(diagnostics.targetsWithInsufficientRetainedSamples, 1U);
+    EXPECT_EQ(diagnostics.failureReason, CalibrationFailureReason::InsufficientSamples);
+}
+
+TEST_F(
+    EyeTrackingCalibrationModelTest, RetainsSamplesEvenWhenRawCountIsBelowRequirement
+)
+{
+    auto targets = makeGridTargets();
+    targets.front().samples.resize(GAZE_MINIMUM_SAMPLES_PER_TARGET - 1);
+
+    CalibrationDiagnostics diagnostics;
+    EXPECT_FALSE(EyeTrackingCalibrationModel::fit(targets, &diagnostics));
+    EXPECT_EQ(diagnostics.targetsWithEnoughRetainedSamples, 9U);
+    EXPECT_EQ(diagnostics.targetsWithInsufficientRawSamples, 1U);
+    EXPECT_EQ(diagnostics.failureReason, CalibrationFailureReason::InsufficientSamples);
+}
+
+TEST_F(
     EyeTrackingCalibrationModelTest, RejectsInsufficientHorizontalCoverage
 )
 {
@@ -130,7 +211,7 @@ TEST_F(
 )
 {
     auto targets = makeGridTargets();
-    std::erase_if(targets, [](const EyeTrackingCalibrationTarget& target) {
+    std::erase_if(targets, [](const EyeTrackingCalibrationTarget& target) -> bool {
         return target.target.x == 0.1F && (target.target.y == 0.1F || target.target.y == 0.5F);
     });
     auto additionalBottomTarget = targets.front();
@@ -167,6 +248,20 @@ TEST_F(
 }
 
 TEST_F(
+    EyeTrackingCalibrationModelTest, RejectsCalibrationWhenOnlyMaximumErrorExceedsLimit
+)
+{
+    auto targets = makeGridTargets();
+    targets.front().samples = targets.back().samples;
+
+    CalibrationDiagnostics diagnostics;
+    EXPECT_FALSE(EyeTrackingCalibrationModel::fit(targets, &diagnostics));
+    EXPECT_FALSE(diagnostics.meanErrorExceeded);
+    EXPECT_TRUE(diagnostics.maximumErrorExceeded);
+    EXPECT_EQ(diagnostics.failureReason, CalibrationFailureReason::CrossValidationMaxErrorExceeded);
+}
+
+TEST_F(
     EyeTrackingCalibrationModelTest, FitsPredictsAndRoundTripsCalibrationProfile
 )
 {
@@ -174,7 +269,12 @@ TEST_F(
     CalibrationDiagnostics diagnostics;
     auto model = EyeTrackingCalibrationModel::fit(targets, &diagnostics);
 
-    ASSERT_TRUE(model);
+    if (!model)
+    {
+        FAIL() << "Calibration fit unexpectedly failed";
+        return;
+    }
+
     EXPECT_TRUE(model->isValid());
     EXPECT_EQ(diagnostics.failureReason, CalibrationFailureReason::None);
     EXPECT_EQ(diagnostics.crossValidationTargetsEvaluated, targets.size());
@@ -186,7 +286,12 @@ TEST_F(
     features.at(0) = 0.5;
     features.at(1) = 0.5;
     const auto prediction = model->predict(features);
-    ASSERT_TRUE(prediction);
+    if (!prediction)
+    {
+        FAIL() << "Calibration prediction unexpectedly failed";
+        return;
+    }
+
     EXPECT_NEAR(prediction->x, 0.5F, 0.05F);
     EXPECT_NEAR(prediction->y, 0.5F, 0.05F);
 
@@ -195,7 +300,12 @@ TEST_F(
     ASSERT_TRUE(loaded.load(profilePath().string()));
     EXPECT_TRUE(loaded.isValid());
     const auto loadedPrediction = loaded.predict(features);
-    ASSERT_TRUE(loadedPrediction);
+    if (!loadedPrediction)
+    {
+        FAIL() << "Loaded calibration prediction unexpectedly failed";
+        return;
+    }
+
     EXPECT_NEAR(loadedPrediction->x, prediction->x, 1.0e-5F);
     EXPECT_NEAR(loadedPrediction->y, prediction->y, 1.0e-5F);
 }
@@ -205,7 +315,12 @@ TEST_F(
 )
 {
     auto model = EyeTrackingCalibrationModel::fit(makeGridTargets());
-    ASSERT_TRUE(model);
+    if (!model)
+    {
+        FAIL() << "Calibration fit unexpectedly failed";
+        return;
+    }
+
     ASSERT_TRUE(model->save(profilePath().string()));
 
     const auto temporaryPath = std::filesystem::path(profilePath().string() + ".tmp");
@@ -237,7 +352,12 @@ TEST_F(
 )
 {
     auto model = EyeTrackingCalibrationModel::fit(makeGridTargets());
-    ASSERT_TRUE(model);
+    if (!model)
+    {
+        FAIL() << "Calibration fit unexpectedly failed";
+        return;
+    }
+
     EXPECT_FALSE(model->save((profilePath() / "profile.dat").string()));
 
     {
@@ -249,6 +369,77 @@ TEST_F(
     EyeTrackingCalibrationModel loaded;
     EXPECT_FALSE(loaded.load(profilePath().string()));
     EXPECT_FALSE(loaded.isValid());
+}
+
+TEST_F(
+    EyeTrackingCalibrationModelTest, RejectsMalformedProfileFields
+)
+{
+    const auto header = "UFEEL_GAZE_PROFILE 3 " + std::to_string(GAZE_FEATURE_COUNT) + " 0.1";
+    const auto means = repeatedValues(GAZE_FEATURE_COUNT, "0");
+    const auto scales = repeatedValues(GAZE_FEATURE_COUNT, "1");
+    const auto coefficients = repeatedValues((GAZE_FEATURE_COUNT + 1) * 2, "0");
+    const auto validProfile = makeProfileContent(header, means, scales, coefficients);
+
+    const std::vector<std::string> malformedProfiles{
+        "truncated header",
+        makeProfileContent("INVALID_SIGNATURE 3 8 0.1", means, scales, coefficients),
+        makeProfileContent("UFEEL_GAZE_PROFILE 2 8 0.1", means, scales, coefficients),
+        makeProfileContent("UFEEL_GAZE_PROFILE 3 1 0.1", means, scales, coefficients),
+        makeProfileContent("UFEEL_GAZE_PROFILE 3 8 -0.1", means, scales, coefficients),
+        makeProfileContent("UFEEL_GAZE_PROFILE 3 8 0.5", means, scales, coefficients),
+        makeProfileContent(header, "1e7 " + means, scales, coefficients),
+        makeProfileContent(header, "0", scales, coefficients),
+        makeProfileContent(header, means, "0 " + scales, coefficients),
+        makeProfileContent(header, means, "1e7 " + scales, coefficients),
+        makeProfileContent(header, means, scales, "1e7 " + coefficients),
+        makeProfileContent(header, means, scales, coefficients, "extra"),
+    };
+
+    for (const auto& contents : malformedProfiles)
+    {
+        {
+            std::ofstream profile(profilePath(), std::ios::trunc);
+            ASSERT_TRUE(profile);
+            profile << contents;
+        }
+
+        EyeTrackingCalibrationModel loaded;
+        EXPECT_FALSE(loaded.load(profilePath().string()));
+        EXPECT_FALSE(loaded.isValid());
+    }
+
+    {
+        std::ofstream profile(profilePath(), std::ios::trunc);
+        ASSERT_TRUE(profile);
+        profile << validProfile;
+    }
+
+    EyeTrackingCalibrationModel loaded;
+    EXPECT_TRUE(loaded.load(profilePath().string()));
+}
+
+TEST_F(
+    EyeTrackingCalibrationModelTest, SaveRejectsFilesystemErrors
+)
+{
+    auto model = EyeTrackingCalibrationModel::fit(makeGridTargets());
+    if (!model)
+    {
+        FAIL() << "Calibration fit unexpectedly failed";
+        return;
+    }
+
+    const auto temporaryPath = std::filesystem::path(profilePath().string() + ".tmp");
+    std::filesystem::create_directories(temporaryPath / "child");
+    EXPECT_FALSE(model->save(profilePath().string()));
+    std::filesystem::remove_all(temporaryPath);
+
+    ASSERT_TRUE(model->save(profilePath().string()));
+    const auto backupPath = std::filesystem::path(profilePath().string() + ".bak");
+    std::filesystem::create_directories(backupPath / "child");
+    EXPECT_FALSE(model->save(profilePath().string()));
+    std::filesystem::remove_all(backupPath);
 }
 
 TEST_F(
@@ -268,7 +459,12 @@ TEST_F(
 
     auto targets = makeGridTargets();
     auto fitted = EyeTrackingCalibrationModel::fit(targets);
-    ASSERT_TRUE(fitted);
+    if (!fitted)
+    {
+        FAIL() << "Calibration fit unexpectedly failed";
+        return;
+    }
+
     features.at(0) = std::numeric_limits<double>::infinity();
     EXPECT_FALSE(fitted->predict(features));
 }

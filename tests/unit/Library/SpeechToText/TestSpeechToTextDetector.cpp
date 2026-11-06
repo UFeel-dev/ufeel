@@ -1,10 +1,11 @@
 #include "SpeechToText/SpeechToTextDetector.hpp"
 #include "TestDoubles.hpp"
+#include "portaudio.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <gtest/gtest.h>
 #include <memory>
-#include <portaudio.h>
 #include <string>
 #include <vector>
 
@@ -23,6 +24,8 @@ struct FakePortAudioState
     PaError initializeResult = paNoError;
     PaDeviceIndex deviceCount = 1;
     bool deviceInfoAvailable = true;
+    bool nullDeviceInfoAfterFirstQuery = false;
+    std::size_t deviceInfoQueryCount = 0;
     int inputChannels = 2;
     double deviceSampleRate = 16000.0;
     const char* deviceName = "Fake input device";
@@ -32,6 +35,7 @@ struct FakePortAudioState
     PaError stopResult = paNoError;
     bool callbackInputAvailable = true;
     unsigned long callbackFrameCount = 1600;
+    bool invokeCallbackOnStop = false;
 };
 
 auto fakePortAudioState() -> FakePortAudioState&
@@ -89,6 +93,13 @@ void PortAudioFake::setDeviceInfoAvailable(
     fakePortAudioState().deviceInfoAvailable = available;
 }
 
+void PortAudioFake::returnNullDeviceInfoAfterFirstQuery(
+    bool enabled
+)
+{
+    fakePortAudioState().nullDeviceInfoAfterFirstQuery = enabled;
+}
+
 void PortAudioFake::setDeviceCapabilities(
     int channels, double sampleRate, const char* name
 )
@@ -140,6 +151,13 @@ void PortAudioFake::setCallbackFrameCount(
     fakePortAudioState().callbackFrameCount = frameCount;
 }
 
+void PortAudioFake::invokeCallbackOnStop(
+    bool enabled
+)
+{
+    fakePortAudioState().invokeCallbackOnStop = enabled;
+}
+
 } // namespace speech_to_text_test
 
 auto Pa_Initialize() -> PaError
@@ -161,8 +179,10 @@ auto Pa_GetDeviceInfo(
     PaDeviceIndex device
 ) -> const PaDeviceInfo*
 {
-    if (device < 0 || device >= fakePortAudioState().deviceCount ||
-        !fakePortAudioState().deviceInfoAvailable)
+    FakePortAudioState& state = fakePortAudioState();
+    const bool returnNull = state.nullDeviceInfoAfterFirstQuery && state.deviceInfoQueryCount > 0;
+    ++state.deviceInfoQueryCount;
+    if (device < 0 || device >= state.deviceCount || !state.deviceInfoAvailable || returnNull)
     {
         return nullptr;
     }
@@ -266,6 +286,12 @@ auto Pa_StopStream(
     auto* fakeStream = reinterpret_cast<FakePaStream*>(stream);
     fakeStream->active = false;
 
+    if (fakePortAudioState().invokeCallbackOnStop && fakeStream->callback != nullptr)
+    {
+        std::vector<int16_t> samples(2, 100);
+        fakeStream->callback(samples.data(), nullptr, 1, nullptr, 0, fakeStream->userData);
+    }
+
     return fakePortAudioState().stopResult;
 }
 
@@ -348,6 +374,19 @@ TEST_F(
 }
 
 TEST_F(
+    TestSpeechToTextDetector, StartFailureLeavesDetectorStopped
+)
+{
+    speech_to_text_test::PortAudioFake::setInitializeResult(paNotInitialized);
+    SpeechToTextDetector detector(modelPath_);
+
+    detector.toggle(true);
+    detector.toggle(false);
+
+    EXPECT_TRUE(detector.process().empty());
+}
+
+TEST_F(
     TestSpeechToTextDetector, ToggleTrueStartsAndStopsDetector
 )
 {
@@ -359,6 +398,20 @@ TEST_F(
     detector.toggle(false);
 
     EXPECT_EQ(detector.process(), "final sentence");
+}
+
+TEST_F(
+    TestSpeechToTextDetector, EmptyRecognitionAndFinalizationDoNotReplaceText
+)
+{
+    SpeechToTextDetector detector(modelPath_);
+    speech_to_text_test::VoskFake::setPartialResult(R"({"partial": ""})");
+    speech_to_text_test::VoskFake::setFinalizedResult(R"({"text": ""})");
+
+    detector.toggle(true);
+    detector.toggle(false);
+
+    EXPECT_TRUE(detector.process().empty());
 }
 
 TEST_F(

@@ -16,6 +16,7 @@ public:
     static void setInitializeResult(PaError error);
     static void setDeviceCount(PaDeviceIndex count);
     static void setDeviceInfoAvailable(bool available);
+    static void returnNullDeviceInfoAfterFirstQuery(bool enabled);
     static void setDeviceCapabilities(int channels, double sampleRate, const char* name);
     static void setFormatResult(PaError error);
     static void setOpenResult(PaError error);
@@ -23,6 +24,7 @@ public:
     static void setStopResult(PaError error);
     static void setCallbackInputAvailable(bool available);
     static void setCallbackFrameCount(unsigned long frameCount);
+    static void invokeCallbackOnStop(bool enabled);
 };
 
 class VoskFake final
@@ -31,6 +33,10 @@ public:
 
     static void reset();
     static void setFinalizedResult(const std::string& result);
+    static void setFinalResult(const std::string& result);
+    static void setPartialResult(const std::string& result);
+    static void setResultNull(bool isNull);
+    static void setPartialResultNull(bool isNull);
     static void setWaveformResult(int result);
     static auto hasProcessedAudio() -> bool;
 };
