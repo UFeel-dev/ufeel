@@ -14,14 +14,15 @@ This file lists the third-party components distributed with or linked by the lib
 | OpenCV | 4.8.1 | Apache-2.0 | `3rdparty/opencv/share/licenses/opencv4/LICENSE` |
 | OpenCV bundled libs | 4.8.1 | See `3rdparty/opencv/share/licenses/opencv4/` (zlib, libpng, libjpeg-turbo, libtiff, OpenEXR, protobuf, flatbuffers, ittnotify, quirc, and others) | `3rdparty/opencv/share/licenses/opencv4/` |
 | LibTorch | 2.10.0 | BSD-3-Clause | `3rdparty/libtorch/share/licenses/libtorch/LICENSE`, `3rdparty/libtorch/share/licenses/libtorch/NOTICE` |
-| Vosk | - | Apache-2.0 | `3rdparty/vosk/share/licenses/vosk/LICENSE` |
-| Kaldi (in Vosk) | 5.5.1095~1-bc5ba (git `bc5baf1`) | Apache-2.0 | `3rdparty/vosk/share/licenses/kaldi/COPYING` |
-| OpenFST (in Vosk) | - | Apache-2.0 | - |
+| Vosk | 0.3.75 | Apache-2.0 | `3rdparty/vosk/share/licenses/vosk/LICENSE` |
+| Kaldi (in Vosk) | 5.5.1095 | Apache-2.0 | `3rdparty/vosk/share/licenses/kaldi/COPYING` |
+| OpenFST (in Vosk) | 1.8.0 | Apache-2.0 | `3rdparty/vosk/share/licenses/openfst/LICENSE` |
 | OpenBLAS (in Vosk) | 0.3.20 | BSD-3-Clause | `3rdparty/vosk/share/licenses/openblas/LICENSE` |
-| libf2c (in Vosk) | - | Netlib / HPND-style | - |
-| TensorFlow Lite | - | Apache-2.0 | `3rdparty/tensorflowlite/share/licenses/tensorflowlite/LICENSE` |
+| CLAPACK (in Vosk) | 3.2.1 | BSD | `3rdparty/vosk/share/licenses/clapack/COPYING` |
+| libf2c (in CLAPACK, in Vosk) | 3.2.1 (via CLAPACK) | HPND (AT&T / Lucent / Bellcore) | `3rdparty/vosk/share/licenses/clapack/libf2c-Notice` |
+| TensorFlow Lite | 2.15.0 | Apache-2.0 | `3rdparty/tensorflowlite/share/licenses/tensorflowlite/LICENSE` |
 | FlatBuffers (in TFLite) | 23.5.26 (TFLite headers) | Apache-2.0 | `3rdparty/opencv/share/licenses/opencv4/flatbuffers-LICENSE.txt` and TFLite headers |
-| PortAudio | - | MIT-style | `3rdparty/portaudio/share/licenses/portaudio/LICENSE.txt` |
+| PortAudio | 2.0.0 | MIT-style | `3rdparty/portaudio/share/licenses/portaudio/LICENSE.txt` |
 
 ## Models
 
