@@ -1,11 +1,13 @@
 #include "EyeTracking/IrisDetection/FaceLandmark.hpp"
+#include "opencv2/core/hal/interface.h"
+#include "opencv2/core/mat.hpp"
+#include "opencv2/core/types.hpp"
+#include "opencv2/imgcodecs.hpp"
 
 #include <cmath>
 #include <gtest/gtest.h>
 #include <memory>
-#include <opencv2/core/mat.hpp>
-#include <opencv2/core/types.hpp>
-#include <opencv2/imgcodecs.hpp>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -25,11 +27,11 @@ protected:
         landmark_ = std::make_unique<my::FaceLandmark>(modelDir_);
     }
 
-    auto createImage(
+    [[nodiscard]] static auto createImage(
         int width = 640, int height = 480
-    ) const -> cv::Mat
+    )  -> cv::Mat
     {
-        return cv::Mat(height, width, CV_8UC3, cv::Scalar(100, 150, 200));
+        return {height, width, CV_8UC3, cv::Scalar(100, 150, 200)};
     }
 
     auto createImageWithFace() -> bool
@@ -38,7 +40,8 @@ protected:
 
         if (image.empty())
         {
-            throw std::runtime_error("Unable to load face.png");
+            testImageUnavailable_ = true;
+            return false;
         }
 
         landmark_->loadImageToInput(image, 0);
@@ -49,6 +52,14 @@ protected:
 
     std::string modelDir_;
     std::unique_ptr<my::FaceLandmark> landmark_;
+    bool testImageUnavailable_{false};
+
+public:
+
+    TestFaceLandmark(const TestFaceLandmark&) = delete;
+    TestFaceLandmark(TestFaceLandmark&&) = delete;
+    auto operator=(const TestFaceLandmark&) -> TestFaceLandmark& = delete;
+    auto operator=(TestFaceLandmark&&) -> TestFaceLandmark& = delete;
 };
 
 TEST_F(
@@ -160,7 +171,7 @@ TEST_F(
 {
     if (!createImageWithFace())
     {
-        GTEST_SKIP() << "No face detected by the test model.";
+        GTEST_SKIP() << "Test image is unavailable or no face was detected.";
     }
 
     auto const landmarks = landmark_->getAllFaceLandmarks();
@@ -174,7 +185,7 @@ TEST_F(
 {
     if (!createImageWithFace())
     {
-        GTEST_SKIP() << "No face detected by the test model.";
+        GTEST_SKIP() << "Test image is unavailable or no face was detected.";
     }
 
     auto const point = landmark_->getFaceLandmarkAt(0);
@@ -189,7 +200,7 @@ TEST_F(
 {
     if (!createImageWithFace())
     {
-        GTEST_SKIP() << "No face detected by the test model.";
+        GTEST_SKIP() << "Test image is unavailable or no face was detected.";
     }
 
     auto const point = landmark_->getFaceLandmarkAt(467);
@@ -213,7 +224,7 @@ TEST_F(
 {
     if (!createImageWithFace())
     {
-        GTEST_SKIP() << "No face detected by the test model.";
+        GTEST_SKIP() << "Test image is unavailable or no face was detected.";
     }
 
     auto const landmarks = landmark_->getAllFaceLandmarks();
@@ -238,7 +249,7 @@ TEST_F(
 {
     if (!createImageWithFace())
     {
-        GTEST_SKIP() << "No face detected by the test model.";
+        GTEST_SKIP() << "Test image is unavailable or no face was detected.";
     }
 
     for (int i = 0; i < 468; ++i)
@@ -255,5 +266,11 @@ TEST_F(
     TestFaceLandmark, DetectsFaceInTestImage
 )
 {
-    ASSERT_TRUE(createImageWithFace()) << "The test image does not contain a detectable face.";
+    const bool detected = createImageWithFace();
+    if (testImageUnavailable_)
+    {
+        GTEST_SKIP() << "Optional test image tests/ressources/face.png is not present.";
+    }
+
+    ASSERT_TRUE(detected) << "The test image does not contain a detectable face.";
 }

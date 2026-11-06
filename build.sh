@@ -218,6 +218,7 @@ run_unit_tests()
         "${COVERAGE_BUILD_DIR}/tests/unit/Library/run_library_unit_tests" \
         -object="${COVERAGE_BUILD_DIR}/tests/unit/Wrapper/run_wrapper_unit_tests" \
         -object="${COVERAGE_BUILD_DIR}/libufeel_detection_library.a" \
+        -object="${COVERAGE_BUILD_DIR}/Wrapper/libufeel_wrapper.so" \
         -instr-profile="${COVERAGE_BUILD_DIR}/coverage.profdata" \
         -ignore-filename-regex='(/tests/|googletest|/usr/|3rdparty/)'
 }

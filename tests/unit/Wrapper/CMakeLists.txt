@@ -1,5 +1,12 @@
 add_executable(
     run_wrapper_unit_tests
+
+    src/TestEmotions.cpp
+    src/TestEyeTracking.cpp
+    src/TestHeartRate.cpp
+    src/TestProcessor.cpp
+    src/TestSpeechToText.cpp
+
     src/internal/TestErrorHandling.cpp
     src/internal/TestFrameConversion.cpp
 )
@@ -7,6 +14,7 @@ add_executable(
 target_include_directories(run_wrapper_unit_tests PRIVATE
     "${WRAPPER_DIR}/include"
     "${WRAPPER_DIR}/src"
+    "${LIBRARY_DIR}/include"
     "${OPENCV_DIR}/include/opencv4"
 )
 
@@ -14,6 +22,7 @@ target_link_libraries(
     run_wrapper_unit_tests
     PRIVATE
         GTest::gtest_main
+        ufeel_wrapper
         "${OPENCV_DIR}/lib/libopencv_core.so"
 )
 

@@ -1,5 +1,8 @@
 add_executable(
     run_library_unit_tests
+
+    TestDataProcessor.cpp
+
     Emotions/TestEmotionModel.cpp
     Emotions/TestEmotionDetector.cpp
     Emotions/TestHeadCalibration.cpp
@@ -14,6 +17,8 @@ add_executable(
     EyeTracking/IrisDetection/TestModelLoader.cpp
     EyeTracking/IrisDetection/TestFaceDetection.cpp
     # EyeTracking/IrisDetection/TestFaceLandmark.cpp
+
+    Utils/TestFrameChecker.cpp
 
     SpeechToText/TestAudioCapture.cpp
     SpeechToText/TestSpeechRecognizer.cpp
@@ -37,6 +42,7 @@ target_include_directories(run_library_unit_tests PRIVATE
 )
 
 target_compile_definitions(run_library_unit_tests PRIVATE
+    DATA_PROCESSOR_MODEL_DIR_PATH="${CMAKE_SOURCE_DIR}/models"
     EMOTIONS_MODEL_DIR_PATH="${CMAKE_SOURCE_DIR}/models"
     MODEL_LOADER_TEST_MODEL_PATH="${CMAKE_SOURCE_DIR}/models/EyeTracking/face_detection_short.tflite"
     MODEL_DIR_PATH="${CMAKE_SOURCE_DIR}/models/EyeTracking"

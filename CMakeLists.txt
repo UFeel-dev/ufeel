@@ -214,9 +214,21 @@ if(UFEEL_ENABLE_COVERAGE)
     target_link_options(ufeel_detection_library INTERFACE
         -fprofile-instr-generate
     )
+
 endif()
 
 add_subdirectory(Wrapper)
+
+if(UFEEL_ENABLE_COVERAGE)
+    target_compile_options(ufeel_wrapper PRIVATE
+        -fprofile-instr-generate
+        -fcoverage-mapping
+    )
+
+    target_link_options(ufeel_wrapper PRIVATE
+        -fprofile-instr-generate
+    )
+endif()
 
 if(CLANG_TIDY_COMMAND)
     set_target_properties(
