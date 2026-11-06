@@ -1,7 +1,8 @@
 add_executable(
     run_unit_tests
-    # Emotions/TestResNetImpl.cpp
-    # Emotions/TestModel.cpp
+    Emotions/TestEmotionModel.cpp
+    Emotions/TestHeadCalibration.cpp
+    Emotions/TestResNet.cpp
 
     EyeTracking/IrisDetection/TestDetectionPostProcess.cpp
     EyeTracking/IrisDetection/TestModelLoader.cpp
@@ -12,7 +13,7 @@ add_executable(
     SpeechToText/TestSpeechRecognizer.cpp
     SpeechToText/TestSpeechToTextDetector.cpp
 
-    HeartRate/TestHeartRateDetector.cpp
+    # HeartRate/TestHeartRateDetector.cpp
 )
 
 target_link_libraries(

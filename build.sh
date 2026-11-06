@@ -13,7 +13,6 @@ CMAKE_GENERATOR="Ninja"
 CMAKE_ARGS=("${@:2}")
 
 COVERAGE_BUILD_DIR="${ROOT_DIR}/build-coverage"
-LLVM_BIN="/usr/lib/llvm-22/bin"
 
 require_build()
 {
@@ -91,7 +90,7 @@ format()
         return
     fi
 
-    find "${ROOT_DIR}/Library" "${ROOT_DIR}/Wrapper" \
+    find "${ROOT_DIR}/Library" "${ROOT_DIR}/Wrapper" "${ROOT_DIR}/tests" \
         -type f \
         \( -name "*.cpp" -o -name "*.hpp" -o -name "*.h" \) \
         -print0 |
@@ -175,6 +174,11 @@ usage()
 
 run_unit_tests()
 {
+    local runtime_library_path="${ROOT_DIR}/3rdparty/opencv/lib:${ROOT_DIR}/3rdparty/libtorch/lib:${ROOT_DIR}/3rdparty/portaudio/lib:${ROOT_DIR}/3rdparty/cpr/lib:${COVERAGE_BUILD_DIR}/yaml-cpp"
+    if [ -n "${LD_LIBRARY_PATH:-}" ]; then
+        runtime_library_path="${runtime_library_path}:${LD_LIBRARY_PATH}"
+    fi
+
     echo "Configuring coverage build..."
     cmake \
         -S "${ROOT_DIR}" \
@@ -183,26 +187,34 @@ run_unit_tests()
         -DCMAKE_BUILD_TYPE=Debug \
         -DCMAKE_CXX_COMPILER=clang++-22 \
         -DUFEEL_BUILD_TESTS=ON \
-        -DUFEEL_ENABLE_COVERAGE=ON
+        -DUFEEL_ENABLE_COVERAGE=ON \
+        -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 
     echo "Building unit tests..."
-    cmake --build "${COVERAGE_BUILD_DIR}" --parallel
+    LD_LIBRARY_PATH="${runtime_library_path}" \
+        cmake --build "${COVERAGE_BUILD_DIR}" --parallel
 
     echo "Running unit tests..."
     rm -f "${COVERAGE_BUILD_DIR}"/coverage-*.profraw
 
+    LD_LIBRARY_PATH="${runtime_library_path}" \
     LLVM_PROFILE_FILE="${COVERAGE_BUILD_DIR}/coverage-%p.profraw" \
         ctest \
             --test-dir "${COVERAGE_BUILD_DIR}" \
             --output-on-failure
 
     echo "Merging coverage profiles..."
-    "${LLVM_BIN}/llvm-profdata" merge -sparse \
+    local llvm_profdata
+    local llvm_cov
+    llvm_profdata="$(command -v llvm-profdata-22 || command -v llvm-profdata)"
+    llvm_cov="$(command -v llvm-cov-22 || command -v llvm-cov)"
+
+    "${llvm_profdata}" merge -sparse \
         "${COVERAGE_BUILD_DIR}"/coverage-*.profraw \
         -o "${COVERAGE_BUILD_DIR}/coverage.profdata"
 
     echo "Generating coverage report..."
-    "${LLVM_BIN}/llvm-cov" report \
+    "${llvm_cov}" report \
         "${COVERAGE_BUILD_DIR}/tests/unit/run_unit_tests" \
         -object="${COVERAGE_BUILD_DIR}/libufeel_detection_library.a" \
         -instr-profile="${COVERAGE_BUILD_DIR}/coverage.profdata" \

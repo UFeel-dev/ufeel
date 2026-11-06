@@ -216,39 +216,6 @@ if(UFEEL_ENABLE_COVERAGE)
     )
 endif()
 
-add_library(ufeel_wrapper SHARED
-    "${WRAPPER_DIR}/wrapper.cpp"
-)
-
-target_include_directories(ufeel_wrapper
-    PUBLIC
-        "${LIBRARY_DIR}/include"
-        "${WRAPPER_DIR}"
-)
-
-target_include_directories(ufeel_wrapper
-    SYSTEM PUBLIC
-        "${OPENCV_DIR}/include/opencv4"
-        ${TORCH_INCLUDE_DIRS}
-)
-
-target_link_libraries(ufeel_wrapper
-    PRIVATE
-        ufeel_detection_library
-)
-
-target_link_options(ufeel_wrapper PRIVATE
-    "-Wl,--no-undefined"
-)
-
-set_target_properties(ufeel_wrapper PROPERTIES
-    BUILD_RPATH
-        "${OPENCV_DIR}/lib;${LIBTORCH_DIR}/lib;${PORTAUDIO_DIR}/lib;${CPR_DIR}/lib"
-    INSTALL_RPATH
-        "$ORIGIN/dependencies"
-    INSTALL_RPATH_USE_LINK_PATH FALSE
-)
-
 add_subdirectory(Wrapper)
 
 if(CLANG_TIDY_COMMAND)
