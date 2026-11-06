@@ -14,6 +14,7 @@ class Program
     {
         return AppBuilder.Configure<App>()
             .UsePlatformDetect()
+            .UseWaylandWithFallback()
             .LogToTrace();
     }
 }

@@ -9,6 +9,7 @@ enum class HeartRateStatus : std::uint8_t
     JsonParseOutOfRange = 1,
     RequestFailed = 2,
     Valid = 3,
+    NoData = 4,
 };
 
 #endif // HEARTRATE_UFEELHEARTRATESTATUS_HPP

@@ -1,4 +1,4 @@
-#include "EyeTracking/GazeKalmanFilter.hpp"
+#include "EyeTracking/EyeTrackingKalmanFilter.hpp"
 
 #include "opencv2/core/types.hpp"
 
@@ -6,7 +6,7 @@
 #include <chrono>
 #include <cmath>
 
-void GazeKalmanFilter::resetAxis(
+void EyeTrackingKalmanFilter::resetAxis(
     Axis& axis, double position
 )
 {
@@ -18,7 +18,7 @@ void GazeKalmanFilter::resetAxis(
     axis.p11 = 1.0;
 }
 
-void GazeKalmanFilter::predict(
+void EyeTrackingKalmanFilter::predict(
     Axis& axis, double dt
 )
 {
@@ -39,7 +39,7 @@ void GazeKalmanFilter::predict(
     axis.p11 = oldP11 + (PROCESS_NOISE * dt2);
 }
 
-auto GazeKalmanFilter::correct(
+auto EyeTrackingKalmanFilter::correct(
     Axis& axis, double measurement, double noise
 ) -> bool
 {
@@ -69,14 +69,14 @@ auto GazeKalmanFilter::correct(
     return std::isfinite(axis.position) && std::isfinite(axis.velocity);
 }
 
-auto GazeKalmanFilter::currentPosition() const -> cv::Point2f
+auto EyeTrackingKalmanFilter::currentPosition() const -> cv::Point2f
 {
     return {
         static_cast<float>(std::clamp(x_.position, 0.0, 1.0)),
         static_cast<float>(std::clamp(y_.position, 0.0, 1.0))};
 }
 
-void GazeKalmanFilter::initialize(
+void EyeTrackingKalmanFilter::initialize(
     cv::Point2f measurement, Clock::time_point now
 )
 {
@@ -87,7 +87,7 @@ void GazeKalmanFilter::initialize(
     rejectedCount_ = 0;
 }
 
-void GazeKalmanFilter::reset()
+void EyeTrackingKalmanFilter::reset()
 {
     x_ = {};
     y_ = {};
@@ -96,7 +96,7 @@ void GazeKalmanFilter::reset()
     rejectedCount_ = 0;
 }
 
-auto GazeKalmanFilter::update(
+auto EyeTrackingKalmanFilter::update(
     cv::Point2f measurement, double quality, Clock::time_point now
 ) -> cv::Point2f
 {

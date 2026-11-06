@@ -31,9 +31,15 @@ RUN apt-get update && \
         libfontconfig1 \
         libice6 \
         libsm6 \
+        libx11-6 \
+        xvfb \
         patchelf \
         iwyu \
         libcurl4-openssl-dev \
+        libwayland-client0 \
+        libwayland-cursor0 \
+        libwayland-egl1 \
+        libxkbcommon0 \
         && \
     rm -rf /var/lib/apt/lists/*
 

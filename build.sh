@@ -42,6 +42,7 @@ configure()
         -G "${CMAKE_GENERATOR}" \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_CXX_COMPILER=clang++-22 \
+        -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
         "${CMAKE_ARGS[@]}"
 }
 

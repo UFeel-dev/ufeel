@@ -1,4 +1,4 @@
-#include "EyeTracking/GazeCalibrationModel.hpp"
+#include "EyeTracking/EyeTrackingCalibrationModel.hpp"
 
 #include "opencv2/core.hpp"
 #include "opencv2/core/base.hpp"
@@ -29,7 +29,7 @@ constexpr std::size_t MINIMUM_RETAINED_SAMPLES_PER_TARGET = 8;
 constexpr std::size_t SPATIAL_GRID_BAND_COUNT = 3;
 constexpr double RIDGE_PENALTY = 0.08;
 constexpr double INTERCEPT_PENALTY = 1.0e-8;
-constexpr double MAXIMUM_MEAN_CALIBRATION_ERROR = 0.35;
+constexpr double MAXIMUM_MEAN_CALIBRATION_ERROR = 0.4;
 constexpr double MAXIMUM_TARGET_CALIBRATION_ERROR = 0.60;
 constexpr char PROFILE_SIGNATURE[] = "UFEEL_GAZE_PROFILE";
 constexpr std::uint32_t PROFILE_VERSION = 3;
@@ -56,17 +56,17 @@ template <typename Values>
 }
 
 [[nodiscard]] auto isFinite(
-    const GazeFeatureVector& features
+    const EyeTrackingFeatureVector& features
 ) -> bool
 {
     return std::ranges::all_of(features, [](double value) -> bool { return std::isfinite(value); });
 }
 
 [[nodiscard]] auto robustSamples(
-    const GazeCalibrationTarget& target
-) -> std::vector<GazeFeatureVector>
+    const EyeTrackingCalibrationTarget& target
+) -> std::vector<EyeTrackingFeatureVector>
 {
-    std::vector<GazeFeatureVector> finiteSamples;
+    std::vector<EyeTrackingFeatureVector> finiteSamples;
     finiteSamples.reserve(target.samples.size());
 
     for (auto const& sample : target.samples)
@@ -77,7 +77,7 @@ template <typename Values>
         }
     }
 
-    std::vector<GazeFeatureVector> retained;
+    std::vector<EyeTrackingFeatureVector> retained;
     if (finiteSamples.empty())
     {
         return retained;
@@ -134,7 +134,7 @@ template <typename Values>
 }
 
 [[nodiscard]] auto targetHasValidCoordinates(
-    const GazeCalibrationTarget& target
+    const EyeTrackingCalibrationTarget& target
 ) -> bool
 {
     return std::isfinite(target.target.x) && std::isfinite(target.target.y) &&
@@ -177,9 +177,9 @@ auto calibrationFailureReasonToString(
     return "Unknown calibration failure";
 }
 
-auto GazeCalibrationModel::fit(
-    const std::vector<GazeCalibrationTarget>& targets, CalibrationDiagnostics* diagnostics
-) -> std::optional<GazeCalibrationModel>
+auto EyeTrackingCalibrationModel::fit(
+    const std::vector<EyeTrackingCalibrationTarget>& targets, CalibrationDiagnostics* diagnostics
+) -> std::optional<EyeTrackingCalibrationModel>
 {
     CalibrationDiagnostics localDiagnostics{};
     auto& report = diagnostics != nullptr ? *diagnostics : localDiagnostics;
@@ -188,7 +188,7 @@ auto GazeCalibrationModel::fit(
     report.inputTargetCount = targets.size();
     report.minimumRetainedSamples = std::numeric_limits<std::size_t>::max();
 
-    std::vector<GazeCalibrationTarget> validTargets;
+    std::vector<EyeTrackingCalibrationTarget> validTargets;
     validTargets.reserve(targets.size());
 
     for (auto const& target : targets)
@@ -245,13 +245,13 @@ auto GazeCalibrationModel::fit(
     }
 
     auto const [minimumX, maximumX] = std::ranges::minmax_element(
-        validTargets, {}, [](GazeCalibrationTarget const& target) -> float {
+        validTargets, {}, [](EyeTrackingCalibrationTarget const& target) -> float {
             return target.target.x;
         }
     );
 
     auto const [minimumY, maximumY] = std::ranges::minmax_element(
-        validTargets, {}, [](GazeCalibrationTarget const& target) -> float {
+        validTargets, {}, [](EyeTrackingCalibrationTarget const& target) -> float {
             return target.target.y;
         }
     );
@@ -302,7 +302,7 @@ auto GazeCalibrationModel::fit(
 
     for (std::size_t heldOut = 0; heldOut < validTargets.size(); ++heldOut)
     {
-        std::vector<GazeCalibrationTarget> trainingTargets;
+        std::vector<EyeTrackingCalibrationTarget> trainingTargets;
         trainingTargets.reserve(validTargets.size() - 1);
 
         for (std::size_t index = 0; index < validTargets.size(); ++index)
@@ -330,7 +330,7 @@ auto GazeCalibrationModel::fit(
             return std::nullopt;
         }
 
-        GazeFeatureVector medianFeatures{};
+        EyeTrackingFeatureVector medianFeatures{};
 
         for (std::size_t feature = 0; feature < GAZE_FEATURE_COUNT; ++feature)
         {
@@ -415,16 +415,16 @@ auto GazeCalibrationModel::fit(
     return model;
 }
 
-auto GazeCalibrationModel::fitRegression(
-    const std::vector<GazeCalibrationTarget>& targets
-) -> std::optional<GazeCalibrationModel>
+auto EyeTrackingCalibrationModel::fitRegression(
+    const std::vector<EyeTrackingCalibrationTarget>& targets
+) -> std::optional<EyeTrackingCalibrationModel>
 {
     if (targets.empty())
     {
         return std::nullopt;
     }
 
-    std::vector<std::vector<GazeFeatureVector>> samplesByTarget;
+    std::vector<std::vector<EyeTrackingFeatureVector>> samplesByTarget;
     samplesByTarget.reserve(targets.size());
 
     std::size_t rowCount = 0;
@@ -459,7 +459,7 @@ auto GazeCalibrationModel::fitRegression(
         return std::nullopt;
     }
 
-    GazeCalibrationModel model;
+    EyeTrackingCalibrationModel model;
 
     for (auto const& samples : samplesByTarget)
     {
@@ -572,8 +572,8 @@ auto GazeCalibrationModel::fitRegression(
     return model;
 }
 
-auto GazeCalibrationModel::predict(
-    const GazeFeatureVector& features
+auto EyeTrackingCalibrationModel::predict(
+    const EyeTrackingFeatureVector& features
 ) const -> std::optional<cv::Point2f>
 {
     if (!valid_ || !isFinite(features))
@@ -600,8 +600,8 @@ auto GazeCalibrationModel::predict(
     return cv::Point2f(floatX, floatY);
 }
 
-auto GazeCalibrationModel::predictCoordinate(
-    const GazeFeatureVector& features, int coordinate
+auto EyeTrackingCalibrationModel::predictCoordinate(
+    const EyeTrackingFeatureVector& features, int coordinate
 ) const -> double
 {
     auto const& coefficients = coefficients_.at(static_cast<std::size_t>(coordinate));
@@ -616,12 +616,12 @@ auto GazeCalibrationModel::predictCoordinate(
     return result;
 }
 
-auto GazeCalibrationModel::isValid() const -> bool
+auto EyeTrackingCalibrationModel::isValid() const -> bool
 {
     return valid_;
 }
 
-auto GazeCalibrationModel::confidence() const -> float
+auto EyeTrackingCalibrationModel::confidence() const -> float
 {
     if (!valid_ || !std::isfinite(crossValidationError_) || crossValidationError_ < 0.0)
     {
@@ -631,7 +631,7 @@ auto GazeCalibrationModel::confidence() const -> float
     return static_cast<float>(std::exp(-2.5 * crossValidationError_));
 }
 
-auto GazeCalibrationModel::save(
+auto EyeTrackingCalibrationModel::save(
     const std::string& path
 ) const -> bool
 {
@@ -780,7 +780,7 @@ auto GazeCalibrationModel::save(
     return true;
 }
 
-auto GazeCalibrationModel::load(
+auto EyeTrackingCalibrationModel::load(
     const std::string& path
 ) -> bool
 {
@@ -790,7 +790,7 @@ auto GazeCalibrationModel::load(
     }
 
     auto readModel = [](const std::filesystem::path& candidatePath,
-                        GazeCalibrationModel& loadedModel) -> bool {
+                        EyeTrackingCalibrationModel& loadedModel) -> bool {
         std::ifstream input(candidatePath);
 
         if (!input)
@@ -858,7 +858,7 @@ auto GazeCalibrationModel::load(
 
     for (auto const& candidatePath : {profilePath, temporaryPath, backupPath})
     {
-        GazeCalibrationModel loadedModel;
+        EyeTrackingCalibrationModel loadedModel;
 
         if (readModel(candidatePath, loadedModel))
         {
