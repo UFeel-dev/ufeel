@@ -102,9 +102,9 @@ git lfs pull
 ```text
 .
 ├── build.sh
-├── csharp/        # C# integration test
 ├── Library/       # Native sources
 ├── Wrapper/       # C++ wrapper
+├── tests/         # Native unit and C# integration tests
 ├── 3rdparty/      # External dependencies
 ├── build/         # Generated build files
 ├── docker/        # Docker environment

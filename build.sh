@@ -7,7 +7,7 @@ BUILD_DIR="${ROOT_DIR}/build"
 PACKAGE_DIR="${ROOT_DIR}/package"
 PACKAGE_PLATFORM="Linux-x86_64"
 PACKAGE_PATH="${PACKAGE_DIR}/${PACKAGE_PLATFORM}"
-CSHARP_PROJECT="${ROOT_DIR}/csharp"
+CSHARP_PROJECT="${ROOT_DIR}/tests/integration"
 
 CMAKE_GENERATOR="Ninja"
 CMAKE_ARGS=("${@:2}")
@@ -225,7 +225,6 @@ test()
 {
     run_unit_tests
     run_integration_test
-    # TODO: move csharp integration test to the testing directory under an appropriate subdirectory
 }
 
 case "${1:-}" in
