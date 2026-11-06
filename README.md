@@ -104,7 +104,11 @@ git lfs pull
 ├── build.sh
 ├── Library/       # Native sources
 ├── Wrapper/       # C++ wrapper
-├── tests/         # Native unit and C# integration tests
+├── tests/
+│   ├── unit/
+│   │   ├── Library/  # Native library unit tests
+│   │   └── Wrapper/  # Native wrapper unit tests
+│   └── integration/  # C# integration test
 ├── 3rdparty/      # External dependencies
 ├── build/         # Generated build files
 ├── docker/        # Docker environment

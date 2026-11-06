@@ -215,7 +215,8 @@ run_unit_tests()
 
     echo "Generating coverage report..."
     "${llvm_cov}" report \
-        "${COVERAGE_BUILD_DIR}/tests/unit/run_unit_tests" \
+        "${COVERAGE_BUILD_DIR}/tests/unit/Library/run_library_unit_tests" \
+        -object="${COVERAGE_BUILD_DIR}/tests/unit/Wrapper/run_wrapper_unit_tests" \
         -object="${COVERAGE_BUILD_DIR}/libufeel_detection_library.a" \
         -instr-profile="${COVERAGE_BUILD_DIR}/coverage.profdata" \
         -ignore-filename-regex='(/tests/|googletest|/usr/|3rdparty/)'

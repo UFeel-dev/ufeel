@@ -44,7 +44,7 @@ Pull requests that do not follow this process may be rejected without review.
 All contributions must:
 
 - Follow the existing project structure and conventions
-- Mirror `Library` subdirectories in `tests/unit` for native tests
+- Mirror each source tree under its matching `tests/unit/Library` or `tests/unit/Wrapper` directory
 - Avoid unnecessary dependencies
 - Don't be platform-dependant unless explicitly targeting a plugin
 - Update documentation for any public API changes
