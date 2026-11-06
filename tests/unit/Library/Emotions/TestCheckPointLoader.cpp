@@ -106,7 +106,7 @@ TEST(
 )
 {
     EmotionModel model("resnet34");
-    TemporaryCheckpoint checkpoint;
+    const TemporaryCheckpoint checkpoint;
     checkpoint.write({0x01, 0x00});
 
     EXPECT_THROW(loadCheckpoint(model, checkpoint.path()), std::runtime_error);
@@ -117,7 +117,7 @@ TEST(
 )
 {
     EmotionModel model("resnet34");
-    TemporaryCheckpoint checkpoint;
+    const TemporaryCheckpoint checkpoint;
     checkpoint.write(tensorPrefix("heads.angry.linear.bias", 1));
 
     EXPECT_THROW(loadCheckpoint(model, checkpoint.path()), std::runtime_error);
@@ -128,7 +128,7 @@ TEST(
 )
 {
     EmotionModel model("resnet34");
-    TemporaryCheckpoint checkpoint;
+    const TemporaryCheckpoint checkpoint;
     auto bytes = tensorPrefix("heads.angry.linear.bias", 1);
     append(bytes, std::int64_t{1});
     checkpoint.write(bytes);
@@ -141,7 +141,7 @@ TEST(
 )
 {
     EmotionModel model("resnet34");
-    TemporaryCheckpoint checkpoint;
+    const TemporaryCheckpoint checkpoint;
     checkpoint.write(entryHeader("unexpected.tensor", {}, 0));
 
     EXPECT_THROW(loadCheckpoint(model, checkpoint.path()), std::runtime_error);
@@ -152,7 +152,7 @@ TEST(
 )
 {
     EmotionModel model("resnet34");
-    TemporaryCheckpoint checkpoint;
+    const TemporaryCheckpoint checkpoint;
     checkpoint.write(entryHeader("heads.angry.linear.bias", {2}, 2));
 
     EXPECT_THROW(loadCheckpoint(model, checkpoint.path()), std::runtime_error);
@@ -163,7 +163,7 @@ TEST(
 )
 {
     EmotionModel model("resnet34");
-    TemporaryCheckpoint checkpoint;
+    const TemporaryCheckpoint checkpoint;
     checkpoint.write(entryHeader("heads.angry.linear.bias", {1}, 2));
 
     EXPECT_THROW(loadCheckpoint(model, checkpoint.path()), std::runtime_error);
@@ -174,7 +174,7 @@ TEST(
 )
 {
     EmotionModel model("resnet34");
-    TemporaryCheckpoint checkpoint;
+    const TemporaryCheckpoint checkpoint;
     checkpoint.write(entryHeader("heads.angry.linear.bias", {1}, 1));
 
     EXPECT_THROW(loadCheckpoint(model, checkpoint.path()), std::runtime_error);
@@ -185,7 +185,7 @@ TEST(
 )
 {
     EmotionModel model("resnet34");
-    TemporaryCheckpoint checkpoint;
+    const TemporaryCheckpoint checkpoint;
     checkpoint.write({0x00, 0x00, 0x00, 0x00});
 
     EXPECT_THROW(loadCheckpoint(model, checkpoint.path()), std::runtime_error);

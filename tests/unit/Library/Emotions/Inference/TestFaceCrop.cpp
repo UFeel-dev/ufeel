@@ -1,6 +1,6 @@
 #include "Emotions/Inference/FaceCrop.hpp"
 #include "Emotions/Inference/FaceDetector.hpp"
-#include "StubFaceDetectorYN.hpp"
+#include "Library/Emotions/Inference/StubFaceDetectorYN.hpp"
 #include "opencv2/core/cvstd_wrapper.hpp"
 #include "opencv2/core/hal/interface.h"
 #include "opencv2/core/mat.hpp"

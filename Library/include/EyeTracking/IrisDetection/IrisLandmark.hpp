@@ -77,12 +77,6 @@ public:
         return loadOutput(index, true);
     }
 
-    // Convenience 0-parameter overload
-    [[nodiscard]] auto loadOutput() const -> std::vector<float>
-    {
-        return loadOutput(0, true);
-    }
-
     /*
     Get eye Roi relative to input image at InputTensor(0)
     */

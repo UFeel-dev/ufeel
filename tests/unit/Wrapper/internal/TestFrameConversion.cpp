@@ -1,4 +1,6 @@
 #include "internal/FrameConversion.hpp"
+#include "opencv2/core/hal/interface.h"
+#include "ufeel.h"
 
 #include <array>
 #include <cstdint>
@@ -13,7 +15,7 @@ TEST(
 {
     EXPECT_TRUE(convertFrame(nullptr).empty());
 
-    UFeelFrame frame{
+    const UFeelFrame frame{
         .data = nullptr,
         .width = 1,
         .height = 1,
@@ -83,7 +85,7 @@ TEST(
 )
 {
     std::array<std::uint8_t, 6> pixels{1, 2, 99, 3, 4, 99};
-    UFeelFrame frame{
+    const UFeelFrame frame{
         .data = pixels.data(),
         .width = 2,
         .height = 2,
@@ -102,7 +104,7 @@ TEST(
     EXPECT_NE(converted.data, frame.data);
 
     converted.at<std::uint8_t>(0, 0) = 8;
-    EXPECT_EQ(pixels[0], 1U);
+    EXPECT_EQ(pixels.at(0), 1U);
 }
 
 TEST(
@@ -110,7 +112,7 @@ TEST(
 )
 {
     std::array<std::uint8_t, 4> pixels{1, 2, 3, 4};
-    UFeelFrame frame{
+    const UFeelFrame frame{
         .data = pixels.data(),
         .width = 2,
         .height = 2,
@@ -124,5 +126,5 @@ TEST(
     ASSERT_FALSE(converted.empty());
     EXPECT_EQ(converted.data, frame.data);
     converted.at<std::uint8_t>(0, 0) = 8;
-    EXPECT_EQ(pixels[0], 8U);
+    EXPECT_EQ(pixels.at(0), 8U);
 }

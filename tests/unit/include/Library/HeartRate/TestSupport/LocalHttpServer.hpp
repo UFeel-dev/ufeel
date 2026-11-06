@@ -1,7 +1,8 @@
-#ifndef TESTS_UNIT_HEARTRATE_TESTSUPPORT_LOCALHTTPSERVER_HPP
-#define TESTS_UNIT_HEARTRATE_TESTSUPPORT_LOCALHTTPSERVER_HPP
+#ifndef LIBRARY_HEARTRATE_TESTSUPPORT_LOCALHTTPSERVER_HPP
+#define LIBRARY_HEARTRATE_TESTSUPPORT_LOCALHTTPSERVER_HPP
 
 #include <arpa/inet.h>
+#include <array>
 #include <asm-generic/socket.h>
 #include <atomic>
 #include <cstddef>
@@ -59,7 +60,7 @@ public:
         }
 
         port_ = ntohs(address.sin_port);
-        worker_ = std::thread([this] { serve(); });
+        worker_ = std::thread([this] -> void { serve(); });
     }
 
     ~LocalHttpServer()
@@ -112,8 +113,8 @@ private:
                 continue;
             }
 
-            char request[4096];
-            static_cast<void>(::recv(client, request, sizeof(request), 0));
+            std::array<char, 4096> request{};
+            static_cast<void>(::recv(client, request.data(), request.size(), 0));
 
             const std::string response = "HTTP/1.1 " + std::to_string(statusCode_) +
                                          " Test\r\n"
@@ -157,4 +158,4 @@ private:
     std::thread worker_;
 };
 
-#endif // TESTS_UNIT_HEARTRATE_TESTSUPPORT_LOCALHTTPSERVER_HPP
+#endif // LIBRARY_HEARTRATE_TESTSUPPORT_LOCALHTTPSERVER_HPP

@@ -1,5 +1,5 @@
-#ifndef TESTS_UNIT_EMOTIONS_EMOTIONTESTPATHS_HPP
-#define TESTS_UNIT_EMOTIONS_EMOTIONTESTPATHS_HPP
+#ifndef LIBRARY_EMOTIONS_EMOTIONTESTPATHS_HPP
+#define LIBRARY_EMOTIONS_EMOTIONTESTPATHS_HPP
 
 #include <filesystem>
 
@@ -17,4 +17,4 @@ inline auto emotionFaceDetectorModelPath() -> std::filesystem::path
     return emotionModelDirectory() / "Emotions/face_detection_yunet_2023mar.onnx";
 }
 
-#endif // TESTS_UNIT_EMOTIONS_EMOTIONTESTPATHS_HPP
+#endif // LIBRARY_EMOTIONS_EMOTIONTESTPATHS_HPP

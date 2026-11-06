@@ -1,6 +1,6 @@
 #include "HeartRate/UFeelHeartRateStatus.hpp"
 #include "HeartRate/WatchHeartRateSource.hpp"
-#include "TestSupport/HeartRateTestHelpers.hpp"
+#include "Library/HeartRate/TestSupport/HeartRateTestHelpers.hpp"
 
 #include <chrono>
 #include <cstdint>
@@ -77,7 +77,7 @@ TEST(
 {
     const std::uint16_t port = reserveUdpPort();
     ASSERT_NE(port, 0U);
-    WatchHeartRateSource source(port);
+    const WatchHeartRateSource source(port);
 
     EXPECT_EQ(source.read().status, HeartRateStatus::NoData);
     ASSERT_TRUE(sendHeartRatePacket(port, "72", 2));
@@ -94,7 +94,7 @@ TEST(
 {
     const std::uint16_t port = reserveUdpPort();
     ASSERT_NE(port, 0U);
-    WatchHeartRateSource source(port);
+    const WatchHeartRateSource source(port);
 
     ASSERT_TRUE(sendHeartRatePacket(port, "20", 2));
     EXPECT_EQ(waitForHeartRate(source, HeartRateStatus::Valid, 20).bpm, 20U);
@@ -109,7 +109,7 @@ TEST(
 {
     const std::uint16_t port = reserveUdpPort();
     ASSERT_NE(port, 0U);
-    WatchHeartRateSource source(port);
+    const WatchHeartRateSource source(port);
 
     ASSERT_TRUE(sendHeartRatePacket(port, "", 0));
     ASSERT_TRUE(sendHeartRatePacket(port, "not-a-number", 12));
@@ -147,7 +147,7 @@ TEST(
     address.sin_port = htons(port);
     ASSERT_EQ(::bind(reservedSocket, reinterpret_cast<sockaddr*>(&address), sizeof(address)), 0);
 
-    WatchHeartRateSource source(port);
+    const WatchHeartRateSource source(port);
 
     EXPECT_EQ(source.read().bpm, 0U);
     EXPECT_EQ(source.read().status, HeartRateStatus::NoData);
@@ -161,7 +161,7 @@ TEST(
     ScopedNoFileLimit fileLimit;
     ASSERT_TRUE(fileLimit.active());
 
-    WatchHeartRateSource source;
+    const WatchHeartRateSource source;
 
     ASSERT_TRUE(fileLimit.restore());
     EXPECT_EQ(source.read().bpm, 0U);

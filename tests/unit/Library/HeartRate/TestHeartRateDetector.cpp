@@ -1,6 +1,6 @@
 #include "HeartRate/HeartRateDetector.hpp"
 #include "HeartRate/UFeelHeartRateStatus.hpp"
-#include "TestSupport/HeartRateTestHelpers.hpp"
+#include "Library/HeartRate/TestSupport/HeartRateTestHelpers.hpp"
 
 #include <cstdint>
 #include <gtest/gtest.h>
@@ -11,7 +11,7 @@ TEST(
 {
     const std::uint16_t port = reserveUdpPort();
     ASSERT_NE(port, 0U);
-    HeartRateSensorDetector detector(HeartRateSourceType::Watch, port);
+    const HeartRateSensorDetector detector(HeartRateSourceType::Watch, port);
 
     ASSERT_TRUE(sendHeartRatePacket(port, "84", 2));
 
@@ -27,7 +27,7 @@ TEST(
 {
     const std::uint16_t port = reserveUdpPort();
     ASSERT_NE(port, 0U);
-    HeartRateSensorDetector detector(HeartRateSourceType::Auto, port);
+    const HeartRateSensorDetector detector(HeartRateSourceType::Auto, port);
 
     ASSERT_TRUE(sendHeartRatePacket(port, "96", 2));
 
@@ -40,7 +40,7 @@ TEST(
     HeartRateDetectorTest, ReturnsNoDataWhenSourceTypeIsUnsupported
 )
 {
-    HeartRateSensorDetector detector(static_cast<HeartRateSourceType>(255));
+    const HeartRateSensorDetector detector(static_cast<HeartRateSourceType>(255));
 
     const auto result = detector.process();
 

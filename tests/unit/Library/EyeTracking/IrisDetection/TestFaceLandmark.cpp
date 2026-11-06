@@ -11,6 +11,16 @@
 #include <string>
 #include <vector>
 
+#ifndef MODEL_DIR_PATH
+#define MODEL_DIR_PATH ""
+#endif // MODEL_DIR_PATH
+#ifndef RESOURCES_DIR_PATH
+#define RESOURCES_DIR_PATH ""
+#endif // RESOURCES_DIR_PATH
+
+namespace
+{
+
 class TestFaceLandmark : public ::testing::Test
 {
 protected:
@@ -29,7 +39,7 @@ protected:
 
     auto createImageWithFace() -> bool
     {
-        cv::Mat image =
+        const cv::Mat image =
             cv::imread(std::string(RESOURCES_DIR_PATH) + "/astronaut.png", cv::IMREAD_COLOR);
 
         if (image.empty())
@@ -57,6 +67,8 @@ public:
     auto operator=(const TestFaceLandmark&) -> TestFaceLandmark& = delete;
     auto operator=(TestFaceLandmark&&) -> TestFaceLandmark& = delete;
 };
+
+} // namespace
 
 TEST_F(
     TestFaceLandmark, ConstructorSucceedsWithValidModels

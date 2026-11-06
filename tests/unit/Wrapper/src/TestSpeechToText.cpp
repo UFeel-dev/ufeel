@@ -2,6 +2,7 @@
 
 #include <cstdlib>
 #include <gtest/gtest.h>
+#include <memory>
 
 TEST(
     SpeechToTextApiTest, NullProcessorOperationsReturnInvalidProcessor
@@ -17,8 +18,10 @@ TEST(
 )
 {
     UFeelSpeechToTextResult result{};
-    result.speech = static_cast<char*>(std::malloc(4));
-    ASSERT_NE(result.speech, nullptr);
+    auto allocatedSpeech =
+        std::unique_ptr<char, decltype(&std::free)>(static_cast<char*>(std::malloc(4)), &std::free);
+    ASSERT_NE(allocatedSpeech, nullptr);
+    result.speech = allocatedSpeech.release();
     result.status = UFEEL_SPEECH_STATUS_VALID;
 
     EXPECT_EQ(ufeel_get_speech_to_text_result(nullptr, &result), UFEEL_STATUS_INVALID_PROCESSOR);

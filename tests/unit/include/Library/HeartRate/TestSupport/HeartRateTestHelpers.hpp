@@ -1,5 +1,5 @@
-#ifndef TESTS_UNIT_HEARTRATE_TESTSUPPORT_HEARTRATETESTHELPERS_HPP
-#define TESTS_UNIT_HEARTRATE_TESTSUPPORT_HEARTRATETESTHELPERS_HPP
+#ifndef LIBRARY_HEARTRATE_TESTSUPPORT_HEARTRATETESTHELPERS_HPP
+#define LIBRARY_HEARTRATE_TESTSUPPORT_HEARTRATETESTHELPERS_HPP
 
 #include "HeartRate/HeartRateDetector.hpp"
 #include "HeartRate/HeartRateSource.hpp"
@@ -14,6 +14,7 @@
 #include <sys/types.h>
 #include <thread>
 #include <unistd.h>
+#include <utility>
 
 inline auto waitForHeartRate(
     const HeartRateSource& source, HeartRateStatus status, std::uint32_t bpm = 0
@@ -121,7 +122,7 @@ inline auto sendHeartRatePacket(
     const ssize_t sent =
         ::sendto(socket, data, size, 0, reinterpret_cast<sockaddr*>(&address), sizeof(address));
     static_cast<void>(::close(socket));
-    return sent == static_cast<ssize_t>(size);
+    return std::cmp_equal(sent, size);
 }
 
-#endif // TESTS_UNIT_HEARTRATE_TESTSUPPORT_HEARTRATETESTHELPERS_HPP
+#endif // LIBRARY_HEARTRATE_TESTSUPPORT_HEARTRATETESTHELPERS_HPP

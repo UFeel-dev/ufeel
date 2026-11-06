@@ -99,15 +99,38 @@ format()
 
 clang_tidy()
 {
-    require_build
-
     local fix_args=()
-    local targets=("$@")
+    local targets=()
+    local include_tests=false
+    local lint_build_dir="${BUILD_DIR}"
+    local header_filter='.*(Library|Wrapper)/.*'
 
-    if [ "${1:-}" = "--fix" ]; then
-        fix_args=(-fix)
+    while [ "$#" -gt 0 ]; do
+        case "$1" in
+            --fix)
+                fix_args=(-fix)
+                ;;
+            --tests)
+                include_tests=true
+                ;;
+            --)
+                shift
+                targets+=("$@")
+                break
+                ;;
+            *)
+                targets+=("$1")
+                ;;
+        esac
         shift
-        targets=("$@")
+    done
+
+    if [ "${include_tests}" = true ]; then
+        configure_unit_tests
+        lint_build_dir="${COVERAGE_BUILD_DIR}"
+        header_filter='.*(Library|Wrapper|tests/unit)/.*'
+    else
+        require_build
     fi
 
     if [ "${#targets[@]}" -eq 0 ]; then
@@ -115,12 +138,15 @@ clang_tidy()
             'Library/.*'
             'Wrapper/.*'
         )
+        if [ "${include_tests}" = true ]; then
+            targets+=('tests/unit/.*')
+        fi
     fi
 
     run-clang-tidy \
-        -p "${BUILD_DIR}" \
+        -p "${lint_build_dir}" \
         "${fix_args[@]}" \
-        -header-filter='.*(Library|Wrapper)/.*' \
+        -header-filter="${header_filter}" \
         -exclude-header-filter='.*3rdparty/.*' \
         "${targets[@]}"
 }
@@ -137,15 +163,44 @@ fix()
 
 include_fix()
 {
-    require_build
+    local include_tests=false
+    local targets=()
 
-    if [ "$#" -eq 0 ]; then
-        set -- "${ROOT_DIR}/Library" "${ROOT_DIR}/Wrapper"
+    while [ "$#" -gt 0 ]; do
+        case "$1" in
+            --tests)
+                include_tests=true
+                ;;
+            --)
+                shift
+                targets+=("$@")
+                break
+                ;;
+            *)
+                targets+=("$1")
+                ;;
+        esac
+        shift
+    done
+
+    local include_build_dir="${BUILD_DIR}"
+    if [ "${include_tests}" = true ]; then
+        configure_unit_tests
+        include_build_dir="${COVERAGE_BUILD_DIR}"
+    else
+        require_build
+    fi
+
+    if [ "${#targets[@]}" -eq 0 ]; then
+        targets=("${ROOT_DIR}/Library" "${ROOT_DIR}/Wrapper")
+        if [ "${include_tests}" = true ]; then
+            targets+=("${ROOT_DIR}/tests/unit")
+        fi
     fi
 
     iwyu_tool.py \
-        -p "${BUILD_DIR}" \
-        "$@" |
+        -p "${include_build_dir}" \
+        "${targets[@]}" |
         fix_includes.py --nocomments --nosafe_headers
 }
 
@@ -165,20 +220,15 @@ usage()
     echo "  ./build.sh test"
     echo "  ./build.sh all"
     echo "  ./build.sh format [files...]"
-    echo "  ./build.sh lint [files...]"
-    echo "  ./build.sh fix [files...]"
-    echo "  ./build.sh include-fix [files...]"
+    echo "  ./build.sh lint [--tests] [files...]"
+    echo "  ./build.sh fix [--tests] [files...]"
+    echo "  ./build.sh include-fix [--tests] [files...]"
     echo "  ./build.sh run-unit-tests"
     echo "  ./build.sh run-integration-tests"
 }
 
-run_unit_tests()
+configure_unit_tests()
 {
-    local runtime_library_path="${ROOT_DIR}/3rdparty/opencv/lib:${ROOT_DIR}/3rdparty/libtorch/lib:${ROOT_DIR}/3rdparty/portaudio/lib:${ROOT_DIR}/3rdparty/cpr/lib:${COVERAGE_BUILD_DIR}/yaml-cpp"
-    if [ -n "${LD_LIBRARY_PATH:-}" ]; then
-        runtime_library_path="${runtime_library_path}:${LD_LIBRARY_PATH}"
-    fi
-
     echo "Configuring coverage build..."
     cmake \
         -S "${ROOT_DIR}" \
@@ -189,6 +239,16 @@ run_unit_tests()
         -DUFEEL_BUILD_TESTS=ON \
         -DUFEEL_ENABLE_COVERAGE=ON \
         -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+}
+
+run_unit_tests()
+{
+    local runtime_library_path="${ROOT_DIR}/3rdparty/opencv/lib:${ROOT_DIR}/3rdparty/libtorch/lib:${ROOT_DIR}/3rdparty/portaudio/lib:${ROOT_DIR}/3rdparty/cpr/lib:${COVERAGE_BUILD_DIR}/yaml-cpp"
+    if [ -n "${LD_LIBRARY_PATH:-}" ]; then
+        runtime_library_path="${runtime_library_path}:${LD_LIBRARY_PATH}"
+    fi
+
+    configure_unit_tests
 
     echo "Building unit tests..."
     LD_LIBRARY_PATH="${runtime_library_path}" \

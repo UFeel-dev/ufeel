@@ -43,6 +43,7 @@ target_link_libraries(
 )
 
 target_include_directories(run_library_unit_tests PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/../include"
     ${TFLITE_DIR}/include
 )
 

@@ -1,4 +1,7 @@
 #include "EyeTracking/IrisDetection/ModelLoader.hpp"
+#include "opencv2/core/hal/interface.h"
+#include "opencv2/core/mat.hpp"
+#include "opencv2/core/types.hpp"
 
 #include <cstdint>
 #include <gtest/gtest.h>
@@ -6,6 +9,9 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+
+namespace
+{
 
 class TestModelLoader : public ::testing::Test
 {
@@ -16,7 +22,7 @@ protected:
         loader_ = std::make_unique<my::ModelLoader>(MODEL_LOADER_TEST_MODEL_PATH);
     }
 
-    auto createImage(
+    [[nodiscard]] auto createImage(
         int channels = 3
     ) const -> cv::Mat
     {
@@ -29,11 +35,13 @@ protected:
 
         int const type = channels == 4 ? CV_8UC4 : CV_8UC3;
 
-        return cv::Mat(shape.at(1), shape.at(2), type, cv::Scalar::all(128));
+        return {shape.at(1), shape.at(2), type, cv::Scalar::all(128)};
     }
 
     std::unique_ptr<my::ModelLoader> loader_;
 };
+
+} // namespace
 
 TEST_F(
     TestModelLoader, ConstructorSucceedsWithValidModel
@@ -46,7 +54,7 @@ TEST(
     ModelLoaderConstructor, ThrowsWhenModelDoesNotExist
 )
 {
-    EXPECT_THROW(my::ModelLoader loader("invalid_model_path.tflite"), std::runtime_error);
+    EXPECT_THROW(const my::ModelLoader loader("invalid_model_path.tflite"), std::runtime_error);
 }
 
 TEST_F(

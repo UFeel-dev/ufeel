@@ -9,12 +9,13 @@ add_executable(
     src/TestApiIntegration.cpp
     src/TestWrapperBehavior.cpp
 
-    src/internal/TestErrorHandling.cpp
-    src/internal/TestFrameConversion.cpp
-    src/internal/TestMemory.cpp
+    internal/TestErrorHandling.cpp
+    internal/TestFrameConversion.cpp
+    internal/TestMemory.cpp
 )
 
 target_include_directories(run_wrapper_unit_tests PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/../include"
     "${WRAPPER_DIR}/include"
     "${WRAPPER_DIR}/src/include"
     "${LIBRARY_DIR}/include"

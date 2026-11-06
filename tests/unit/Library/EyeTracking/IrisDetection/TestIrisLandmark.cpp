@@ -1,11 +1,22 @@
 #include "EyeTracking/IrisDetection/IrisLandmark.hpp"
+#include "opencv2/core/mat.hpp"
+#include "opencv2/core/types.hpp"
+#include "opencv2/imgcodecs.hpp"
 
 #include <gtest/gtest.h>
 #include <memory>
-#include <opencv2/core.hpp>
-#include <opencv2/imgcodecs.hpp>
 #include <string>
 #include <vector>
+
+#ifndef MODEL_DIR_PATH
+#define MODEL_DIR_PATH ""
+#endif // MODEL_DIR_PATH
+#ifndef RESOURCES_DIR_PATH
+#define RESOURCES_DIR_PATH ""
+#endif // RESOURCES_DIR_PATH
+
+namespace
+{
 
 class TestIrisLandmark : public ::testing::Test
 {
@@ -18,7 +29,7 @@ protected:
 
     auto prepareInference() -> bool
     {
-        cv::Mat image =
+        const cv::Mat image =
             cv::imread(std::string(RESOURCES_DIR_PATH) + "/astronaut.png", cv::IMREAD_COLOR);
 
         if (image.empty())
@@ -34,6 +45,8 @@ protected:
 
     std::unique_ptr<my::IrisLandmark> irisLandmark_;
 };
+
+} // namespace
 
 TEST_F(
     TestIrisLandmark, ConstructorSucceedsWithValidModels

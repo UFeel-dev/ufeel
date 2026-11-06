@@ -7,7 +7,7 @@ TEST(
     ErrorHandlingTest, GuardedReturnsFunctionResult
 )
 {
-    const int result = ufeel::internal::guarded("operation", -1, [] { return 42; });
+    const int result = ufeel::internal::guarded("operation", -1, []() -> int { return 42; });
 
     EXPECT_EQ(result, 42);
 }
@@ -38,7 +38,7 @@ TEST(
 {
     bool called = false;
 
-    ufeel::internal::guardedVoid("operation", [&called] { called = true; });
+    ufeel::internal::guardedVoid("operation", [&called]() -> void { called = true; });
 
     EXPECT_TRUE(called);
 }
@@ -47,8 +47,8 @@ TEST(
     ErrorHandlingTest, GuardedVoidHandlesExceptions
 )
 {
-    EXPECT_NO_THROW(ufeel::internal::guardedVoid("operation", [] {
+    EXPECT_NO_THROW(ufeel::internal::guardedVoid("operation", []() -> void {
         throw std::runtime_error("failure");
     }));
-    EXPECT_NO_THROW(ufeel::internal::guardedVoid("operation", [] { throw 1; }));
+    EXPECT_NO_THROW(ufeel::internal::guardedVoid("operation", []() -> void { throw 1; }));
 }

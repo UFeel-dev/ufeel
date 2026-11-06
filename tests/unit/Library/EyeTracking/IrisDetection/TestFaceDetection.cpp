@@ -1,11 +1,17 @@
 #include "EyeTracking/IrisDetection/FaceDetection.hpp"
+#include "opencv2/core/hal/interface.h"
+#include "opencv2/core/mat.hpp"
+#include "opencv2/core/matx.hpp"
+#include "opencv2/core/types.hpp"
 
-#include <cmath>
 #include <gtest/gtest.h>
-#include <opencv2/core/mat.hpp>
-#include <opencv2/core/types.hpp>
+#include <memory>
+#include <stdexcept>
 #include <string>
 #include <vector>
+
+namespace
+{
 
 class TestFaceDetection : public ::testing::Test
 {
@@ -16,15 +22,17 @@ protected:
         detector_ = std::make_unique<my::FaceDetection>(MODEL_DIR_PATH);
     }
 
-    auto createImage(
+    [[nodiscard]] static auto createImage(
         int width = 640, int height = 480, int type = CV_8UC3
-    ) const -> cv::Mat
+    ) -> cv::Mat
     {
-        return cv::Mat(height, width, type, cv::Scalar(100, 150, 200, 255));
+        return {height, width, type, cv::Scalar(100, 150, 200, 255)};
     }
 
     std::unique_ptr<my::FaceDetection> detector_;
 };
+
+} // namespace
 
 TEST_F(
     TestFaceDetection, ConstructorSucceedsWithValidModel

@@ -1,7 +1,14 @@
 #include "EyeTracking/IrisDetection/DetectionPostProcess.hpp"
 
+#include <cstddef>
 #include <gtest/gtest.h>
 #include <vector>
+
+namespace
+{
+
+constexpr auto kRawBoxValueCount =
+    static_cast<std::size_t>(NUM_BOXES) * static_cast<std::size_t>(NUM_COORD);
 
 class TestDetectionPostProcess : public ::testing::Test
 {
@@ -10,12 +17,14 @@ protected:
     my::DetectionPostProcess postProcess_;
 };
 
+} // namespace
+
 TEST_F(
     TestDetectionPostProcess, ReturnsDefaultDetectionWhenNoScoreExceedsThreshold
 )
 {
-    std::vector<float> rawBoxes(NUM_BOXES * NUM_COORD, 0.0f);
-    std::vector<float> scores(NUM_BOXES, 0.0f);
+    const std::vector<float> rawBoxes(kRawBoxValueCount, 0.0f);
+    const std::vector<float> scores(NUM_BOXES, 0.0f);
 
     auto const detection = postProcess_.getHighestScoreDetection(rawBoxes, scores);
 
@@ -27,9 +36,9 @@ TEST_F(
     TestDetectionPostProcess, ReturnsDefaultDetectionWhenScoreEqualsThreshold
 )
 {
-    std::vector<float> rawBoxes(NUM_BOXES * NUM_COORD, 0.0f);
+    const std::vector<float> rawBoxes(kRawBoxValueCount, 0.0f);
     std::vector<float> scores(NUM_BOXES, 0.0f);
-    scores[0] = MIN_THRESHOLD;
+    scores.at(0) = MIN_THRESHOLD;
 
     auto const detection = postProcess_.getHighestScoreDetection(rawBoxes, scores);
 
@@ -41,9 +50,9 @@ TEST_F(
     TestDetectionPostProcess, ReturnsDetectionWhenScoreExceedsThreshold
 )
 {
-    std::vector<float> rawBoxes(NUM_BOXES * NUM_COORD, 0.0f);
+    const std::vector<float> rawBoxes(kRawBoxValueCount, 0.0f);
     std::vector<float> scores(NUM_BOXES, 0.0f);
-    scores[0] = 0.9f;
+    scores.at(0) = 0.9f;
 
     auto const detection = postProcess_.getHighestScoreDetection(rawBoxes, scores);
 
@@ -55,12 +64,12 @@ TEST_F(
     TestDetectionPostProcess, ReturnsDetectionWithHighestScore
 )
 {
-    std::vector<float> rawBoxes(NUM_BOXES * NUM_COORD, 0.0f);
+    const std::vector<float> rawBoxes(kRawBoxValueCount, 0.0f);
     std::vector<float> scores(NUM_BOXES, 0.0f);
 
-    scores[0] = 0.8f;
-    scores[1] = 0.95f;
-    scores[2] = 0.85f;
+    scores.at(0) = 0.8f;
+    scores.at(1) = 0.95f;
+    scores.at(2) = 0.85f;
 
     auto const detection = postProcess_.getHighestScoreDetection(rawBoxes, scores);
 
@@ -72,15 +81,15 @@ TEST_F(
     TestDetectionPostProcess, DecodesBoundingBoxUsingAnchorAndOffsets
 )
 {
-    std::vector<float> rawBoxes(NUM_BOXES * NUM_COORD, 0.0f);
+    std::vector<float> rawBoxes(kRawBoxValueCount, 0.0f);
     std::vector<float> scores(NUM_BOXES, 0.0f);
 
-    rawBoxes[0] = 0.0f;
-    rawBoxes[1] = 0.0f;
-    rawBoxes[2] = 128.0f;
-    rawBoxes[3] = 128.0f;
+    rawBoxes.at(0) = 0.0f;
+    rawBoxes.at(1) = 0.0f;
+    rawBoxes.at(2) = 128.0f;
+    rawBoxes.at(3) = 128.0f;
 
-    scores[0] = 0.9f;
+    scores.at(0) = 0.9f;
 
     auto const detection = postProcess_.getHighestScoreDetection(rawBoxes, scores);
 
@@ -94,13 +103,13 @@ TEST_F(
     TestDetectionPostProcess, KeepsFirstDetectionWhenScoresAreEqual
 )
 {
-    std::vector<float> rawBoxes(NUM_BOXES * NUM_COORD, 0.0f);
+    std::vector<float> rawBoxes(kRawBoxValueCount, 0.0f);
     std::vector<float> scores(NUM_BOXES, 0.0f);
 
-    scores[0] = 0.9f;
-    scores[1] = 0.9f;
+    scores.at(0) = 0.9f;
+    scores.at(1) = 0.9f;
 
-    rawBoxes[NUM_COORD + 2] = 64.0f;
+    rawBoxes.at(NUM_COORD + 2) = 64.0f;
 
     auto const detection = postProcess_.getHighestScoreDetection(rawBoxes, scores);
 
