@@ -187,8 +187,9 @@ typedef struct
 } UFeelHeartRateResult;
 
 /** Creates a processor. Returns NULL if initialization fails. */
-UFEEL_API UFeelProcessor*
-ufeel_create(const char* utf8ModelDirectory, const char* utf8SpeechModelPath); // ! the speech model path should be allowed to be NULL if speech is disabled
+UFEEL_API UFeelProcessor* ufeel_create(
+    const char* utf8ModelDirectory, const char* utf8SpeechModelPath
+); // ! the speech model path should be allowed to be NULL if speech is disabled
 
 /** Destroys a processor created by ufeel_create(). Accepts NULL. */
 UFEEL_API void ufeel_destroy(UFeelProcessor* processor);
