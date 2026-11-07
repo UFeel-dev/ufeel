@@ -72,19 +72,22 @@ foreach(LIB IN LISTS OPENCV_LIBS)
     endif()
 endforeach()
 
-file(REMOVE "${DEPENDENCIES_DIR}/libportaudio.so.2")
+if(@UFEEL_ENABLE_SPEECH_TO_TEXT@)
+    file(REMOVE "${DEPENDENCIES_DIR}/libportaudio.so.2")
 
-execute_process(
-    COMMAND "${CMAKE_COMMAND}" -E create_symlink
-        libportaudio.so.2.0.0
-        "${DEPENDENCIES_DIR}/libportaudio.so.2"
-    RESULT_VARIABLE RESULT
-)
+    execute_process(
+        COMMAND "${CMAKE_COMMAND}" -E create_symlink
+            libportaudio.so.2.0.0
+            "${DEPENDENCIES_DIR}/libportaudio.so.2"
+        RESULT_VARIABLE RESULT
+    )
 
-if(NOT RESULT EQUAL 0)
-    message(FATAL_ERROR "Failed to create PortAudio symlink")
+    if(NOT RESULT EQUAL 0)
+        message(FATAL_ERROR "Failed to create PortAudio symlink")
+    endif()
 endif()
 
-if(NOT EXISTS "${DEPENDENCIES_DIR}/libyaml-cpp.so.0.7")
+if(@UFEEL_ENABLE_EMOTIONS@ AND
+   NOT EXISTS "${DEPENDENCIES_DIR}/libyaml-cpp.so.0.7")
     message(FATAL_ERROR "Bundled yaml-cpp SONAME symlink is missing")
 endif()

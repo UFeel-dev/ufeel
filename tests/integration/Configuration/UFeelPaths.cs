@@ -32,13 +32,10 @@ internal sealed record UFeelPaths(
             // "vosk-model-small-en-us-0.15");
             // "vosk-model-small-de-0.15");
         string modelDirectory = Path.Combine(packageDirectory, "models");
-
         if (!Directory.Exists(modelDirectory))
-            throw new DirectoryNotFoundException(
-                $"Model directory not found: {modelDirectory}");
+            modelDirectory = packageDirectory;
         if (!Directory.Exists(speechModelPath))
-            throw new DirectoryNotFoundException(
-                $"Vosk model directory not found: {speechModelPath}");
+            speechModelPath = modelDirectory;
 
         string localDataDirectory = Environment.GetFolderPath(
             Environment.SpecialFolder.LocalApplicationData);

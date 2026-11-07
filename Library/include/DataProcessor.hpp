@@ -14,6 +14,19 @@
 #include <memory>
 #include <string>
 
+#ifndef UFEEL_ENABLE_EMOTIONS
+#define UFEEL_ENABLE_EMOTIONS 1
+#endif
+#ifndef UFEEL_ENABLE_EYE_TRACKING
+#define UFEEL_ENABLE_EYE_TRACKING 1
+#endif
+#ifndef UFEEL_ENABLE_SPEECH_TO_TEXT
+#define UFEEL_ENABLE_SPEECH_TO_TEXT 1
+#endif
+#ifndef UFEEL_ENABLE_HEART_RATE
+#define UFEEL_ENABLE_HEART_RATE 1
+#endif
+
 class EmotionDetector;
 class SpeechToTextDetector;
 class HeartRateSensorDetector;
@@ -34,6 +47,7 @@ enum class DataProcessorStatus : std::uint8_t
     InvalidFrame,
     FrameUnavailable,
     InvalidDetectionType,
+    UnsupportedFeature,
 };
 
 enum class EmotionStatus : std::uint8_t
@@ -139,10 +153,18 @@ private:
     HeartRateResult heartRate_{};
     bool speechToTextEnabled_ = false;
 
+#if UFEEL_ENABLE_EMOTIONS
     std::unique_ptr<EmotionDetector> emotionDetector_;
+#endif
+#if UFEEL_ENABLE_EYE_TRACKING
     std::unique_ptr<EyeTrackingDetector> eyeTrackingDetector_;
+#endif
+#if UFEEL_ENABLE_SPEECH_TO_TEXT
     std::unique_ptr<SpeechToTextDetector> speechToTextDetector_;
+#endif
+#if UFEEL_ENABLE_HEART_RATE
     std::unique_ptr<HeartRateSensorDetector> heartRateSensorDetector_;
+#endif
 };
 
 #endif // DATAPROCESSOR_HPP

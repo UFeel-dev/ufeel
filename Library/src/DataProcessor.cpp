@@ -1,11 +1,15 @@
 #include "DataProcessor.hpp"
 
 #include "Emotions/EmotionDetector.hpp"
+#include "SpeechToText/SpeechToTextDetector.hpp"
+#if UFEEL_ENABLE_EYE_TRACKING
 #include "EyeTracking/EyeTrackingCalibrationModel.hpp"
 #include "EyeTracking/EyeTrackingDetector.hpp"
+#endif
+#if UFEEL_ENABLE_HEART_RATE
 #include "HeartRate/HeartRateDetector.hpp"
 #include "HeartRate/HeartRateSource.hpp"
-#include "SpeechToText/SpeechToTextDetector.hpp"
+#endif
 
 #include <cstdint>
 #include <functional>
@@ -25,11 +29,33 @@ constexpr auto kValidDetectionMask =
     static_cast<std::uint32_t>(Emotions) | static_cast<std::uint32_t>(EyeTracking) |
     static_cast<std::uint32_t>(Speech) | static_cast<std::uint32_t>(HeartRate);
 
+constexpr auto kSupportedDetectionMask = 0U
+#if UFEEL_ENABLE_EMOTIONS
+                                         | static_cast<std::uint32_t>(Emotions)
+#endif
+#if UFEEL_ENABLE_EYE_TRACKING
+                                         | static_cast<std::uint32_t>(EyeTracking)
+#endif
+#if UFEEL_ENABLE_SPEECH_TO_TEXT
+                                         | static_cast<std::uint32_t>(Speech)
+#endif
+#if UFEEL_ENABLE_HEART_RATE
+                                         | static_cast<std::uint32_t>(HeartRate)
+#endif
+    ;
+
 constexpr auto needsVideoFrame(
     std::uint32_t detectionType
 ) noexcept -> bool
 {
-    return hasDetection(detectionType, Emotions) || hasDetection(detectionType, EyeTracking);
+    return
+#if UFEEL_ENABLE_EMOTIONS
+        hasDetection(detectionType, Emotions) ||
+#endif
+#if UFEEL_ENABLE_EYE_TRACKING
+        hasDetection(detectionType, EyeTracking) ||
+#endif
+        false;
 }
 
 auto makeEmotionResult(
@@ -84,13 +110,18 @@ void DataProcessor::initializeDetectors(
     const std::string& modelDirectory, const std::string& speechModelPath
 )
 {
+#if UFEEL_ENABLE_EMOTIONS
     emotionDetector_ = std::make_unique<EmotionDetector>(modelDirectory);
-
+#endif
+#if UFEEL_ENABLE_EYE_TRACKING
     eyeTrackingDetector_ = std::make_unique<EyeTrackingDetector>(modelDirectory);
-
+#endif
+#if UFEEL_ENABLE_SPEECH_TO_TEXT
     speechToTextDetector_ = std::make_unique<SpeechToTextDetector>(speechModelPath);
-
+#endif
+#if UFEEL_ENABLE_HEART_RATE
     heartRateSensorDetector_ = std::make_unique<HeartRateSensorDetector>();
+#endif
 }
 
 auto DataProcessor::updateFrame() -> DataProcessorStatus
@@ -138,6 +169,10 @@ auto DataProcessor::updateFromFrame(
     {
         return DataProcessorStatus::InvalidDetectionType;
     }
+    if ((detectionType & ~kSupportedDetectionMask) != 0)
+    {
+        return DataProcessorStatus::UnsupportedFeature;
+    }
 
     if (needsVideoFrame(detectionType))
     {
@@ -146,11 +181,15 @@ auto DataProcessor::updateFromFrame(
         {
             if (hasDetection(detectionType, Emotions))
             {
+#if UFEEL_ENABLE_EMOTIONS
                 emotions_ = {.status = EmotionStatus::FrameUnavailable};
+#endif
             }
             if (hasDetection(detectionType, EyeTracking))
             {
+#if UFEEL_ENABLE_EYE_TRACKING
                 eyeTracking_ = {.status = EyeTrackingStatus::FrameUnavailable};
+#endif
             }
             return frameStatus;
         }
@@ -158,16 +197,25 @@ auto DataProcessor::updateFromFrame(
 
     if (hasDetection(detectionType, Emotions))
     {
+#if UFEEL_ENABLE_EMOTIONS
         emotions_ = makeEmotionResult(emotionDetector_->process(frame_));
+#else
+        return DataProcessorStatus::UnsupportedFeature;
+#endif
     }
 
     if (hasDetection(detectionType, EyeTracking))
     {
+#if UFEEL_ENABLE_EYE_TRACKING
         eyeTracking_ = eyeTrackingDetector_->process(frame_);
+#else
+        return DataProcessorStatus::UnsupportedFeature;
+#endif
     }
 
     if (hasDetection(detectionType, Speech))
     {
+#if UFEEL_ENABLE_SPEECH_TO_TEXT
         const auto text = speechToTextDetector_->process();
         SpeechToTextStatus status = SpeechToTextStatus::Valid;
         if (!speechToTextEnabled_)
@@ -183,11 +231,18 @@ auto DataProcessor::updateFromFrame(
             .status = status,
             .text = speechToTextEnabled_ ? text : std::string{},
         };
+#else
+        return DataProcessorStatus::UnsupportedFeature;
+#endif
     }
 
     if (hasDetection(detectionType, HeartRate))
     {
+#if UFEEL_ENABLE_HEART_RATE
         heartRate_ = heartRateSensorDetector_->process();
+#else
+        return DataProcessorStatus::UnsupportedFeature;
+#endif
     }
 
     return DataProcessorStatus::Ok;
@@ -201,6 +256,10 @@ auto DataProcessor::update(
     {
         return DataProcessorStatus::InvalidDetectionType;
     }
+    if ((detectionType & ~kSupportedDetectionMask) != 0)
+    {
+        return DataProcessorStatus::UnsupportedFeature;
+    }
 
     if (needsVideoFrame(detectionType))
     {
@@ -209,11 +268,15 @@ auto DataProcessor::update(
         {
             if (hasDetection(detectionType, Emotions))
             {
+#if UFEEL_ENABLE_EMOTIONS
                 emotions_ = {.status = EmotionStatus::FrameUnavailable};
+#endif
             }
             if (hasDetection(detectionType, EyeTracking))
             {
+#if UFEEL_ENABLE_EYE_TRACKING
                 eyeTracking_ = {.status = EyeTrackingStatus::FrameUnavailable};
+#endif
             }
             return frameStatus;
         }
@@ -224,6 +287,9 @@ auto DataProcessor::update(
 
 auto DataProcessor::updateEmotions() -> DataProcessorStatus
 {
+#if !UFEEL_ENABLE_EMOTIONS
+    return DataProcessorStatus::UnsupportedFeature;
+#else
     const auto frameStatus = updateFrame();
     if (frameStatus != DataProcessorStatus::Ok)
     {
@@ -233,12 +299,17 @@ auto DataProcessor::updateEmotions() -> DataProcessorStatus
 
     emotions_ = makeEmotionResult(emotionDetector_->process(frame_));
     return DataProcessorStatus::Ok;
+#endif
 }
 
 auto DataProcessor::updateEmotionsFromFrame(
     const cv::Mat& frame
 ) -> DataProcessorStatus
 {
+#if !UFEEL_ENABLE_EMOTIONS
+    static_cast<void>(frame);
+    return DataProcessorStatus::UnsupportedFeature;
+#else
     const auto frameStatus = setFrame(frame);
     if (frameStatus != DataProcessorStatus::Ok)
     {
@@ -248,6 +319,7 @@ auto DataProcessor::updateEmotionsFromFrame(
 
     emotions_ = makeEmotionResult(emotionDetector_->process(frame_));
     return DataProcessorStatus::Ok;
+#endif
 }
 
 auto DataProcessor::getEmotions() const -> const EmotionResult&
@@ -259,16 +331,24 @@ auto DataProcessor::getEmotionsFromFrame(
     const cv::Mat& frame
 ) const -> EmotionResult
 {
+#if !UFEEL_ENABLE_EMOTIONS
+    static_cast<void>(frame);
+    return {.status = EmotionStatus::FrameUnavailable};
+#else
     if (frame.empty())
     {
         return {.status = EmotionStatus::FrameUnavailable};
     }
 
     return makeEmotionResult(emotionDetector_->process(frame));
+#endif
 }
 
 auto DataProcessor::updateEyeTracking() -> DataProcessorStatus
 {
+#if !UFEEL_ENABLE_EYE_TRACKING
+    return DataProcessorStatus::UnsupportedFeature;
+#else
     const auto frameStatus = updateFrame();
     if (frameStatus != DataProcessorStatus::Ok)
     {
@@ -278,12 +358,17 @@ auto DataProcessor::updateEyeTracking() -> DataProcessorStatus
 
     eyeTracking_ = eyeTrackingDetector_->process(frame_);
     return DataProcessorStatus::Ok;
+#endif
 }
 
 auto DataProcessor::updateEyeTrackingFromFrame(
     const cv::Mat& frame
 ) -> DataProcessorStatus
 {
+#if !UFEEL_ENABLE_EYE_TRACKING
+    static_cast<void>(frame);
+    return DataProcessorStatus::UnsupportedFeature;
+#else
     const auto frameStatus = setFrame(frame);
     if (frameStatus != DataProcessorStatus::Ok)
     {
@@ -293,6 +378,7 @@ auto DataProcessor::updateEyeTrackingFromFrame(
 
     eyeTracking_ = eyeTrackingDetector_->process(frame_);
     return DataProcessorStatus::Ok;
+#endif
 }
 
 auto DataProcessor::getEyeTracking() const -> EyeTrackingResult
@@ -304,16 +390,24 @@ auto DataProcessor::getEyeTrackingFromFrame(
     const cv::Mat& frame
 ) const -> EyeTrackingResult
 {
+#if !UFEEL_ENABLE_EYE_TRACKING
+    static_cast<void>(frame);
+    return {.status = EyeTrackingStatus::Disabled};
+#else
     if (frame.empty())
     {
         return {.status = EyeTrackingStatus::FrameUnavailable};
     }
 
     return eyeTrackingDetector_->process(frame);
+#endif
 }
 
 auto DataProcessor::updateSpeechToText() -> DataProcessorStatus
 {
+#if !UFEEL_ENABLE_SPEECH_TO_TEXT
+    return DataProcessorStatus::UnsupportedFeature;
+#else
     const auto text = speechToTextDetector_->process();
     SpeechToTextStatus status = SpeechToTextStatus::Valid;
     if (!speechToTextEnabled_)
@@ -330,6 +424,7 @@ auto DataProcessor::updateSpeechToText() -> DataProcessorStatus
         .text = speechToTextEnabled_ ? text : std::string{},
     };
     return DataProcessorStatus::Ok;
+#endif
 }
 
 auto DataProcessor::getSpeechToText() const -> const SpeechToTextResult&
@@ -339,54 +434,90 @@ auto DataProcessor::getSpeechToText() const -> const SpeechToTextResult&
 
 void DataProcessor::beginEyeTrackingCalibration()
 {
+#if UFEEL_ENABLE_EYE_TRACKING
     eyeTrackingDetector_->beginCalibration();
+#endif
 }
 
 auto DataProcessor::setEyeTrackingCalibrationTarget(
     float x, float y
 ) -> bool
 {
+#if !UFEEL_ENABLE_EYE_TRACKING
+    static_cast<void>(x);
+    static_cast<void>(y);
+    return false;
+#else
     return eyeTrackingDetector_->setCalibrationTarget(x, y);
+#endif
 }
 
 auto DataProcessor::finishEyeTrackingCalibration() -> bool
 {
+#if !UFEEL_ENABLE_EYE_TRACKING
+    return false;
+#else
     return eyeTrackingDetector_->finishCalibration();
+#endif
 }
 
 void DataProcessor::cancelEyeTrackingCalibration()
 {
+#if UFEEL_ENABLE_EYE_TRACKING
     eyeTrackingDetector_->cancelCalibration();
+#endif
 }
 
 auto DataProcessor::getEyeTrackingCalibrationProgress() const -> CalibrationProgress
 {
+#if !UFEEL_ENABLE_EYE_TRACKING
+    return {};
+#else
     return eyeTrackingDetector_->calibrationProgress();
+#endif
 }
 
 auto DataProcessor::getEyeTrackingCalibrationDiagnostics() const -> CalibrationDiagnostics
 {
+#if !UFEEL_ENABLE_EYE_TRACKING
+    return {};
+#else
     return eyeTrackingDetector_->calibrationDiagnostics();
+#endif
 }
 
 auto DataProcessor::saveEyeTrackingCalibrationProfile(
     const std::string& path
 ) const -> bool
 {
+#if !UFEEL_ENABLE_EYE_TRACKING
+    static_cast<void>(path);
+    return false;
+#else
     return eyeTrackingDetector_->saveCalibrationProfile(path);
+#endif
 }
 
 auto DataProcessor::loadEyeTrackingCalibrationProfile(
     const std::string& path
 ) -> bool
 {
+#if !UFEEL_ENABLE_EYE_TRACKING
+    static_cast<void>(path);
+    return false;
+#else
     return eyeTrackingDetector_->loadCalibrationProfile(path);
+#endif
 }
 
 auto DataProcessor::updateHeartRate() -> DataProcessorStatus
 {
+#if !UFEEL_ENABLE_HEART_RATE
+    return DataProcessorStatus::UnsupportedFeature;
+#else
     heartRate_ = heartRateSensorDetector_->process();
     return DataProcessorStatus::Ok;
+#endif
 }
 
 auto DataProcessor::getHeartRate() const -> HeartRateResult
@@ -398,6 +529,11 @@ void DataProcessor::toggleSpeechToText(
     bool state
 )
 {
+#if !UFEEL_ENABLE_SPEECH_TO_TEXT
+    static_cast<void>(state);
+    speechToTextEnabled_ = false;
+    speechToText_ = {.status = SpeechToTextStatus::Disabled};
+#else
     speechToTextEnabled_ = state;
     if (!state)
     {
@@ -405,6 +541,7 @@ void DataProcessor::toggleSpeechToText(
     }
 
     speechToTextDetector_->toggle(state);
+#endif
 }
 
 DataProcessor::~DataProcessor()

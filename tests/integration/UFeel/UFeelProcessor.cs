@@ -24,16 +24,17 @@ public sealed class UFeelProcessor : IDisposable
 
     public UFeelProcessor(
         string modelDirectory,
-        string speechModelPath,
+        string? speechModelPath,
         string? nativeLibraryPath = null)
     {
         ValidatePath(modelDirectory, nameof(modelDirectory));
-        ValidatePath(speechModelPath, nameof(speechModelPath));
 
         if (!string.IsNullOrWhiteSpace(nativeLibraryPath))
             UFeelNative.ConfigureLibrary(nativeLibraryPath);
 
-        handle = UFeelNative.ufeel_create(modelDirectory, speechModelPath);
+        handle = UFeelNative.ufeel_create(
+            modelDirectory,
+            speechModelPath ?? string.Empty);
 
         if (handle == IntPtr.Zero)
             throw new InvalidOperationException(

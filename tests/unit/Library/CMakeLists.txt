@@ -1,39 +1,61 @@
 add_executable(
     run_library_unit_tests
 
-    TestDataProcessor.cpp
-
-    Emotions/TestEmotionModel.cpp
-    Emotions/TestEmotionDetector.cpp
-    Emotions/TestHeadCalibration.cpp
-    Emotions/TestResNet.cpp
-    Emotions/TestCheckPointLoader.cpp
-
-    Emotions/Inference/TestFaceCrop.cpp
-    Emotions/Inference/TestFaceDetector.cpp
-    Emotions/Inference/TestInferencePipeline.cpp
-
-    EyeTracking/IrisDetection/TestDetectionPostProcess.cpp
-    EyeTracking/IrisDetection/TestModelLoader.cpp
-    EyeTracking/IrisDetection/TestFaceDetection.cpp
-    EyeTracking/IrisDetection/TestFaceLandmark.cpp
-    EyeTracking/IrisDetection/TestIrisLandmark.cpp
-
-    EyeTracking/TestEyeTrackingCalibrationModel.cpp
-    EyeTracking/TestEyeTrackingDetector.cpp
-    EyeTracking/TestEyeTrackingKalmanFilter.cpp
-
     Utils/TestFrameChecker.cpp
-
-    SpeechToText/TestAudioCapture.cpp
-    SpeechToText/TestSpeechRecognizer.cpp
-    SpeechToText/TestSpeechToTextDetector.cpp
-
-    HeartRate/TestHeartRateDetector.cpp
-    HeartRate/TestHeartRateSource.cpp
-    HeartRate/TestSensorHeartRateSource.cpp
-    HeartRate/TestWatchHeartRateSource.cpp
 )
+
+if(NOT UFEEL_ENABLE_EMOTIONS AND NOT UFEEL_ENABLE_EYE_TRACKING AND
+   NOT UFEEL_ENABLE_SPEECH_TO_TEXT AND NOT UFEEL_ENABLE_HEART_RATE)
+    target_sources(run_library_unit_tests PRIVATE TestFeatureSelection.cpp)
+endif()
+
+if(UFEEL_ENABLE_EMOTIONS AND UFEEL_ENABLE_EYE_TRACKING AND
+   UFEEL_ENABLE_SPEECH_TO_TEXT AND UFEEL_ENABLE_HEART_RATE)
+    target_sources(run_library_unit_tests PRIVATE TestDataProcessor.cpp)
+endif()
+
+if(UFEEL_ENABLE_EMOTIONS)
+    target_sources(run_library_unit_tests PRIVATE
+        Emotions/TestEmotionModel.cpp
+        Emotions/TestEmotionDetector.cpp
+        Emotions/TestHeadCalibration.cpp
+        Emotions/TestResNet.cpp
+        Emotions/TestCheckPointLoader.cpp
+        Emotions/Inference/TestFaceCrop.cpp
+        Emotions/Inference/TestFaceDetector.cpp
+        Emotions/Inference/TestInferencePipeline.cpp
+    )
+endif()
+
+if(UFEEL_ENABLE_EYE_TRACKING)
+    target_sources(run_library_unit_tests PRIVATE
+        EyeTracking/IrisDetection/TestDetectionPostProcess.cpp
+        EyeTracking/IrisDetection/TestModelLoader.cpp
+        EyeTracking/IrisDetection/TestFaceDetection.cpp
+        EyeTracking/IrisDetection/TestFaceLandmark.cpp
+        EyeTracking/IrisDetection/TestIrisLandmark.cpp
+        EyeTracking/TestEyeTrackingCalibrationModel.cpp
+        EyeTracking/TestEyeTrackingDetector.cpp
+        EyeTracking/TestEyeTrackingKalmanFilter.cpp
+    )
+endif()
+
+if(UFEEL_ENABLE_SPEECH_TO_TEXT)
+    target_sources(run_library_unit_tests PRIVATE
+        SpeechToText/TestAudioCapture.cpp
+        SpeechToText/TestSpeechRecognizer.cpp
+        SpeechToText/TestSpeechToTextDetector.cpp
+    )
+endif()
+
+if(UFEEL_ENABLE_HEART_RATE)
+    target_sources(run_library_unit_tests PRIVATE
+        HeartRate/TestHeartRateDetector.cpp
+        HeartRate/TestHeartRateSource.cpp
+        HeartRate/TestSensorHeartRateSource.cpp
+        HeartRate/TestWatchHeartRateSource.cpp
+    )
+endif()
 
 target_link_libraries(
     run_library_unit_tests
@@ -41,6 +63,14 @@ target_link_libraries(
         GTest::gtest_main
         ufeel_detection_library
 )
+
+if(UFEEL_ENABLE_EYE_TRACKING)
+    target_link_libraries(
+        run_library_unit_tests
+        PRIVATE
+            "$<LINK_GROUP:RESCAN,ufeel_feature_eye_tracking,${TFLITE_STATIC_LIBRARIES}>"
+    )
+endif()
 
 target_include_directories(run_library_unit_tests PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../include"

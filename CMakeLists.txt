@@ -12,6 +12,10 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH FALSE)
 option(CLANG_TIDY_COLOR "Force colored clang-tidy diagnostics" ON)
 option(ENABLE_CLANG_TIDY "Run clang-tidy as part of the compilation" OFF)
 option(CLANG_TIDY_AS_ERRORS "Honour the WarningsAsErrors list in .clang-tidy" ON)
+option(UFEEL_ENABLE_EMOTIONS "Build emotion detection support" ON)
+option(UFEEL_ENABLE_EYE_TRACKING "Build eye tracking support" ON)
+option(UFEEL_ENABLE_SPEECH_TO_TEXT "Build speech-to-text support" ON)
+option(UFEEL_ENABLE_HEART_RATE "Build heart-rate support" ON)
 
 if(ENABLE_CLANG_TIDY)
     find_program(CLANG_TIDY_EXE NAMES clang-tidy)
@@ -50,58 +54,74 @@ set(PORTAUDIO_DIR "${THIRDPARTY_DIR}/portaudio")
 set(JSON_DIR "${THIRDPARTY_DIR}/json")
 set(YAML_CPP_DIR "${THIRDPARTY_DIR}/yaml-cpp")
 
-foreach(DIR IN ITEMS
-    "${MODELS_DIR}"
-    "${OPENCV_DIR}"
-    "${LIBTORCH_DIR}"
-    "${TFLITE_DIR}"
-    "${VOSK_DIR}"
-    "${PORTAUDIO_DIR}"
-    "${JSON_DIR}"
-    "${YAML_CPP_DIR}"
-)
+set(UFEEL_REQUIRED_DIRS "${MODELS_DIR}")
+list(APPEND UFEEL_REQUIRED_DIRS "${OPENCV_DIR}")
+if(UFEEL_ENABLE_EMOTIONS OR UFEEL_ENABLE_EYE_TRACKING)
+    list(APPEND UFEEL_REQUIRED_DIRS "${JSON_DIR}")
+endif()
+if(UFEEL_ENABLE_EMOTIONS)
+    list(APPEND UFEEL_REQUIRED_DIRS "${LIBTORCH_DIR}")
+endif()
+if(UFEEL_ENABLE_EYE_TRACKING)
+    list(APPEND UFEEL_REQUIRED_DIRS "${TFLITE_DIR}")
+endif()
+if(UFEEL_ENABLE_SPEECH_TO_TEXT)
+    list(APPEND UFEEL_REQUIRED_DIRS "${VOSK_DIR}" "${PORTAUDIO_DIR}")
+endif()
+if(UFEEL_ENABLE_EMOTIONS)
+    list(APPEND UFEEL_REQUIRED_DIRS "${YAML_CPP_DIR}")
+endif()
+
+foreach(DIR IN LISTS UFEEL_REQUIRED_DIRS)
     if(NOT IS_DIRECTORY "${DIR}")
         message(FATAL_ERROR "Required directory not found: ${DIR}")
     endif()
 endforeach()
 
-if(NOT EXISTS "${YAML_CPP_DIR}/CMakeLists.txt")
+if(UFEEL_ENABLE_EMOTIONS AND
+   NOT EXISTS "${YAML_CPP_DIR}/CMakeLists.txt")
     message(FATAL_ERROR "yaml-cpp submodule is not initialized. Run git submodule update --init --recursive")
 endif()
 
-set(Torch_DIR "${LIBTORCH_DIR}/share/cmake/Torch")
-find_package(Torch REQUIRED)
-find_package(CURL REQUIRED)
+if(UFEEL_ENABLE_EMOTIONS)
+    set(Torch_DIR "${LIBTORCH_DIR}/share/cmake/Torch")
+    find_package(Torch REQUIRED)
+endif()
 
-include(FetchContent)
+if(UFEEL_ENABLE_HEART_RATE)
+    find_package(CURL REQUIRED)
+    include(FetchContent)
 
-set(CPR_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(CPR_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
-set(CPR_ENABLE_SSL OFF CACHE BOOL "" FORCE)
-set(CPR_USE_EXISTING_CURL_TARGET ON CACHE BOOL "" FORCE)
+    set(CPR_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(CPR_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+    set(CPR_ENABLE_SSL OFF CACHE BOOL "" FORCE)
+    set(CPR_USE_EXISTING_CURL_TARGET ON CACHE BOOL "" FORCE)
 
-FetchContent_Declare(
-    cpr
-    URL https://github.com/libcpr/cpr/archive/refs/tags/1.15.1.tar.gz
-    URL_HASH SHA256=c2fc62a030c4ca5d7c3517e8068531297f938bf4ab52bf951d4fc9bbc9222716
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-)
-FetchContent_MakeAvailable(cpr)
+    FetchContent_Declare(
+        cpr
+        URL https://github.com/libcpr/cpr/archive/refs/tags/1.15.1.tar.gz
+        URL_HASH SHA256=c2fc62a030c4ca5d7c3517e8068531297f938bf4ab52bf951d4fc9bbc9222716
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    )
+    FetchContent_MakeAvailable(cpr)
+endif()
 
 find_program(PATCHELF_EXECUTABLE NAMES patchelf REQUIRED)
 
-set(YAML_BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE)
-set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
-set(YAML_CPP_BUILD_CONTRIB OFF CACHE BOOL "" FORCE)
+if(UFEEL_ENABLE_EMOTIONS)
+    set(YAML_BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE)
+    set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+    set(YAML_CPP_BUILD_CONTRIB OFF CACHE BOOL "" FORCE)
 
-add_subdirectory(
-    "${YAML_CPP_DIR}"
-    "${CMAKE_BINARY_DIR}/yaml-cpp"
-)
+    add_subdirectory(
+        "${YAML_CPP_DIR}"
+        "${CMAKE_BINARY_DIR}/yaml-cpp"
+    )
 
-if(NOT TARGET yaml-cpp::yaml-cpp)
-    message(FATAL_ERROR "yaml-cpp::yaml-cpp target was not created")
+    if(NOT TARGET yaml-cpp::yaml-cpp)
+        message(FATAL_ERROR "yaml-cpp::yaml-cpp target was not created")
+    endif()
 endif()
 
 set(OPENCV_LIBRARIES
@@ -121,6 +141,9 @@ file(GLOB_RECURSE TFLITE_DEPENDENCY_LIBRARIES
 set(TFLITE_STATIC_LIBRARIES
     "${TFLITE_DIR}/lib/libtensorflow-lite.a"
     ${TFLITE_DEPENDENCY_LIBRARIES}
+    "${LIBTORCH_DIR}/lib/libpthreadpool.a"
+    # ! required by tflite, provided by libtorch
+    # TODO: find a better way to handle this dependency, maybe by building tflite with pthreadpool support disabled
 )
 
 set(VOSK_KALDI_LIBRARIES
@@ -149,36 +172,83 @@ set(VOSK_KALDI_LIBRARIES
     "${VOSK_DIR}/lib/openblas/libopenblas-r0.3.20.a"
 )
 
+if(UFEEL_ENABLE_EMOTIONS)
+    add_library(ufeel_feature_emotions STATIC
+        ${LIBRARY_DIR}/src/Emotions/ResNet.cpp
+        ${LIBRARY_DIR}/src/Emotions/EmotionModel.cpp
+        ${LIBRARY_DIR}/src/Emotions/CheckPointLoader.cpp
+        ${LIBRARY_DIR}/src/Emotions/Inference/HeadCalibration.cpp
+        ${LIBRARY_DIR}/src/Emotions/Inference/FaceDetector.cpp
+        ${LIBRARY_DIR}/src/Emotions/Inference/FaceCrop.cpp
+        ${LIBRARY_DIR}/src/Emotions/Inference/InferencePipeline.cpp
+        ${LIBRARY_DIR}/src/Emotions/EmotionDetector.cpp
+    )
+endif()
+
+if(UFEEL_ENABLE_EYE_TRACKING)
+    add_library(ufeel_feature_eye_tracking STATIC
+        ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/DetectionPostProcess.cpp
+        ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/FaceDetection.cpp
+        ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/FaceLandmark.cpp
+        ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/IrisLandmark.cpp
+        ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/ModelLoader.cpp
+        ${LIBRARY_DIR}/src/EyeTracking/EyeTrackingCalibrationModel.cpp
+        ${LIBRARY_DIR}/src/EyeTracking/EyeTrackingDetector.cpp
+        ${LIBRARY_DIR}/src/EyeTracking/EyeTrackingKalmanFilter.cpp
+    )
+endif()
+
+if(UFEEL_ENABLE_SPEECH_TO_TEXT)
+    add_library(ufeel_feature_speech_to_text STATIC
+        ${LIBRARY_DIR}/src/SpeechToText/AudioCapture.cpp
+        ${LIBRARY_DIR}/src/SpeechToText/SpeechRecognizer.cpp
+        ${LIBRARY_DIR}/src/SpeechToText/SpeechToTextDetector.cpp
+    )
+endif()
+
+if(UFEEL_ENABLE_HEART_RATE)
+    add_library(ufeel_feature_heart_rate STATIC
+        ${LIBRARY_DIR}/src/HeartRate/HeartRateDetector.cpp
+        ${LIBRARY_DIR}/src/HeartRate/HeartRateSource.cpp
+        ${LIBRARY_DIR}/src/HeartRate/SensorHeartRateSource.cpp
+        ${LIBRARY_DIR}/src/HeartRate/WatchHeartRateSource.cpp
+    )
+endif()
+
 add_library(ufeel_detection_library STATIC
     ${LIBRARY_DIR}/src/DataProcessor.cpp
-
-    ${LIBRARY_DIR}/src/Emotions/ResNet.cpp
-    ${LIBRARY_DIR}/src/Emotions/EmotionModel.cpp
-    ${LIBRARY_DIR}/src/Emotions/CheckPointLoader.cpp
-    ${LIBRARY_DIR}/src/Emotions/Inference/HeadCalibration.cpp
-    ${LIBRARY_DIR}/src/Emotions/Inference/FaceDetector.cpp
-    ${LIBRARY_DIR}/src/Emotions/Inference/FaceCrop.cpp
-    ${LIBRARY_DIR}/src/Emotions/Inference/InferencePipeline.cpp
-    ${LIBRARY_DIR}/src/Emotions/EmotionDetector.cpp
-
-    ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/DetectionPostProcess.cpp
-    ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/FaceDetection.cpp
-    ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/FaceLandmark.cpp
-    ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/IrisLandmark.cpp
-    ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/ModelLoader.cpp
-    ${LIBRARY_DIR}/src/EyeTracking/EyeTrackingCalibrationModel.cpp
-    ${LIBRARY_DIR}/src/EyeTracking/EyeTrackingDetector.cpp
-    ${LIBRARY_DIR}/src/EyeTracking/EyeTrackingKalmanFilter.cpp
-
-    ${LIBRARY_DIR}/src/SpeechToText/AudioCapture.cpp
-    ${LIBRARY_DIR}/src/SpeechToText/SpeechRecognizer.cpp
-    ${LIBRARY_DIR}/src/SpeechToText/SpeechToTextDetector.cpp
-
-    ${LIBRARY_DIR}/src/HeartRate/HeartRateDetector.cpp
-    ${LIBRARY_DIR}/src/HeartRate/HeartRateSource.cpp
-    ${LIBRARY_DIR}/src/HeartRate/SensorHeartRateSource.cpp
-    ${LIBRARY_DIR}/src/HeartRate/WatchHeartRateSource.cpp
 )
+
+set(UFEEL_FEATURE_TARGETS)
+if(UFEEL_ENABLE_EMOTIONS)
+    list(APPEND UFEEL_FEATURE_TARGETS ufeel_feature_emotions)
+endif()
+if(UFEEL_ENABLE_EYE_TRACKING)
+    list(APPEND UFEEL_FEATURE_TARGETS ufeel_feature_eye_tracking)
+endif()
+if(UFEEL_ENABLE_SPEECH_TO_TEXT)
+    list(APPEND UFEEL_FEATURE_TARGETS ufeel_feature_speech_to_text)
+endif()
+if(UFEEL_ENABLE_HEART_RATE)
+    list(APPEND UFEEL_FEATURE_TARGETS ufeel_feature_heart_rate)
+endif()
+
+foreach(FEATURE_TARGET IN LISTS UFEEL_FEATURE_TARGETS)
+    target_include_directories(${FEATURE_TARGET}
+        PUBLIC
+            "${LIBRARY_DIR}/include"
+    )
+    target_include_directories(${FEATURE_TARGET}
+        SYSTEM PUBLIC
+            "${OPENCV_DIR}/include/opencv4"
+            ${TORCH_INCLUDE_DIRS}
+            "${TFLITE_DIR}/include"
+            "${VOSK_DIR}/include"
+            "${PORTAUDIO_DIR}/include"
+            "${JSON_DIR}/include"
+    )
+    target_compile_options(${FEATURE_TARGET} PRIVATE ${TORCH_CXX_FLAGS})
+endforeach()
 
 target_include_directories(ufeel_detection_library
     PUBLIC
@@ -197,24 +267,58 @@ target_include_directories(ufeel_detection_library
 
 target_link_libraries(ufeel_detection_library
     PUBLIC
-        ${OPENCV_LIBRARIES}
-        ${TORCH_LIBRARIES}
-        "-Wl,--start-group"
-        ${TFLITE_STATIC_LIBRARIES}
-        "-Wl,--end-group"
-        "-Wl,--start-group"
-        "${VOSK_DIR}/lib/libvosk.a"
-        ${VOSK_KALDI_LIBRARIES}
-        "-Wl,--end-group"
-        "${PORTAUDIO_DIR}/lib/libportaudio.so"
-        yaml-cpp::yaml-cpp
-        cpr::cpr
+        "${OPENCV_DIR}/lib/libopencv_core.so"
+        "${OPENCV_DIR}/lib/libopencv_videoio.so"
+        "${OPENCV_DIR}/lib/libopencv_imgproc.so"
+        $<$<BOOL:${UFEEL_ENABLE_EMOTIONS}>:ufeel_feature_emotions>
+        $<$<BOOL:${UFEEL_ENABLE_EYE_TRACKING}>:ufeel_feature_eye_tracking>
+        $<$<BOOL:${UFEEL_ENABLE_SPEECH_TO_TEXT}>:ufeel_feature_speech_to_text>
+        $<$<BOOL:${UFEEL_ENABLE_HEART_RATE}>:ufeel_feature_heart_rate>
 )
 
 target_compile_options(ufeel_detection_library
     PRIVATE
         ${TORCH_CXX_FLAGS}
 )
+
+target_compile_definitions(ufeel_detection_library
+    PUBLIC
+        UFEEL_ENABLE_EMOTIONS=$<BOOL:${UFEEL_ENABLE_EMOTIONS}>
+        UFEEL_ENABLE_EYE_TRACKING=$<BOOL:${UFEEL_ENABLE_EYE_TRACKING}>
+        UFEEL_ENABLE_SPEECH_TO_TEXT=$<BOOL:${UFEEL_ENABLE_SPEECH_TO_TEXT}>
+        UFEEL_ENABLE_HEART_RATE=$<BOOL:${UFEEL_ENABLE_HEART_RATE}>
+)
+
+if(UFEEL_ENABLE_EMOTIONS)
+    target_link_libraries(ufeel_feature_emotions
+        PUBLIC
+            ${OPENCV_LIBRARIES}
+            ${TORCH_LIBRARIES}
+            yaml-cpp::yaml-cpp
+    )
+endif()
+
+if(UFEEL_ENABLE_EYE_TRACKING)
+    target_link_libraries(ufeel_feature_eye_tracking PUBLIC ${OPENCV_LIBRARIES})
+endif()
+
+if(UFEEL_ENABLE_SPEECH_TO_TEXT)
+    target_link_libraries(ufeel_feature_speech_to_text
+        PUBLIC
+            "-Wl,--start-group"
+            "${VOSK_DIR}/lib/libvosk.a"
+            ${VOSK_KALDI_LIBRARIES}
+            "-Wl,--end-group"
+            "${PORTAUDIO_DIR}/lib/libportaudio.so"
+    )
+endif()
+
+if(UFEEL_ENABLE_HEART_RATE)
+    target_link_libraries(ufeel_feature_heart_rate
+        PUBLIC
+            cpr::cpr
+    )
+endif()
 
 option(UFEEL_ENABLE_COVERAGE "Enable LLVM source-based coverage" OFF)
 
@@ -255,37 +359,50 @@ endif()
 install(
     FILES
         "${OPENCV_DIR}/lib/libopencv_core.so.4.8.1"
+        "${OPENCV_DIR}/lib/libopencv_videoio.so.4.8.1"
         "${OPENCV_DIR}/lib/libopencv_imgproc.so.4.8.1"
         "${OPENCV_DIR}/lib/libopencv_imgcodecs.so.4.8.1"
-        "${OPENCV_DIR}/lib/libopencv_dnn.so.4.8.1"
-        "${OPENCV_DIR}/lib/libopencv_objdetect.so.4.8.1"
-        "${OPENCV_DIR}/lib/libopencv_videoio.so.4.8.1"
-        "${OPENCV_DIR}/lib/libopencv_calib3d.so.4.8.1"
-        "${OPENCV_DIR}/lib/libopencv_features2d.so.4.8.1"
-        "${OPENCV_DIR}/lib/libopencv_flann.so.4.8.1"
     DESTINATION dependencies
 )
 
-install(
-    FILES
-        "${LIBTORCH_DIR}/lib/libtorch.so"
-        "${LIBTORCH_DIR}/lib/libtorch_cpu.so"
-        "${LIBTORCH_DIR}/lib/libc10.so"
-        "${LIBTORCH_DIR}/lib/libgomp-98b21ff3.so.1"
-    DESTINATION dependencies
-)
+if(UFEEL_ENABLE_EMOTIONS OR UFEEL_ENABLE_EYE_TRACKING)
+    install(
+        FILES
+            "${OPENCV_DIR}/lib/libopencv_dnn.so.4.8.1"
+            "${OPENCV_DIR}/lib/libopencv_objdetect.so.4.8.1"
+            "${OPENCV_DIR}/lib/libopencv_calib3d.so.4.8.1"
+            "${OPENCV_DIR}/lib/libopencv_features2d.so.4.8.1"
+            "${OPENCV_DIR}/lib/libopencv_flann.so.4.8.1"
+        DESTINATION dependencies
+    )
+endif()
 
-install(
-    FILES
-        "${PORTAUDIO_DIR}/lib/libportaudio.so.2.0.0"
-    DESTINATION dependencies
-)
+if(UFEEL_ENABLE_EMOTIONS)
+    install(
+        FILES
+            "${LIBTORCH_DIR}/lib/libtorch.so"
+            "${LIBTORCH_DIR}/lib/libtorch_cpu.so"
+            "${LIBTORCH_DIR}/lib/libc10.so"
+            "${LIBTORCH_DIR}/lib/libgomp-98b21ff3.so.1"
+        DESTINATION dependencies
+    )
+endif()
 
-install(
-    TARGETS yaml-cpp
-    LIBRARY DESTINATION dependencies
-    RUNTIME DESTINATION dependencies
-)
+if(UFEEL_ENABLE_SPEECH_TO_TEXT)
+    install(
+        FILES
+            "${PORTAUDIO_DIR}/lib/libportaudio.so.2.0.0"
+        DESTINATION dependencies
+    )
+endif()
+
+if(UFEEL_ENABLE_EMOTIONS)
+    install(
+        TARGETS yaml-cpp
+        LIBRARY DESTINATION dependencies
+        RUNTIME DESTINATION dependencies
+    )
+endif()
 
 configure_file(
     "${CMAKE_SOURCE_DIR}/cmake/ConfigureDependencies.cmake.in"
@@ -297,10 +414,15 @@ install(
     SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/ConfigureDependencies.cmake"
 )
 
-install(
-    DIRECTORY "${MODELS_DIR}/"
-    DESTINATION models
-)
+if(UFEEL_ENABLE_EMOTIONS)
+    install(DIRECTORY "${MODELS_DIR}/Emotions/" DESTINATION models/Emotions)
+endif()
+if(UFEEL_ENABLE_EYE_TRACKING)
+    install(DIRECTORY "${MODELS_DIR}/EyeTracking/" DESTINATION models/EyeTracking)
+endif()
+if(UFEEL_ENABLE_SPEECH_TO_TEXT)
+    install(DIRECTORY "${MODELS_DIR}/SpeechToText/" DESTINATION models/SpeechToText)
+endif()
 
 option(UFEEL_BUILD_TESTS "Build unit tests" ON)
 
@@ -310,3 +432,5 @@ if(UFEEL_BUILD_TESTS)
 endif()
 
 # TODO: improve device discovery logic
+
+# TODO: remove the 'k' usage for constants -> find a cleaner solution

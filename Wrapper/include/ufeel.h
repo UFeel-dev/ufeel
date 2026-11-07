@@ -48,6 +48,7 @@ typedef enum
     UFEEL_STATUS_INTERNAL_ERROR = 9,
     UFEEL_STATUS_INVALID_PROCESSOR = 10,
     UFEEL_STATUS_INVALID_FRAME = 11,
+    UFEEL_STATUS_UNSUPPORTED_FEATURE = 12,
 } UFeelStatus;
 
 //? EMOTIONS
@@ -66,7 +67,8 @@ typedef enum
     UFEEL_EMOTIONS_STATUS_VALID = 1,
     UFEEL_EMOTIONS_STATUS_FRAME_UNAVAILABLE = 2,
     UFEEL_EMOTIONS_STATUS_INVALID_PROCESSOR = 3,
-    UFEEL_EMOTIONS_STATUS_INTERNAL_ERROR = 4
+    UFEEL_EMOTIONS_STATUS_INTERNAL_ERROR = 4,
+    UFEEL_EMOTIONS_STATUS_UNSUPPORTED_FEATURE = 5
 } UFeelEmotionsStatus;
 
 /** Estimated emotions and diagnostics for the current video frame. `status` is a
@@ -186,7 +188,7 @@ typedef struct
 
 /** Creates a processor. Returns NULL if initialization fails. */
 UFEEL_API UFeelProcessor*
-ufeel_create(const char* utf8ModelDirectory, const char* utf8SpeechModelPath);
+ufeel_create(const char* utf8ModelDirectory, const char* utf8SpeechModelPath); // ! the speech model path should be allowed to be NULL if speech is disabled
 
 /** Destroys a processor created by ufeel_create(). Accepts NULL. */
 UFEEL_API void ufeel_destroy(UFeelProcessor* processor);

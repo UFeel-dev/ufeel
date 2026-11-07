@@ -48,6 +48,18 @@ TEST(
         processor.updateFromFrame(1U << 8U, cv::Mat{}), DataProcessorStatus::InvalidDetectionType
     );
     EXPECT_EQ(processor.update(1U << 8U), DataProcessorStatus::InvalidDetectionType);
+#if !UFEEL_ENABLE_EMOTIONS
+    EXPECT_EQ(processor.update(Emotions), DataProcessorStatus::UnsupportedFeature);
+#endif
+#if !UFEEL_ENABLE_EYE_TRACKING
+    EXPECT_EQ(processor.update(EyeTracking), DataProcessorStatus::UnsupportedFeature);
+#endif
+#if !UFEEL_ENABLE_SPEECH_TO_TEXT
+    EXPECT_EQ(processor.update(Speech), DataProcessorStatus::UnsupportedFeature);
+#endif
+#if !UFEEL_ENABLE_HEART_RATE
+    EXPECT_EQ(processor.update(HeartRate), DataProcessorStatus::UnsupportedFeature);
+#endif
 }
 
 TEST(
