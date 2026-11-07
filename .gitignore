@@ -39,7 +39,6 @@
 # Build directories
 build/
 Build/
-build-*/
 
 # CMake generated files
 CMakeFiles/
@@ -122,7 +121,6 @@ nunit-*.xml
 
 # Packaging
 package
-package-test-matrix
 
 # IDE
 

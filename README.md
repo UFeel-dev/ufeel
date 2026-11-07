@@ -102,27 +102,36 @@ git lfs pull
 ```text
 .
 ├── build.sh
-├── Library/       # Native sources
-├── Wrapper/       # C++ wrapper
+├── Tools/            # Development tools
+├── Library/          # Native sources
+├── Wrapper/          # C++ wrapper
 ├── tests/
 │   ├── unit/
 │   │   ├── Library/  # Native library unit tests
 │   │   └── Wrapper/  # Native wrapper unit tests
 │   └── integration/  # C# integration test
-├── 3rdparty/      # External dependencies
-├── build/         # Generated build files
-├── docker/        # Docker environment
-└── docs/          # Feature documentation
+├── 3rdparty/         # External dependencies
+├── build/            # Configuration-specific generated build files
+├── docker/           # Docker environment
+└── docs/             # Feature documentation
 ```
 
 ## Build and Test
 
 ```bash
-./build.sh all                # Configure, build, and package
-./build.sh run-unit-tests     # Run native unit tests and generate coverage
-./build.sh test               # Run unit and integration tests
-./build.sh run-feature-matrix # Test all features and each feature in isolation
-./build.sh format             # Format C++ sources and tests
+./build.sh all                 # Configure, build, and package (Release)
+./build.sh all --config Debug  # Use a Debug build
+./build.sh run-unit-tests      # Run native unit tests and coverage
+./build.sh test                # Run native and integration tests
+./build.sh run-feature-matrix  # Test every feature configuration
+./build.sh format              # Format C++ sources and tests
+./build.sh clean               # Remove generated build/package files
+```
+
+The complete command list is available with:
+
+```bash
+./build.sh --help
 ```
 
 ### Selecting features
