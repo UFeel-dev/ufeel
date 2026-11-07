@@ -50,44 +50,59 @@ foreach(LIB IN LISTS BUNDLED_LIBS)
     endif()
 endforeach()
 
-file(GLOB OPENCV_LIBS
-    "${DEPENDENCIES_DIR}/libopencv_*.so.4.8.1"
-)
-
-foreach(LIB IN LISTS OPENCV_LIBS)
-    get_filename_component(NAME "${LIB}" NAME)
-    string(REGEX REPLACE "\\.so\\.4\\.8\\.1$" ".so.408" SONAME "${NAME}")
-
-    file(REMOVE "${DEPENDENCIES_DIR}/${SONAME}")
-
-    execute_process(
-        COMMAND "${CMAKE_COMMAND}" -E create_symlink
-            "${NAME}"
-            "${DEPENDENCIES_DIR}/${SONAME}"
-        RESULT_VARIABLE RESULT
+if(@UFEEL_ENABLE_HEART_RATE@)
+    file(GET_RUNTIME_DEPENDENCIES
+        RESOLVED_DEPENDENCIES_VAR CURL_DEPENDENCIES
+        UNRESOLVED_DEPENDENCIES_VAR CURL_UNRESOLVED
+        LIBRARIES "${DEPENDENCIES_DIR}/libcurl.so.4"
+        DIRECTORIES "${DEPENDENCIES_DIR}"
     )
 
-    if(NOT RESULT EQUAL 0)
-        message(FATAL_ERROR "Failed to create symlink for ${LIB}")
-    endif()
-endforeach()
+    foreach(DEPENDENCY IN LISTS CURL_DEPENDENCIES)
+        get_filename_component(NAME "${DEPENDENCY}" NAME)
+        if(NOT NAME MATCHES "^(ld-linux|libc|libm|libdl|libpthread|librt|libgcc_s|libstdc\\+\\+|linux-vdso)")
+            file(COPY "${DEPENDENCY}" DESTINATION "${DEPENDENCIES_DIR}"
+                FOLLOW_SYMLINK_CHAIN)
+        endif()
+    endforeach()
 
-if(@UFEEL_ENABLE_SPEECH_TO_TEXT@)
-    file(REMOVE "${DEPENDENCIES_DIR}/libportaudio.so.2")
-
-    execute_process(
-        COMMAND "${CMAKE_COMMAND}" -E create_symlink
-            libportaudio.so.2.0.0
-            "${DEPENDENCIES_DIR}/libportaudio.so.2"
-        RESULT_VARIABLE RESULT
+    file(GLOB CURL_BUNDLED_LIBS
+        "${DEPENDENCIES_DIR}/*.so"
+        "${DEPENDENCIES_DIR}/*.so.*"
     )
-
-    if(NOT RESULT EQUAL 0)
-        message(FATAL_ERROR "Failed to create PortAudio symlink")
-    endif()
+    foreach(LIB IN LISTS CURL_BUNDLED_LIBS)
+        if(NOT IS_SYMLINK "${LIB}")
+            execute_process(
+                COMMAND "${PATCHELF_EXECUTABLE}"
+                    --set-rpath "$ORIGIN" "${LIB}"
+                RESULT_VARIABLE RESULT
+                ERROR_VARIABLE PATCHELF_ERROR
+            )
+            if(NOT RESULT EQUAL 0)
+                message(FATAL_ERROR
+                    "Failed to set curl dependency RUNPATH: ${PATCHELF_ERROR}"
+                )
+            endif()
+        endif()
+    endforeach()
 endif()
 
 if(@UFEEL_ENABLE_EMOTIONS@ AND
    NOT EXISTS "${DEPENDENCIES_DIR}/libyaml-cpp.so.0.7")
-    message(FATAL_ERROR "Bundled yaml-cpp SONAME symlink is missing")
+    message(FATAL_ERROR "Bundled yaml-cpp SONAME file is missing")
+endif()
+
+if(@UFEEL_ENABLE_EMOTIONS@ AND
+   NOT EXISTS "${DEPENDENCIES_DIR}/libgomp-98b21ff3.so.1")
+    message(FATAL_ERROR "Bundled libgomp SONAME file is missing")
+endif()
+
+if(@UFEEL_ENABLE_SPEECH_TO_TEXT@ AND
+   NOT EXISTS "${DEPENDENCIES_DIR}/libportaudio.so.2")
+    message(FATAL_ERROR "Bundled PortAudio SONAME file is missing")
+endif()
+
+if(@UFEEL_ENABLE_HEART_RATE@ AND
+   NOT EXISTS "${DEPENDENCIES_DIR}/libcurl.so.4")
+    message(FATAL_ERROR "Bundled curl SONAME file is missing")
 endif()

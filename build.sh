@@ -239,13 +239,16 @@ runtime_path()
     local build_directory="$1"
     local package_directory="${2:-}"
     local -a paths=()
-    [[ -n "$package_directory" ]] && paths+=("$package_directory/dependencies")
-    paths+=(
-        "$ROOT_DIR/3rdparty/opencv/lib"
-        "$ROOT_DIR/3rdparty/libtorch/lib"
-        "$ROOT_DIR/3rdparty/portaudio/lib"
-        "$build_directory/yaml-cpp"
-    )
+    if [[ -n "$package_directory" ]]; then
+        paths+=("$package_directory/dependencies")
+    else
+        paths+=(
+            "$ROOT_DIR/3rdparty/opencv/lib"
+            "$ROOT_DIR/3rdparty/libtorch/lib"
+            "$ROOT_DIR/3rdparty/portaudio/lib"
+            "$build_directory/yaml-cpp"
+        )
+    fi
     local path
     local -a existing=()
     for path in "${paths[@]}"; do

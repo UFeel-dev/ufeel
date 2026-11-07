@@ -359,9 +359,25 @@ endif()
 install(
     FILES
         "${OPENCV_DIR}/lib/libopencv_core.so.4.8.1"
+    RENAME libopencv_core.so.408
+    DESTINATION dependencies
+)
+install(
+    FILES
         "${OPENCV_DIR}/lib/libopencv_videoio.so.4.8.1"
+    RENAME libopencv_videoio.so.408
+    DESTINATION dependencies
+)
+install(
+    FILES
         "${OPENCV_DIR}/lib/libopencv_imgproc.so.4.8.1"
+    RENAME libopencv_imgproc.so.408
+    DESTINATION dependencies
+)
+install(
+    FILES
         "${OPENCV_DIR}/lib/libopencv_imgcodecs.so.4.8.1"
+    RENAME libopencv_imgcodecs.so.408
     DESTINATION dependencies
 )
 
@@ -369,10 +385,31 @@ if(UFEEL_ENABLE_EMOTIONS OR UFEEL_ENABLE_EYE_TRACKING)
     install(
         FILES
             "${OPENCV_DIR}/lib/libopencv_dnn.so.4.8.1"
+        RENAME libopencv_dnn.so.408
+        DESTINATION dependencies
+    )
+    install(
+        FILES
             "${OPENCV_DIR}/lib/libopencv_objdetect.so.4.8.1"
+        RENAME libopencv_objdetect.so.408
+        DESTINATION dependencies
+    )
+    install(
+        FILES
             "${OPENCV_DIR}/lib/libopencv_calib3d.so.4.8.1"
+        RENAME libopencv_calib3d.so.408
+        DESTINATION dependencies
+    )
+    install(
+        FILES
             "${OPENCV_DIR}/lib/libopencv_features2d.so.4.8.1"
+        RENAME libopencv_features2d.so.408
+        DESTINATION dependencies
+    )
+    install(
+        FILES
             "${OPENCV_DIR}/lib/libopencv_flann.so.4.8.1"
+        RENAME libopencv_flann.so.408
         DESTINATION dependencies
     )
 endif()
@@ -383,15 +420,26 @@ if(UFEEL_ENABLE_EMOTIONS)
             "${LIBTORCH_DIR}/lib/libtorch.so"
             "${LIBTORCH_DIR}/lib/libtorch_cpu.so"
             "${LIBTORCH_DIR}/lib/libc10.so"
-            "${LIBTORCH_DIR}/lib/libgomp-98b21ff3.so.1"
+        DESTINATION dependencies
+    )
+    install(
+        FILES "${LIBTORCH_DIR}/lib/libgomp-98b21ff3.so.1"
         DESTINATION dependencies
     )
 endif()
 
 if(UFEEL_ENABLE_SPEECH_TO_TEXT)
     install(
-        FILES
-            "${PORTAUDIO_DIR}/lib/libportaudio.so.2.0.0"
+        FILES "${PORTAUDIO_DIR}/lib/libportaudio.so.2.0.0"
+        RENAME libportaudio.so.2
+        DESTINATION dependencies
+    )
+endif()
+
+if(UFEEL_ENABLE_HEART_RATE)
+    install(
+        FILES "${CURL_LIBRARY}"
+        RENAME libcurl.so.4
         DESTINATION dependencies
     )
 endif()
@@ -434,3 +482,5 @@ endif()
 # TODO: improve device discovery logic
 
 # TODO: remove the 'k' usage for constants -> find a cleaner solution
+
+# TODO: bundle package back into a Linux/x86_64 subdirectory

@@ -35,6 +35,7 @@ cd ..
 ./docker/run.sh
 
 ./build.sh all
+./build.sh run-integration-tests
 ```
 
 Docker is the recommended build environment. It provides a reproducible toolchain and avoids requiring the native build dependencies on the host.
@@ -87,8 +88,6 @@ If some dependencies are missing for your system, please open an issue. The [Doc
 
 This project uses Git LFS to store large third-party libraries in `3rdparty/`, including prebuilt `.so` and `.a` files.
 
-yaml-cpp is maintained as a Git submodule.
-
 After cloning, initialize all submodules and download the Git LFS files:
 
 ```bash
@@ -120,12 +119,8 @@ git lfs pull
 
 ```bash
 ./build.sh all                 # Configure, build, and package (Release)
-./build.sh all --config Debug  # Use a Debug build
-./build.sh run-unit-tests      # Run native unit tests and coverage
-./build.sh test                # Run native and integration tests
+./build.sh test                # Run unit tests and integration tests
 ./build.sh run-feature-matrix  # Test every feature configuration
-./build.sh format              # Format C++ sources and tests
-./build.sh clean               # Remove generated build/package files
 ```
 
 The complete command list is available with:
@@ -149,12 +144,6 @@ The default build includes every detection domain. To produce a smaller library 
 ```
 
 The available options are `UFEEL_ENABLE_EMOTIONS`, `UFEEL_ENABLE_EYE_TRACKING`, `UFEEL_ENABLE_SPEECH_TO_TEXT`, and `UFEEL_ENABLE_HEART_RATE`. All default to `ON`. The package contains only the selected domain's models and native runtime dependencies. The C ABI remains available for disabled domains and returns `UFEEL_STATUS_UNSUPPORTED_FEATURE` when a disabled domain is requested.
-
-The feature matrix provides a clean configure, build, package, native-test, and C# public-API check for the all-feature configuration and each feature individually:
-
-```bash
-./build.sh run-feature-matrix
-```
 
 ## Documentation
 
