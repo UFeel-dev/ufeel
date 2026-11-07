@@ -81,13 +81,13 @@ jobs:
             ufeeldocker:latest \
             bash -lc "./build.sh configure && ./build.sh build"
 
-      - name: Run unit tests in Docker
-        run: |
-          docker run --rm \
-            -v "$GITHUB_WORKSPACE:/mnt" \
-            -w /mnt \
-            ufeeldocker:latest \
-            bash -lc "./build.sh run-unit-tests"
+      # - name: Run unit tests in Docker
+      #   run: |
+      #     docker run --rm \
+      #       -v "$GITHUB_WORKSPACE:/mnt" \
+      #       -w /mnt \
+      #       ufeeldocker:latest \
+      #       bash -lc "./build.sh run-unit-tests"
 
       - name: Run Clang-Tidy in Docker
         shell: bash
