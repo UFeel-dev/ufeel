@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.24)
 
 project(ufeel_detection_library LANGUAGES CXX)
 
+add_link_options("-Wl,--disable-new-dtags")
+
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -53,6 +55,17 @@ set(VOSK_DIR "${THIRDPARTY_DIR}/vosk")
 set(PORTAUDIO_DIR "${THIRDPARTY_DIR}/portaudio")
 set(JSON_DIR "${THIRDPARTY_DIR}/json")
 set(YAML_CPP_DIR "${THIRDPARTY_DIR}/yaml-cpp")
+
+set(CMAKE_BUILD_RPATH "${OPENCV_DIR}/lib")
+if(UFEEL_ENABLE_EMOTIONS)
+    list(APPEND CMAKE_BUILD_RPATH
+        "${LIBTORCH_DIR}/lib"
+        "${CMAKE_BINARY_DIR}/yaml-cpp"
+    )
+endif()
+if(UFEEL_ENABLE_SPEECH_TO_TEXT)
+    list(APPEND CMAKE_BUILD_RPATH "${PORTAUDIO_DIR}/lib")
+endif()
 
 set(UFEEL_REQUIRED_DIRS "${MODELS_DIR}")
 list(APPEND UFEEL_REQUIRED_DIRS "${OPENCV_DIR}")
@@ -437,8 +450,9 @@ if(UFEEL_ENABLE_SPEECH_TO_TEXT)
 endif()
 
 if(UFEEL_ENABLE_HEART_RATE)
+    get_filename_component(CURL_LIBRARY_REALPATH "${CURL_LIBRARY}" REALPATH)
     install(
-        FILES "${CURL_LIBRARY}"
+        FILES "${CURL_LIBRARY_REALPATH}"
         RENAME libcurl.so.4
         DESTINATION dependencies
     )

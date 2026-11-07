@@ -90,6 +90,7 @@ include(GoogleTest)
 gtest_discover_tests(
     run_library_unit_tests
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+    DISCOVERY_MODE PRE_TEST
 )
 
 if(UFEEL_ENABLE_COVERAGE)
