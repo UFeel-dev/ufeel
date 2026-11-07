@@ -187,6 +187,53 @@ TEST(
 }
 
 TEST(
+    WrapperBehaviorTest, ProcessorForwardsEmotionAndEyeTrackingUpdates
+)
+{
+    TestProcessor test;
+
+    test.backend->emotionStatus = DataProcessorStatus::InvalidFrame;
+    EXPECT_EQ(ufeel_update_emotions(&test.processor), UFEEL_STATUS_INVALID_FRAME);
+
+    test.backend->eyeTrackingStatus = DataProcessorStatus::InvalidDetectionType;
+    EXPECT_EQ(ufeel_update_eye_tracking(&test.processor), UFEEL_STATUS_INVALID_ARGUMENT);
+}
+
+TEST(
+    WrapperBehaviorTest, EyeTrackingApiMapsResultAndCalibrationDiagnostics
+)
+{
+    TestProcessor test;
+    std::array<std::uint8_t, 12> pixels{};
+    const auto frame = makeFrame(pixels);
+
+    test.backend->eyeTracking.status = EyeTrackingStatus::Valid;
+    EXPECT_EQ(ufeel_update_eye_tracking_from_frame(&test.processor, &frame), UFEEL_STATUS_OK);
+
+    test.backend->eyeTracking.status = EyeTrackingStatus::FaceUnavailable;
+    EXPECT_EQ(
+        ufeel_update_eye_tracking_from_frame(&test.processor, &frame), UFEEL_STATUS_NO_EYE_TRACKING
+    );
+
+    UFeelEyeTrackingCalibrationDiagnostics diagnostics{};
+    EXPECT_EQ(
+        ufeel_get_eye_tracking_calibration_diagnostics(&test.processor, &diagnostics),
+        UFEEL_STATUS_OK
+    );
+    EXPECT_EQ(diagnostics.meanErrorExceeded, 1);
+    EXPECT_EQ(diagnostics.maximumErrorExceeded, 0);
+
+    test.backend->calibrationDiagnostics.meanErrorExceeded = false;
+    test.backend->calibrationDiagnostics.maximumErrorExceeded = true;
+    EXPECT_EQ(
+        ufeel_get_eye_tracking_calibration_diagnostics(&test.processor, &diagnostics),
+        UFEEL_STATUS_OK
+    );
+    EXPECT_EQ(diagnostics.meanErrorExceeded, 0);
+    EXPECT_EQ(diagnostics.maximumErrorExceeded, 1);
+}
+
+TEST(
     WrapperBehaviorTest, FrameResultReportsAllocationFailures
 )
 {
@@ -290,6 +337,10 @@ TEST(
         ufeel_load_eye_tracking_calibration_profile(&test.processor, "profile"),
         UFEEL_STATUS_INTERNAL_ERROR
     );
+
+    test.backend->throwOnCalibration = false;
+    test.backend->throwUnknownOnCalibration = true;
+    EXPECT_EQ(ufeel_cancel_eye_tracking_calibration(&test.processor), UFEEL_STATUS_INTERNAL_ERROR);
 }
 
 TEST(

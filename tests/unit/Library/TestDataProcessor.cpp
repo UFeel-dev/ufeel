@@ -9,8 +9,11 @@
 
 #include <chrono>
 #include <cstdint>
+#include <functional>
 #include <gtest/gtest.h>
+#include <stdexcept>
 #include <thread>
+#include <utility>
 
 #ifndef DATA_PROCESSOR_MODEL_DIR_PATH
 #define DATA_PROCESSOR_MODEL_DIR_PATH ""
@@ -26,6 +29,13 @@ auto createProcessor(
     return {DATA_PROCESSOR_MODEL_DIR_PATH, "fake-model", cameraIndex};
 }
 
+auto createProcessor(
+    std::function<bool(cv::Mat&)> frameReader
+) -> DataProcessor
+{
+    return {DATA_PROCESSOR_MODEL_DIR_PATH, "fake-model", std::move(frameReader)};
+}
+
 } // namespace
 
 TEST(
@@ -38,6 +48,16 @@ TEST(
         processor.updateFromFrame(1U << 8U, cv::Mat{}), DataProcessorStatus::InvalidDetectionType
     );
     EXPECT_EQ(processor.update(1U << 8U), DataProcessorStatus::InvalidDetectionType);
+}
+
+TEST(
+    DataProcessorTest, RequiresInjectedFrameReader
+)
+{
+    EXPECT_THROW(
+        DataProcessor(DATA_PROCESSOR_MODEL_DIR_PATH, "fake-model", std::function<bool(cv::Mat&)>{}),
+        std::invalid_argument
+    );
 }
 
 TEST(
@@ -210,6 +230,24 @@ TEST(
     EXPECT_EQ(processor.getEmotionsFromFrame(frame).status, EmotionStatus::Valid);
     EXPECT_EQ(processor.updateEyeTrackingFromFrame(frame), DataProcessorStatus::Ok);
     EXPECT_EQ(processor.getEyeTrackingFromFrame(frame).status, EyeTrackingStatus::FaceUnavailable);
+}
+
+TEST(
+    DataProcessorTest, UpdatesFeaturesFromInjectedFrameReader
+)
+{
+    const cv::Mat frame(480, 640, CV_8UC3, cv::Scalar(0, 0, 0));
+    auto processor = createProcessor([&frame](cv::Mat& capturedFrame) -> bool {
+        capturedFrame = frame.clone();
+        return true;
+    });
+
+    EXPECT_EQ(processor.updateFrame(), DataProcessorStatus::Ok);
+    EXPECT_EQ(processor.getFrame().size(), frame.size());
+    EXPECT_EQ(processor.updateEmotions(), DataProcessorStatus::Ok);
+    EXPECT_EQ(processor.getEmotions().status, EmotionStatus::Valid);
+    EXPECT_EQ(processor.updateEyeTracking(), DataProcessorStatus::Ok);
+    EXPECT_EQ(processor.getEyeTracking().status, EyeTrackingStatus::FaceUnavailable);
 }
 
 TEST(

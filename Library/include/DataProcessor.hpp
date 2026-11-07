@@ -9,6 +9,7 @@
 #include "opencv2/videoio.hpp"
 
 #include <cstdint>
+#include <functional>
 #include <map>
 #include <memory>
 #include <string>
@@ -76,6 +77,11 @@ public:
     DataProcessor(
         const std::string& modelDirectory, const std::string& speechModelPath, int cameraIndex
     );
+    DataProcessor(
+        const std::string& modelDirectory,
+        const std::string& speechModelPath,
+        std::function<bool(cv::Mat&)> frameReader
+    );
 
     ~DataProcessor();
 
@@ -121,7 +127,10 @@ public:
 
 private:
 
+    void initializeDetectors(const std::string& modelDirectory, const std::string& speechModelPath);
+
     cv::VideoCapture cap_;
+    std::function<bool(cv::Mat&)> frameReader_;
     cv::Mat frame_;
 
     EmotionResult emotions_;

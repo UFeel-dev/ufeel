@@ -80,6 +80,7 @@ public:
     bool throwOnSpeech = false;
     bool throwOnHeartRate = false;
     bool throwOnCalibration = false;
+    bool throwUnknownOnCalibration = false;
 
     auto update(
         std::uint32_t detectionType
@@ -242,6 +243,10 @@ public:
 
     void cancelEyeTrackingCalibration() override
     {
+        if (throwUnknownOnCalibration)
+        {
+            throw 1;
+        }
         throwIfEnabled(throwOnCalibration);
     }
 

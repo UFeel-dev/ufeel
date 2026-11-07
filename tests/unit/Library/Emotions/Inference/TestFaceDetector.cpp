@@ -62,8 +62,9 @@ TEST(
 )
 {
     EXPECT_THROW(
-        FaceDetector::fromDetector(cv::Ptr<cv::FaceDetectorYN>{}), std::runtime_error
-    ); // NOLINT
+        static_cast<void>(FaceDetector::fromDetector(cv::Ptr<cv::FaceDetectorYN>{})),
+        std::runtime_error
+    );
 }
 
 TEST(

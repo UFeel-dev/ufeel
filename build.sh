@@ -74,7 +74,7 @@ package()
 
 run_integration_test()
 {
-    require_package
+    require_package # TODO: auto-package if missing
 
     echo "Running C# integration test..."
     UFEEL_PACKAGE_PATH="${PACKAGE_PATH}/libufeel_wrapper.so" \
@@ -243,7 +243,7 @@ configure_unit_tests()
 
 run_unit_tests()
 {
-    local runtime_library_path="${ROOT_DIR}/3rdparty/opencv/lib:${ROOT_DIR}/3rdparty/libtorch/lib:${ROOT_DIR}/3rdparty/portaudio/lib:${ROOT_DIR}/3rdparty/cpr/lib:${COVERAGE_BUILD_DIR}/yaml-cpp"
+    local runtime_library_path="${ROOT_DIR}/3rdparty/opencv/lib:${ROOT_DIR}/3rdparty/libtorch/lib:${ROOT_DIR}/3rdparty/portaudio/lib:${COVERAGE_BUILD_DIR}/yaml-cpp"
     if [ -n "${LD_LIBRARY_PATH:-}" ]; then
         runtime_library_path="${runtime_library_path}:${LD_LIBRARY_PATH}"
     fi
@@ -280,7 +280,7 @@ run_unit_tests()
         -object="${COVERAGE_BUILD_DIR}/libufeel_detection_library.a" \
         -object="${COVERAGE_BUILD_DIR}/Wrapper/libufeel_wrapper.so" \
         -instr-profile="${COVERAGE_BUILD_DIR}/coverage.profdata" \
-        -ignore-filename-regex='(/tests/|googletest|/usr/|3rdparty/)'
+        -ignore-filename-regex='(/tests/|googletest|/usr/|3rdparty/|_deps/)'
 }
 
 test()

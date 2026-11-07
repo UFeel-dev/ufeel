@@ -38,7 +38,7 @@ set_target_properties(ufeel_wrapper PROPERTIES
     CXX_VISIBILITY_PRESET hidden
     VISIBILITY_INLINES_HIDDEN YES
     BUILD_RPATH
-        "${OPENCV_DIR}/lib;${LIBTORCH_DIR}/lib;${PORTAUDIO_DIR}/lib;${CPR_DIR}/lib"
+        "${OPENCV_DIR}/lib;${LIBTORCH_DIR}/lib;${PORTAUDIO_DIR}/lib"
     INSTALL_RPATH
         "$ORIGIN/dependencies"
     INSTALL_RPATH_USE_LINK_PATH FALSE
