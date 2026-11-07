@@ -345,6 +345,13 @@ if(UFEEL_ENABLE_COVERAGE)
         -fprofile-instr-generate
     )
 
+    foreach(FEATURE_TARGET IN LISTS UFEEL_FEATURE_TARGETS)
+        target_compile_options(${FEATURE_TARGET} PRIVATE
+            -fprofile-instr-generate
+            -fcoverage-mapping
+        )
+    endforeach()
+
 endif()
 
 add_subdirectory(Wrapper)
