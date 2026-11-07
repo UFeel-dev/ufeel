@@ -243,6 +243,8 @@ auto tightFrameLayout(
 
 extern "C" {
 
+// TODO: make it possible to choose the frame reader (OpenCV cap.read() by default)
+
 auto ufeel_create(
     const char* utf8ModelDirectory, const char* utf8SpeechModelPath
 ) -> UFeelProcessor*
