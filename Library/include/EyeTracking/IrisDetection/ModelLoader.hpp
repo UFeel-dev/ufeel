@@ -64,7 +64,7 @@ public:
     Parameters:
         index: index of input tensor
     */
-    [[nodiscard]] auto getInputShape(int index = 0) const -> std::vector<int>;
+    [[nodiscard]] virtual auto getInputShape(int index = 0) const -> std::vector<int>;
 
     /*
     Get the pointer to the data of input tensor at index.
@@ -72,7 +72,7 @@ public:
     Parameters:
         index: index of input tensor
     */
-    [[nodiscard]] auto getInputData(int index = 0) const -> float*;
+    [[nodiscard]] virtual auto getInputData(int index = 0) const -> float*;
 
     /*
     Get size in bytes of input tensor at index.
@@ -80,12 +80,12 @@ public:
     Parameters:
         index: index of input tensor
     */
-    [[nodiscard]] auto getInputSize(int index = 0) const -> size_t;
+    [[nodiscard]] virtual auto getInputSize(int index = 0) const -> size_t;
 
     /*
     Get number of inputs needed to run inference.
     */
-    [[nodiscard]] auto getNumberOfInputs() const -> int;
+    [[nodiscard]] virtual auto getNumberOfInputs() const -> int;
 
     /*
     Get shape of output tensor at index.
@@ -93,7 +93,7 @@ public:
     Parameters:
         index: index of output tensor
     */
-    [[nodiscard]] auto getOutputShape(int index = 0) const -> std::vector<int>;
+    [[nodiscard]] virtual auto getOutputShape(int index = 0) const -> std::vector<int>;
 
     /*
     Get the pointer to the data of output tensor at index.
@@ -101,7 +101,7 @@ public:
     Parameters:
         index: index of output tensor
     */
-    [[nodiscard]] auto getOutputData(int index = 0) const -> float*;
+    [[nodiscard]] virtual auto getOutputData(int index = 0) const -> float*;
 
     /*
     Get size in bytes of output tensor at index.
@@ -109,12 +109,12 @@ public:
     Parameters:
         index: index of output tensor
     */
-    [[nodiscard]] auto getOutputSize(int index = 0) const -> size_t;
+    [[nodiscard]] virtual auto getOutputSize(int index = 0) const -> size_t;
 
     /*
     Get number of outputs from inference.
     */
-    [[nodiscard]] auto getNumberOfOutputs() const -> int;
+    [[nodiscard]] virtual auto getNumberOfOutputs() const -> int;
 
     /*
     Load image (BGR format) to model at index
@@ -158,6 +158,10 @@ public:
     {
         return loadOutput(0);
     }
+
+protected:
+
+    ModelLoader() = default;
 
 private:
 

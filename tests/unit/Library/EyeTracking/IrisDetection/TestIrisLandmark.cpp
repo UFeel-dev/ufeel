@@ -1,11 +1,18 @@
+#include "EyeTracking/IrisDetection/DetectionPostProcess.hpp"
 #include "EyeTracking/IrisDetection/IrisLandmark.hpp"
+#include "EyeTracking/IrisDetection/ModelLoader.hpp"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/core/types.hpp"
 #include "opencv2/imgcodecs.hpp"
 
+#include <cstddef>
 #include <gtest/gtest.h>
+#include <limits>
 #include <memory>
+#include <opencv2/core/hal/interface.h>
+#include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 #ifndef MODEL_DIR_PATH
@@ -17,6 +24,128 @@
 
 namespace
 {
+
+class FakeModelLoader final : public my::ModelLoader
+{
+public:
+
+    std::vector<int> inputShape{1, 2, 2, 3};
+    std::vector<float> output = std::vector<float>(15, 0.5F);
+    std::size_t outputSize = output.size() * sizeof(float);
+    float* outputData = output.data();
+    bool throwOnInference = false;
+
+    [[nodiscard]] auto getInputShape(
+        int index
+    ) const -> std::vector<int> override
+    {
+        static_cast<void>(index);
+        return inputShape;
+    }
+
+    [[nodiscard]] auto getOutputData(
+        int index
+    ) const -> float* override
+    {
+        static_cast<void>(index);
+        return outputData;
+    }
+
+    [[nodiscard]] auto getOutputSize(
+        int index
+    ) const -> std::size_t override
+    {
+        static_cast<void>(index);
+        return outputSize;
+    }
+
+    [[nodiscard]] auto loadOutput(
+        int index
+    ) const -> std::vector<float> override
+    {
+        static_cast<void>(index);
+        return output;
+    }
+
+    void loadImageToInput(
+        const cv::Mat& /*inputImage*/, int /*index*/
+    ) override
+    {
+    }
+
+    void runInference() override
+    {
+        if (throwOnInference)
+        {
+            throw std::runtime_error("inference failed");
+        }
+    }
+};
+
+class TestableIrisLandmark final : public my::IrisLandmark
+{
+public:
+
+    TestableIrisLandmark(
+        std::unique_ptr<my::ModelLoader> faceModel,
+        std::unique_ptr<my::ModelLoader> leftModel,
+        std::unique_ptr<my::ModelLoader> rightModel
+    )
+        : my::IrisLandmark(
+              MODEL_DIR_PATH, std::move(faceModel), std::move(leftModel), std::move(rightModel)
+          )
+    {
+    }
+
+    [[nodiscard]] auto getFaceRoi() const -> cv::Rect override
+    {
+        return {10, 20, 100, 80};
+    }
+
+    [[nodiscard]] auto getEyeRoi(
+        bool /*isLeftEye*/
+    ) const -> cv::Rect override
+    {
+        return {10, 20, 20, 20};
+    }
+
+protected:
+
+    [[nodiscard]] auto detectFace(
+        const std::vector<float>& /*regressor*/, const std::vector<float>& /*classificator*/
+    ) const -> my::Detection override
+    {
+        return {0.9F, CLASS_ID, cv::Rect2f(0.5F, 0.5F, 0.2F, 0.2F)};
+    }
+
+public:
+
+    [[nodiscard]] auto getFaceLandmarkAt(
+        int index
+    ) const -> cv::Point override
+    {
+        if (invalidEyeLandmarks)
+        {
+            return {100, 100};
+        }
+
+        switch (index)
+        {
+        case 446:
+            return {100, 100};
+        case 464:
+            return {120, 100};
+        case 244:
+            return {200, 100};
+        case 226:
+            return {220, 100};
+        default:
+            return {};
+        }
+    }
+
+    bool invalidEyeLandmarks = false;
+};
 
 class TestIrisLandmark : public ::testing::Test
 {
@@ -75,6 +204,16 @@ TEST_F(
 
     EXPECT_TRUE(irisLandmark_->getAllEyeLandmarks(true, true).empty());
     EXPECT_TRUE(irisLandmark_->getAllEyeLandmarks(false, true).empty());
+}
+
+TEST_F(
+    TestIrisLandmark, RejectsInvalidLandmarkIndicesBeforeInference
+)
+{
+    EXPECT_EQ(irisLandmark_->getEyeLandmarkAt(-1, true, false), cv::Point());
+    EXPECT_EQ(irisLandmark_->getEyeLandmarkAt(71, false, false), cv::Point());
+    EXPECT_EQ(irisLandmark_->getEyeLandmarkAt(-1, true, true), cv::Point());
+    EXPECT_EQ(irisLandmark_->getEyeLandmarkAt(5, false, true), cv::Point());
 }
 
 TEST_F(
@@ -202,6 +341,122 @@ TEST_F(
     EXPECT_EQ(irisLandmark_->getEyeLandmarkAt(5, true, true), cv::Point());
     EXPECT_EQ(irisLandmark_->getEyeLandmarkAt(-1, false, true), cv::Point());
     EXPECT_EQ(irisLandmark_->getEyeLandmarkAt(5, false, true), cv::Point());
+}
+
+TEST(
+    IrisLandmarkInjectionTest, ReturnsEmptyWhenOutputIsTooShort
+)
+{
+    auto faceModel = std::make_unique<FakeModelLoader>();
+    auto leftModel = std::make_unique<FakeModelLoader>();
+    auto rightModel = std::make_unique<FakeModelLoader>();
+    leftModel->outputSize = sizeof(float);
+    rightModel->outputSize = sizeof(float);
+    TestableIrisLandmark const landmark(
+        std::move(faceModel), std::move(leftModel), std::move(rightModel)
+    );
+
+    EXPECT_EQ(landmark.getEyeLandmarkAt(0, true, false), cv::Point());
+    EXPECT_EQ(landmark.getEyeLandmarkAt(0, false, true), cv::Point());
+}
+
+TEST(
+    IrisLandmarkInjectionTest, ReturnsEmptyWhenInputShapeIsInvalid
+)
+{
+    auto faceModel = std::make_unique<FakeModelLoader>();
+    auto leftModel = std::make_unique<FakeModelLoader>();
+    auto rightModel = std::make_unique<FakeModelLoader>();
+    leftModel->inputShape = {1, 0, 2};
+    rightModel->inputShape = {1, 2};
+    TestableIrisLandmark const landmark(
+        std::move(faceModel), std::move(leftModel), std::move(rightModel)
+    );
+
+    EXPECT_EQ(landmark.getEyeLandmarkAt(0, true, false), cv::Point());
+    EXPECT_EQ(landmark.getEyeLandmarkAt(0, false, true), cv::Point());
+}
+
+TEST(
+    IrisLandmarkInjectionTest, ReturnsEmptyWhenOutputDataIsNull
+)
+{
+    auto faceModel = std::make_unique<FakeModelLoader>();
+    auto leftModel = std::make_unique<FakeModelLoader>();
+    auto rightModel = std::make_unique<FakeModelLoader>();
+    leftModel->outputData = nullptr;
+    rightModel->outputData = nullptr;
+    TestableIrisLandmark const landmark(
+        std::move(faceModel), std::move(leftModel), std::move(rightModel)
+    );
+
+    EXPECT_EQ(landmark.getEyeLandmarkAt(0, true, false), cv::Point());
+    EXPECT_EQ(landmark.getEyeLandmarkAt(0, false, true), cv::Point());
+}
+
+TEST(
+    IrisLandmarkInjectionTest, ReturnsEmptyWhenOutputCoordinatesAreNotFinite
+)
+{
+    auto faceModel = std::make_unique<FakeModelLoader>();
+    auto leftModel = std::make_unique<FakeModelLoader>();
+    auto rightModel = std::make_unique<FakeModelLoader>();
+    leftModel->output.at(0) = std::numeric_limits<float>::infinity();
+    rightModel->output.at(1) = std::numeric_limits<float>::quiet_NaN();
+    TestableIrisLandmark const landmark(
+        std::move(faceModel), std::move(leftModel), std::move(rightModel)
+    );
+
+    EXPECT_EQ(landmark.getEyeLandmarkAt(0, true, false), cv::Point());
+    EXPECT_EQ(landmark.getEyeLandmarkAt(0, false, true), cv::Point());
+}
+
+TEST(
+    IrisLandmarkInjectionTest, ClearsRoisWhenRightEyeInferenceFails
+)
+{
+    auto faceModel = std::make_unique<FakeModelLoader>();
+    auto leftModel = std::make_unique<FakeModelLoader>();
+    auto rightModel = std::make_unique<FakeModelLoader>();
+    rightModel->throwOnInference = true;
+    TestableIrisLandmark landmark(
+        std::move(faceModel), std::move(leftModel), std::move(rightModel)
+    );
+    landmark.loadImageToInput(cv::Mat(480, 640, CV_8UC3, cv::Scalar::all(128)));
+
+    EXPECT_THROW(landmark.runInference(), std::runtime_error);
+}
+
+TEST(
+    IrisLandmarkInjectionTest, ClearsRoisWhenLeftEyeInferenceFails
+)
+{
+    auto faceModel = std::make_unique<FakeModelLoader>();
+    auto leftModel = std::make_unique<FakeModelLoader>();
+    auto rightModel = std::make_unique<FakeModelLoader>();
+    leftModel->throwOnInference = true;
+    TestableIrisLandmark landmark(
+        std::move(faceModel), std::move(leftModel), std::move(rightModel)
+    );
+    landmark.loadImageToInput(cv::Mat(480, 640, CV_8UC3, cv::Scalar::all(128)));
+
+    EXPECT_THROW(landmark.runInference(), std::runtime_error);
+}
+
+TEST(
+    IrisLandmarkInjectionTest, RejectsEyeWithIdenticalLandmarks
+)
+{
+    auto faceModel = std::make_unique<FakeModelLoader>();
+    auto leftModel = std::make_unique<FakeModelLoader>();
+    auto rightModel = std::make_unique<FakeModelLoader>();
+    TestableIrisLandmark landmark(
+        std::move(faceModel), std::move(leftModel), std::move(rightModel)
+    );
+    landmark.invalidEyeLandmarks = true;
+    landmark.loadImageToInput(cv::Mat(480, 640, CV_8UC3, cv::Scalar::all(128)));
+
+    EXPECT_THROW(landmark.runInference(), std::runtime_error);
 }
 
 TEST_F(

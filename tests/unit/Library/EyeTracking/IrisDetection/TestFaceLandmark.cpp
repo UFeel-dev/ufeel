@@ -1,14 +1,18 @@
 #include "EyeTracking/IrisDetection/FaceLandmark.hpp"
+#include "EyeTracking/IrisDetection/ModelLoader.hpp"
 #include "opencv2/core/hal/interface.h"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/core/types.hpp"
 #include "opencv2/imgcodecs.hpp"
 
 #include <cmath>
+#include <cstddef>
 #include <gtest/gtest.h>
+#include <limits>
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 #ifndef MODEL_DIR_PATH
@@ -20,6 +24,63 @@
 
 namespace
 {
+
+class FakeModelLoader final : public my::ModelLoader
+{
+public:
+
+    std::vector<int> inputShape{1, 2, 2, 3};
+    std::vector<float> output{0.5F, 0.25F, 0.1F};
+    std::size_t outputSize = output.size() * sizeof(float);
+    float* outputData = output.data();
+
+    [[nodiscard]] auto getInputShape(
+        int /*index*/
+    ) const -> std::vector<int> override
+    {
+        return inputShape;
+    }
+
+    [[nodiscard]] auto getOutputData(
+        int /*index*/
+    ) const -> float* override
+    {
+        return outputData;
+    }
+
+    [[nodiscard]] auto getOutputSize(
+        int /*index*/
+    ) const -> std::size_t override
+    {
+        return outputSize;
+    }
+
+    [[nodiscard]] auto loadOutput(
+        int /*index*/
+    ) const -> std::vector<float> override
+    {
+        return output;
+    }
+};
+
+class TestableFaceLandmark final : public my::FaceLandmark
+{
+public:
+
+    explicit TestableFaceLandmark(
+        std::unique_ptr<my::ModelLoader> model
+    )
+        : my::FaceLandmark(MODEL_DIR_PATH, std::move(model))
+    {
+    }
+
+    cv::Rect faceRoi{10, 20, 100, 80};
+
+    [[nodiscard]] auto getFaceRoi() const -> cv::Rect override
+    {
+        return faceRoi;
+    }
+};
 
 class TestFaceLandmark : public ::testing::Test
 {
@@ -171,6 +232,64 @@ TEST_F(
 )
 {
     EXPECT_TRUE(landmark_->getAllFaceLandmarks().empty());
+}
+
+TEST_F(
+    TestFaceLandmark, RejectsInvalidLandmarkIndicesBeforeInference
+)
+{
+    EXPECT_EQ(landmark_->getFaceLandmarkAt(-1), cv::Point());
+    EXPECT_EQ(landmark_->getFaceLandmarkAt(468), cv::Point());
+    EXPECT_EQ(landmark_->getFaceLandmark3DAt(-1), cv::Point3f());
+    EXPECT_EQ(landmark_->getFaceLandmark3DAt(468), cv::Point3f());
+}
+
+TEST(
+    FaceLandmarkInjectionTest, ReturnsEmptyWhenOutputIsTooShort
+)
+{
+    auto model = std::make_unique<FakeModelLoader>();
+    model->outputSize = sizeof(float);
+    TestableFaceLandmark const landmark(std::move(model));
+
+    EXPECT_EQ(landmark.getFaceLandmarkAt(0), cv::Point());
+    EXPECT_EQ(landmark.getFaceLandmark3DAt(0), cv::Point3f());
+}
+
+TEST(
+    FaceLandmarkInjectionTest, ReturnsEmptyWhenInputShapeIsInvalid
+)
+{
+    auto model = std::make_unique<FakeModelLoader>();
+    model->inputShape = {1, 0, 2};
+    TestableFaceLandmark const landmark(std::move(model));
+
+    EXPECT_EQ(landmark.getFaceLandmarkAt(0), cv::Point());
+    EXPECT_EQ(landmark.getFaceLandmark3DAt(0), cv::Point3f());
+}
+
+TEST(
+    FaceLandmarkInjectionTest, ReturnsEmptyWhenOutputDataIsNull
+)
+{
+    auto model = std::make_unique<FakeModelLoader>();
+    model->outputData = nullptr;
+    TestableFaceLandmark const landmark(std::move(model));
+
+    EXPECT_EQ(landmark.getFaceLandmarkAt(0), cv::Point());
+    EXPECT_EQ(landmark.getFaceLandmark3DAt(0), cv::Point3f());
+}
+
+TEST(
+    FaceLandmarkInjectionTest, ReturnsEmptyWhenOutputCoordinatesAreNotFinite
+)
+{
+    auto model = std::make_unique<FakeModelLoader>();
+    model->output.at(0) = std::numeric_limits<float>::quiet_NaN();
+    TestableFaceLandmark const landmark(std::move(model));
+
+    EXPECT_EQ(landmark.getFaceLandmarkAt(0), cv::Point());
+    EXPECT_EQ(landmark.getFaceLandmark3DAt(0), cv::Point3f());
 }
 
 TEST_F(

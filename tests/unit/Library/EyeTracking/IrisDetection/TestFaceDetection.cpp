@@ -1,14 +1,21 @@
+#include "EyeTracking/IrisDetection/DetectionPostProcess.hpp"
 #include "EyeTracking/IrisDetection/FaceDetection.hpp"
+#include "opencv2/core.hpp"
 #include "opencv2/core/hal/interface.h"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/core/matx.hpp"
 #include "opencv2/core/types.hpp"
 
 #include <gtest/gtest.h>
+#include <limits>
 #include <memory>
 #include <stdexcept>
 #include <string>
 #include <vector>
+
+#ifndef MODEL_DIR_PATH
+#define MODEL_DIR_PATH ""
+#endif
 
 namespace
 {
@@ -30,6 +37,34 @@ protected:
     }
 
     std::unique_ptr<my::FaceDetection> detector_;
+};
+
+class TestableFaceDetection final : public my::FaceDetection
+{
+public:
+
+    explicit TestableFaceDetection(
+        my::Detection detection
+    )
+        : my::FaceDetection(MODEL_DIR_PATH)
+        , detection_(detection)
+    {
+    }
+
+protected:
+
+    [[nodiscard]] auto detectFace(
+        const std::vector<float>& regressor, const std::vector<float>& classificator
+    ) const -> my::Detection override
+    {
+        static_cast<void>(regressor);
+        static_cast<void>(classificator);
+        return detection_;
+    }
+
+private:
+
+    my::Detection detection_;
 };
 
 } // namespace
@@ -306,4 +341,41 @@ TEST_F(
     ASSERT_EQ(cropped.size(), roi.size());
     EXPECT_EQ(cropped.at<cv::Vec3b>(0, 0), image.at<cv::Vec3b>(400, 100));
     EXPECT_EQ(cropped.at<cv::Vec3b>(100, 0), cv::Vec3b(0, 0, 0));
+}
+
+TEST_F(
+    TestFaceDetection, ReturnsZeroFilledImageWhenRoiDoesNotIntersectFrame
+)
+{
+    auto const image = createImage();
+    detector_->loadImageToInput(image, 0);
+
+    auto const cropped = detector_->cropFrame(cv::Rect(700, 500, 100, 100));
+
+    ASSERT_EQ(cropped.size(), cv::Size(100, 100));
+    EXPECT_EQ(cv::countNonZero(cropped.reshape(1)), 0);
+}
+
+TEST(
+    FaceDetectionInjectionTest, RejectsNonFiniteDetectionCoordinates
+)
+{
+    TestableFaceDetection detector(
+        my::Detection(0.9F, 0, cv::Rect2f(std::numeric_limits<float>::quiet_NaN(), 0, 1, 1))
+    );
+    detector.loadImageToInput(cv::Mat(480, 640, CV_8UC3, cv::Scalar::all(128)), 0);
+
+    ASSERT_NO_THROW(detector.runInference());
+    EXPECT_TRUE(detector.getFaceRoi().empty());
+}
+
+TEST(
+    FaceDetectionInjectionTest, RejectsDetectionWithInsufficientDimensions
+)
+{
+    TestableFaceDetection detector(my::Detection(0.9F, 0, cv::Rect2f(0, 0, 0, 1)));
+    detector.loadImageToInput(cv::Mat(480, 640, CV_8UC3, cv::Scalar::all(128)), 0);
+
+    ASSERT_NO_THROW(detector.runInference());
+    EXPECT_TRUE(detector.getFaceRoi().empty());
 }

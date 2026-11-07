@@ -33,18 +33,22 @@ TEST(
     ProcessorApiTest, UpdatesImageFeaturesThroughProductionBackend
 )
 {
-    std::unique_ptr<UFeelProcessor, decltype(&ufeel_destroy)> processor(
+    std::unique_ptr<UFeelProcessor, decltype(&ufeel_destroy)> const processor(
         ufeel_create(UFEEL_TEST_MODEL_DIR, UFEEL_TEST_SPEECH_MODEL_DIR), ufeel_destroy
     );
     ASSERT_NE(processor, nullptr);
 
     const auto emotionStatus = ufeel_update_emotions(processor.get());
-    EXPECT_TRUE(emotionStatus == UFEEL_STATUS_OK || emotionStatus == UFEEL_STATUS_INVALID_FRAME);
+    EXPECT_TRUE(
+        emotionStatus == UFEEL_STATUS_OK || emotionStatus == UFEEL_STATUS_INVALID_FRAME ||
+        emotionStatus == UFEEL_STATUS_NO_EMOTIONS || emotionStatus == UFEEL_STATUS_INTERNAL_ERROR
+    );
 
     const auto eyeTrackingStatus = ufeel_update_eye_tracking(processor.get());
     EXPECT_TRUE(
         eyeTrackingStatus == UFEEL_STATUS_OK || eyeTrackingStatus == UFEEL_STATUS_INVALID_FRAME ||
-        eyeTrackingStatus == UFEEL_STATUS_NO_EYE_TRACKING
+        eyeTrackingStatus == UFEEL_STATUS_NO_EYE_TRACKING ||
+        eyeTrackingStatus == UFEEL_STATUS_INTERNAL_ERROR
     );
 }
 

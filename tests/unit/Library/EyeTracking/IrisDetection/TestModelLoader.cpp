@@ -3,6 +3,7 @@
 #include "opencv2/core/mat.hpp"
 #include "opencv2/core/types.hpp"
 
+#include <cstddef>
 #include <cstdint>
 #include <gtest/gtest.h>
 #include <memory>
@@ -10,8 +11,40 @@
 #include <string>
 #include <vector>
 
+#ifndef MODEL_LOADER_TEST_MODEL_PATH
+#define MODEL_LOADER_TEST_MODEL_PATH ""
+#endif
+
 namespace
 {
+
+class TestableModelLoader final : public my::ModelLoader
+{
+public:
+
+    explicit TestableModelLoader(
+        const std::string& modelPath
+    )
+        : my::ModelLoader(modelPath)
+    {
+    }
+
+    std::vector<int> inputShape{1, 2, 2, 3};
+
+    [[nodiscard]] auto getInputShape(
+        int /*index*/
+    ) const -> std::vector<int> override
+    {
+        return inputShape;
+    }
+
+    [[nodiscard]] auto getInputSize(
+        int /*index*/
+    ) const -> std::size_t override
+    {
+        return 1;
+    }
+};
 
 class TestModelLoader : public ::testing::Test
 {
@@ -271,4 +304,56 @@ TEST_F(
     ASSERT_FALSE(image.empty());
 
     EXPECT_THROW(loader_->loadImageToInput(image, 999), std::out_of_range);
+}
+
+TEST(
+    ModelLoaderInjectionTest, RejectsPreprocessedImageWithUnexpectedSize
+)
+{
+    TestableModelLoader loader(MODEL_LOADER_TEST_MODEL_PATH);
+    cv::Mat const image(2, 2, CV_8UC3, cv::Scalar::all(128));
+
+    EXPECT_THROW(loader.loadImageToInput(image), std::runtime_error);
+}
+
+TEST(
+    ModelLoaderInjectionTest, RejectsUnsupportedInputShape
+)
+{
+    TestableModelLoader loader(MODEL_LOADER_TEST_MODEL_PATH);
+    loader.inputShape = {1, 0, 2, 3};
+    cv::Mat const image(2, 2, CV_8UC3, cv::Scalar::all(128));
+
+    EXPECT_THROW(loader.loadImageToInput(image), std::runtime_error);
+}
+
+TEST_F(
+    TestModelLoader, RejectsInferenceBeforeAllInputsAreLoaded
+)
+{
+    EXPECT_THROW(loader_->runInference(), std::runtime_error);
+}
+
+TEST_F(
+    TestModelLoader, RunsInferenceAfterLoadingEveryInput
+)
+{
+    for (int index = 0; index < loader_->getNumberOfInputs(); ++index)
+    {
+        std::vector<std::uint8_t> data(loader_->getInputSize(index), 0);
+        loader_->loadBytesToInput(data.data(), index);
+    }
+
+    EXPECT_NO_THROW(loader_->runInference());
+}
+
+TEST_F(
+    TestModelLoader, RequiresInputsToBeLoadedAgainAfterInference
+)
+{
+    std::vector<std::uint8_t> data(loader_->getInputSize(), 0);
+    loader_->loadBytesToInput(data.data());
+    ASSERT_NO_THROW(loader_->runInference());
+
+    EXPECT_THROW(loader_->runInference(), std::runtime_error);
 }
