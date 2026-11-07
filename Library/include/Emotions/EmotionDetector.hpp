@@ -2,6 +2,7 @@
 #define EMOTIONS_EMOTIONDETECTOR_HPP
 
 #include "Inference/HeadCalibration.hpp"
+#include "Utils/FrameChecker.hpp"
 #include "opencv2/core/mat.hpp"
 
 #include <filesystem>
@@ -30,6 +31,8 @@ private:
 
     std::unique_ptr<InferencePipeline> pipeline_;
     HeadCalibration calibration_;
+
+    FrameChecker<std::map<std::string, float>> frameChecker_;
 };
 
 #endif // EMOTIONS_EMOTIONDETECTOR_HPP

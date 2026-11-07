@@ -6,18 +6,18 @@
 #include "Emotions/Inference/FaceDetector.hpp"
 #include "Emotions/Inference/HeadCalibration.hpp"
 #include "Emotions/Inference/InferencePipeline.hpp"
-#include "opencv2/core/hal/interface.h"
+#include "Utils/FrameChecker.hpp"
 #include "opencv2/core/mat.hpp"
 #include "torch/headeronly/core/DeviceType.h"
+#include "yaml-cpp/node/node.h"
+#include "yaml-cpp/node/parse.h"
+#include "yaml-cpp/yaml.h" // IWYU pragma: keep // ! needs to be included for templates to compile
 
 #include <filesystem>
 #include <map>
 #include <memory>
 #include <string>
 #include <utility>
-#include <yaml-cpp/node/node.h>
-#include <yaml-cpp/node/parse.h>
-#include <yaml-cpp/yaml.h> // ! needs to be included for templates to compile
 
 namespace
 {
@@ -71,10 +71,14 @@ auto EmotionDetector::process(
     const cv::Mat& image
 ) -> std::map<std::string, float>
 {
-    if (image.empty() || image.type() != CV_8UC3)
+    if (frameChecker_.isFrameIdentical(image))
     {
-        return {};
+        return frameChecker_.getResult();
     }
 
-    return calibration_.select(pipeline_->predict(image));
+    auto result = calibration_.select(pipeline_->predict(image));
+
+    frameChecker_.setFrame(image);
+    frameChecker_.setResult(result);
+    return result;
 }
