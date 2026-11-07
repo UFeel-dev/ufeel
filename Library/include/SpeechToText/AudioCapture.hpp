@@ -6,16 +6,15 @@
 #include <cstddef>
 #include <cstdint>
 #include <portaudio.h>
+#include <string>
 #include <vector>
 
 class AudioCapture
 {
 public:
 
-    static constexpr double sampleRate = 16000.0;
     static constexpr std::uint64_t framesPerBuffer = 1600;
     static constexpr std::size_t bufferCount = 8;
-    static constexpr std::size_t channelCount = 2;
 
     AudioCapture();
     ~AudioCapture();
@@ -30,6 +29,10 @@ public:
     void stop();
 
     auto read(std::vector<int16_t>& buffer) -> bool;
+
+    static void getMicList(std::vector<int>& micList);
+    static void getMicName(PaDeviceIndex device, std::string &output);
+    static auto getMicSampleRate(PaDeviceIndex device) -> double;
 
 private:
 
@@ -50,10 +53,10 @@ private:
     std::atomic<std::uint64_t> wakeCounter_{0};
 
     std::size_t pendingSize_ = 0;
+    std::size_t channelCount_ = 2;
 
     auto initialize() -> bool;
-    auto openStream() -> bool;
-    [[nodiscard]] static auto findInputDevice() -> PaDeviceIndex;
+    auto openStream(PaDeviceIndex device) -> bool;
 
     void closeStream();
     void terminate();

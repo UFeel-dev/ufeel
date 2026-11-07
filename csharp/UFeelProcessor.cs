@@ -282,6 +282,47 @@ public sealed class UFeelProcessor : IDisposable
         }
     }
 
+    public int[] GetMicList()
+    {
+        int maxMics = 16; // TODO: get mics number then allocate this
+        int[] micList = new int[maxMics];
+
+        UFeelNative.Status status =
+            (UFeelNative.Status)UFeelNative.ufeel_get_mic_list(
+                Handle, micList, maxMics, out int actualCount);
+
+        /*if (status != UFeelNative.Status.Ok)
+        {
+            ThrowIfFailed(status, "");
+        }*/ // TODO: add throw message
+
+        if (actualCount < maxMics)
+        {
+            Array.Resize(ref micList, actualCount);
+        }
+
+        return micList;
+    }
+
+    public string GetMicName(int device)
+    {
+        UFeelNative.Status status =
+            (UFeelNative.Status)UFeelNative.ufeel_get_mic_name(
+                Handle, device, out IntPtr name);
+
+        if (name == IntPtr.Zero)
+            return string.Empty;
+
+        try
+        {
+            return Marshal.PtrToStringUTF8(name) ?? string.Empty;
+        }
+        finally
+        {
+            UFeelNative.ufeel_free_string(name);
+        }
+    }
+
     public HeartRateResultData GetHeartRate()
     {
         UFeelNative.Status status =
@@ -496,4 +537,11 @@ public sealed record HeartRateResultData(
     uint Bpm)
 {
     public bool IsValid => Status == HeartRateStatus.Valid;
+}
+
+public sealed record MicrophoneData(
+    int Device,
+    string Name,
+    double SampleRate)
+{
 }

@@ -118,6 +118,14 @@ namespace UFeel
             public uint Bpm;
         }
 
+        [StructLayout(LayoutKind.Sequential)]
+        public struct NativeMicrophoneData
+        {
+            public int Device;
+            public string Name; // TODO: define string size (64)?
+            public double SampleRate;
+        }
+
         internal enum Status
         {
             Ok = 0,
@@ -264,6 +272,19 @@ namespace UFeel
 
         [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
         internal static extern IntPtr ufeel_get_speech_to_text(IntPtr processor);
+
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int ufeel_get_mic_list(
+            IntPtr processor,
+            int[] micList,
+            int maxCount,
+            out int actualCount);
+        
+        [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int ufeel_get_mic_name(
+            IntPtr processor,
+            int device,
+            out IntPtr name);
 
         [DllImport(LibraryName, CallingConvention = CallingConvention.Cdecl)]
         internal static extern void ufeel_free_string(IntPtr value);

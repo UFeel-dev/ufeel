@@ -156,6 +156,11 @@
                                     Text="Speech recognition"
                                     FontSize="20"
                                     FontWeight="SemiBold" />
+                                <ComboBox
+                                    x:Name="MicDropdown"
+                                    Width="300"
+                                    PlaceholderText="Please choose a microphone..."
+                                    SelectionChanged="MicDropdown_SelectionChanged" />
                                 <TextBlock
                                     x:Name="SpeechText"
                                     Text="Speech disabled"

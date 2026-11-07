@@ -6,7 +6,6 @@
 #include <iostream>
 #include <portaudio.h>
 #include <string>
-#include <utility>
 #include <vector>
 
 AudioCapture::AudioCapture()
@@ -42,75 +41,94 @@ auto AudioCapture::initialize() -> bool
     return true;
 }
 
-// ! this will not always find the most appropriate mic
-auto AudioCapture::findInputDevice() -> PaDeviceIndex
+static auto getWorkingSampleRate(PaDeviceIndex device, int channelCount, PaTime defaultLowInputLatency) -> double
+{
+    const double standardSampleRates[] = { 48000.0, 44100.0, 32000.0, 24000.0, 16000.0, 11025.0, 8000.0 };
+
+    PaStreamParameters parameters{};
+
+    parameters.device = device;
+    parameters.channelCount = channelCount;
+    parameters.sampleFormat = paInt16;
+    parameters.suggestedLatency = defaultLowInputLatency;
+    parameters.hostApiSpecificStreamInfo = nullptr;
+
+    for (double testRate : standardSampleRates)
+    {
+        if (Pa_IsFormatSupported(&parameters, nullptr, testRate) == paFormatIsSupported)
+        {
+            return testRate;
+        }
+    }
+
+    return 0.0;
+}
+
+void AudioCapture::getMicList(std::vector<int>& micList)
 {
     const int deviceCount = Pa_GetDeviceCount();
 
     if (deviceCount < 0)
     {
-        return paNoDevice;
+        return;
     }
-
-    PaDeviceIndex bestDevice = paNoDevice;
-    int bestScore = -1;
 
     for (int i = 0; i < deviceCount; ++i)
     {
         const auto device = static_cast<PaDeviceIndex>(i);
 
         const PaDeviceInfo* info = Pa_GetDeviceInfo(device);
-
-        if (info == nullptr || std::cmp_less(info->maxInputChannels, channelCount))
+        
+        if (info == nullptr)
         {
             continue;
         }
 
-        PaStreamParameters parameters{};
-        parameters.device = device;
-        parameters.channelCount = channelCount;
-        parameters.sampleFormat = paInt16;
-        parameters.suggestedLatency = info->defaultLowInputLatency;
-
-        if (Pa_IsFormatSupported(&parameters, nullptr, sampleRate) != paNoError)
+        if (info->maxInputChannels <= 0)
         {
             continue;
         }
 
-        int score = 0;
+        double sampleRate = getWorkingSampleRate(device, info->maxInputChannels, info->defaultLowInputLatency);
 
-        if (info->defaultSampleRate == sampleRate)
+        if (sampleRate != 0.0)
         {
-            score += 100;
-        }
-
-        if (std::string(info->name).contains("(hw:"))
-        {
-            score += 50;
-        }
-
-        if (!std::string(info->name).contains("default"))
-        {
-            score += 10;
-        }
-
-        if (score > bestScore)
-        {
-            bestScore = score;
-            bestDevice = device;
+            std::clog << "--- ACCEPTED DEVICE " << device << ": name = " << info->name << " ; channelCount = " << info->maxInputChannels << " ; working SampleRate = " << sampleRate << " ---\n";
+            micList.push_back(device);
         }
     }
-
-    return bestDevice;
 }
 
-auto AudioCapture::openStream() -> bool
+void AudioCapture::getMicName(PaDeviceIndex device, std::string &output)
 {
-    const PaDeviceIndex device = findInputDevice();
+    const PaDeviceInfo* info = Pa_GetDeviceInfo(device);
+        
+    if (info == nullptr)
+    {
+        output = "Mic name not found";
+        return;
+    }
 
+    output = info->name;
+}
+
+auto AudioCapture::getMicSampleRate(PaDeviceIndex device) -> double
+{
+    const PaDeviceInfo* info = Pa_GetDeviceInfo(device);
+    
+    if (info == nullptr)
+    {
+        return 0;
+    }
+
+    return getWorkingSampleRate(device, info->maxInputChannels, info->defaultLowInputLatency);
+}
+
+auto AudioCapture::openStream(PaDeviceIndex device) -> bool
+{
     if (device == paNoDevice)
     {
-        std::cerr << "[AudioCapture] No compatible input device found\n";
+        std::cerr << "[AudioCapture] No compatible input device found (openStream)\n";
 
         return false;
     }
@@ -126,13 +144,15 @@ auto AudioCapture::openStream() -> bool
 
     PaStreamParameters inputParameters{};
     inputParameters.device = device;
-    inputParameters.channelCount = channelCount;
+    inputParameters.channelCount = info->maxInputChannels;
     inputParameters.sampleFormat = paInt16;
     inputParameters.suggestedLatency = info->defaultLowInputLatency;
 
+    channelCount_ = info->maxInputChannels;
+
     const PaError error = Pa_OpenStream(
-        &stream_, &inputParameters, nullptr, sampleRate, framesPerBuffer, paNoFlag, callback, this
-    );
+        &stream_, &inputParameters, nullptr, info->defaultSampleRate, framesPerBuffer, paNoFlag, callback, this
+    ); // TODO: replace sampleRate by calculated one (get with struct <device index, samplerate> ?)
 
     if (error != paNoError)
     {
@@ -152,7 +172,7 @@ auto AudioCapture::start() -> bool
         return false;
     }
 
-    if (stream_ == nullptr && !openStream())
+    if (stream_ == nullptr && !openStream(paNoDevice))
     {
         return false;
     }
@@ -240,7 +260,7 @@ auto AudioCapture::push(
 
     for (std::size_t frame = 0; frame < frameCount; ++frame)
     {
-        const std::size_t index = frame * channelCount;
+        const std::size_t index = frame * channelCount_;
 
         const int32_t left = samples[index];
 

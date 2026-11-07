@@ -199,6 +199,12 @@ UFEEL_API char* ufeel_get_speech_to_text(
     UFeelProcessor* processor
 ); // TODO: update to match eye tracking and heartrate
 
+UFEEL_API int32_t ufeel_get_mic_list(UFeelProcessor* processor, int32_t* micList, int32_t maxCount, int32_t* actualCount);
+
+UFEEL_API int32_t ufeel_get_mic_name(UFeelProcessor* processor, int32_t device, char *micName);
+
+//UFEEL_API int32_t ufeel_get_mic_samplerate(UFeelProcessor* processor, int* micList, int32_t maxCount, int32_t* actualCount);
+
 /** Releases a string returned by ufeel_get_speech_to_text(). Accepts NULL. */
 UFEEL_API void ufeel_free_string(char* value);
 

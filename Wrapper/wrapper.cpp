@@ -1,8 +1,10 @@
 #include "DataProcessor.hpp"
 #include "EyeTracking/EyeTrackingDetector.hpp"
 #include "HeartRate/UFeelHeartRateStatus.hpp"
+#include "SpeechToText/AudioCapture.hpp"
 #include "ufeel.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
@@ -12,8 +14,11 @@
 #include <limits>
 #include <memory>
 #include <new>
+#include <portaudio.h>
+#include <string.h>
 #include <string>
 #include <utility>
+#include <vector>
 
 struct UFeelProcessor
 {
@@ -556,6 +561,62 @@ auto ufeel_get_speech_to_text(
     });
 }
 
+auto ufeel_get_mic_list(
+    UFeelProcessor* processor, std::int32_t* micList, int32_t maxCount, int32_t* actualCount
+) -> int32_t
+{
+    if (micList == nullptr || !isValidProcessor(processor) || actualCount == nullptr)
+    {
+        return UFEEL_STATUS_INVALID_ARGUMENT;
+    }
+
+    return guarded(
+        "ufeel_get_mic_list",
+        int32_t{UFEEL_STATUS_INTERNAL_ERROR},
+        [processor, micList, maxCount, actualCount] -> UFeelStatus {
+            std::vector<int> micVector;
+            AudioCapture::getMicList(micVector);
+
+            *actualCount = static_cast<int>(micVector.size());
+
+            size_t copyCount = std::min(micVector.size(), static_cast<size_t>(maxCount));
+
+            for (int i = 0; i < copyCount; ++i)
+            {
+                micList[i] = micVector.at(i);
+            }
+
+            return UFEEL_STATUS_OK;
+        }
+    );
+}
+
+auto ufeel_get_mic_name(
+    UFeelProcessor* processor, std::int32_t device, char *micName
+) -> int32_t
+{
+    if (!isValidProcessor(processor) || micName == nullptr)
+    {
+        return UFEEL_STATUS_INVALID_ARGUMENT;
+    }
+
+    return guarded(
+        "ufeel_get_mic_list",
+        int32_t{UFEEL_STATUS_INTERNAL_ERROR},
+        [processor, device, micName] -> UFeelStatus {
+            std::string name;
+
+            AudioCapture::getMicName(device, name);
+
+            std::clog << "AAAAAAA" << name << "\n";
+
+            std::memcpy(micName, duplicateUtf8(name), name.size());
+
+            return UFEEL_STATUS_OK;
+        }
+    );
+}
+
 void ufeel_free_string(
     char* value
 )
@@ -564,7 +625,7 @@ void ufeel_free_string(
 }
 }
 
-__attribute__((visibility("default"))) auto ufeel_get_heartrate(
+auto ufeel_get_heartrate(
     UFeelProcessor* processor, UFeelHeartRateResult* result
 ) -> int32_t
 {

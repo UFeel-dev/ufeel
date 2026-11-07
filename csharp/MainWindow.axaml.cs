@@ -116,6 +116,20 @@ public partial class MainWindow : Window
         KeyDown += MainWindow_OnKeyDown;
         Closed += OnClosed;
         processTask = ProcessLoopAsync(cancellation.Token);
+
+        int[] micList = processor.GetMicList();
+
+        for (int i = 0; i < micList.Length; i++)
+        {
+            Console.Write($"working mic {micList[i]} ===> {processor.GetMicName(micList[i])}\n");
+        }
+
+        /*MicDropdown.ItemsSource = micList;
+
+        if (micList.Count > 0)
+        {
+            MicDropdown.SelectedIndex = 0;
+        }*/
     }
 
     private async Task ProcessLoopAsync(CancellationToken token)
@@ -768,6 +782,17 @@ public partial class MainWindow : Window
             details.Add("The maximum-error threshold was exceeded.");
 
         return string.Join(Environment.NewLine, details);
+    }
+
+    private void MicDropdown_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        /*if (MicDropdown.SelectedItem is string microSelectionne)
+        {
+            System.Diagnostics.Debug.WriteLine($"Micro choisi : {microSelectionne}");
+            
+            int indexChoisi = MicDropdown.SelectedIndex;
+            
+        }*/
     }
 
     private void MainWindow_OnKeyDown(object? sender, KeyEventArgs e)
