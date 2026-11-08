@@ -13,6 +13,7 @@
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 namespace
@@ -82,7 +83,7 @@ void loadCheckpoint(
         }
 
         auto& target = it->second;
-        if (target.sizes().vec() != shape || static_cast<std::uint64_t>(target.numel()) != numel)
+        if (target.sizes().vec() != shape || !std::cmp_equal(target.numel(), numel))
         {
             throw std::runtime_error("Shape mismatch for tensor: " + name);
         }

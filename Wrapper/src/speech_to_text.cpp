@@ -1,14 +1,11 @@
 #include "DataProcessor.hpp"
 #include "internal/ErrorHandling.hpp"
-#include "internal/Memory.hpp"
 #include "internal/UFeelProcessor.hpp" // IWYU pragma: keep
 #include "ufeel.h"
 
 #include <cstdint>
 #include <cstdlib>
-#include <new>
 
-using ufeel::internal::duplicateUtf8;
 using ufeel::internal::guarded;
 using ufeel::internal::guardedVoid;
 using ufeel::internal::toUFeelStatus;
@@ -41,13 +38,13 @@ auto ufeel_update_speech_to_text(
                 return UFEEL_STATUS_INVALID_PROCESSOR;
             }
 
-            const auto updateStatus = processor->processor.updateSpeechToText();
+            const auto updateStatus = processor->processor->updateSpeechToText();
             if (updateStatus != DataProcessorStatus::Ok)
             {
                 return toUFeelStatus(updateStatus);
             }
 
-            return processor->processor.getSpeechToText().status == SpeechToTextStatus::Valid
+            return processor->processor->getSpeechToText().status == SpeechToTextStatus::Valid
                        ? UFEEL_STATUS_OK
                        : UFEEL_STATUS_NO_SPEECH;
         }
@@ -66,7 +63,7 @@ auto ufeel_set_speech_to_text_enabled(
             {
                 return UFEEL_STATUS_INVALID_PROCESSOR;
             }
-            processor->processor.toggleSpeechToText(enabled != 0);
+            processor->processor->toggleSpeechToText(enabled != 0);
             return UFEEL_STATUS_OK;
         }
     );
@@ -89,9 +86,9 @@ auto ufeel_get_speech_to_text_result(
             {
                 return UFEEL_STATUS_INVALID_PROCESSOR;
             }
-            const auto& speech = processor->processor.getSpeechToText();
+            const auto& speech = processor->processor->getSpeechToText();
             result->status = static_cast<int32_t>(speech.status);
-            result->speech = duplicateUtf8(speech.text);
+            result->speech = processor->allocator->duplicateString(speech.text);
             if (result->speech == nullptr)
             {
                 return UFEEL_STATUS_INTERNAL_ERROR;

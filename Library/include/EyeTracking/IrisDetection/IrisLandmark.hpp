@@ -5,6 +5,7 @@
 #include "FaceLandmark.hpp"
 #include "opencv2/core/types.hpp"
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -77,16 +78,19 @@ public:
         return loadOutput(index, true);
     }
 
-    // Convenience 0-parameter overload
-    [[nodiscard]] auto loadOutput() const -> std::vector<float>
-    {
-        return loadOutput(0, true);
-    }
-
     /*
     Get eye Roi relative to input image at InputTensor(0)
     */
-    [[nodiscard]] auto getEyeRoi(bool isLeftEye) const -> cv::Rect;
+    [[nodiscard]] virtual auto getEyeRoi(bool isLeftEye) const -> cv::Rect;
+
+protected:
+
+    IrisLandmark(
+        const std::string& modelPath,
+        std::unique_ptr<my::ModelLoader> faceLandmarkModel,
+        std::unique_ptr<my::ModelLoader> leftIrisLandmarkModel,
+        std::unique_ptr<my::ModelLoader> rightIrisLandmarkModel
+    );
 
 private:
 
@@ -100,8 +104,8 @@ private:
     */
     void runEyeInference(bool isLeftEye);
 
-    ModelLoader leftIrisLandmarker_;
-    ModelLoader rightIrisLandmarker_;
+    std::unique_ptr<my::ModelLoader> leftIrisLandmarker_;
+    std::unique_ptr<my::ModelLoader> rightIrisLandmarker_;
 
     cv::Rect leftEyeRoi_;
     cv::Rect rightEyeRoi_;

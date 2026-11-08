@@ -31,17 +31,25 @@ struct EmotionConfig
     std::map<std::string, float> thresholds;
 };
 
+auto lookupConfigNode(
+    const YAML::Node& node, const std::string& key
+) -> YAML::Node
+{
+    return node[key]; // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access):
+                      // yaml-cpp uses operator[] for keyed lookup.
+}
+
 auto loadConfig(
     const std::filesystem::path& path
 ) -> EmotionConfig
 {
     const auto root = YAML::LoadFile(path.string());
-    const auto model = root["model"];
+    const auto model = lookupConfigNode(root, "model");
 
     return {
-        .backboneName = model["backbone_name"].as<std::string>(),
-        .imageSize = root["data"]["img_size"].as<int>(),
-        .thresholds = model["thresholds"].as<std::map<std::string, float>>(),
+        .backboneName = lookupConfigNode(model, "backbone_name").as<std::string>(),
+        .imageSize = lookupConfigNode(lookupConfigNode(root, "data"), "img_size").as<int>(),
+        .thresholds = lookupConfigNode(model, "thresholds").as<std::map<std::string, float>>(),
     };
 }
 

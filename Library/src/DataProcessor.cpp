@@ -8,11 +8,13 @@
 #include "SpeechToText/SpeechToTextDetector.hpp"
 
 #include <cstdint>
+#include <functional>
 #include <iostream>
 #include <map>
 #include <memory>
 #include <opencv2/core/mat.hpp>
 #include <opencv2/videoio.hpp>
+#include <stdexcept>
 #include <string>
 #include <utility>
 
@@ -45,13 +47,43 @@ auto makeEmotionResult(
 DataProcessor::DataProcessor(
     const std::string& modelDirectory, const std::string& speechModelPath
 )
-    : cap_(0)
+    : DataProcessor(modelDirectory, speechModelPath, 0)
+{
+}
+
+DataProcessor::DataProcessor(
+    const std::string& modelDirectory, const std::string& speechModelPath, int cameraIndex
+)
+    : cap_(cameraIndex)
+    , frameReader_([this](cv::Mat& frame) -> bool { return cap_.read(frame); })
 {
     if (!cap_.isOpened())
     {
         std::cerr << "[ERROR] Cannot open camera capture_id=0\n";
     }
 
+    initializeDetectors(modelDirectory, speechModelPath);
+}
+
+DataProcessor::DataProcessor(
+    const std::string& modelDirectory,
+    const std::string& speechModelPath,
+    std::function<bool(cv::Mat&)> frameReader
+)
+    : frameReader_(std::move(frameReader))
+{
+    if (!frameReader_)
+    {
+        throw std::invalid_argument("A frame reader is required.");
+    }
+
+    initializeDetectors(modelDirectory, speechModelPath);
+}
+
+void DataProcessor::initializeDetectors(
+    const std::string& modelDirectory, const std::string& speechModelPath
+)
+{
     emotionDetector_ = std::make_unique<EmotionDetector>(modelDirectory);
 
     eyeTrackingDetector_ = std::make_unique<EyeTrackingDetector>(modelDirectory);
@@ -64,7 +96,7 @@ DataProcessor::DataProcessor(
 auto DataProcessor::updateFrame() -> DataProcessorStatus
 {
     cv::Mat capturedFrame;
-    if (!cap_.read(capturedFrame) || capturedFrame.empty())
+    if (!frameReader_(capturedFrame) || capturedFrame.empty())
     {
         frame_.release();
         return DataProcessorStatus::FrameUnavailable;
@@ -137,10 +169,18 @@ auto DataProcessor::updateFromFrame(
     if (hasDetection(detectionType, Speech))
     {
         const auto text = speechToTextDetector_->process();
+        SpeechToTextStatus status = SpeechToTextStatus::Valid;
+        if (!speechToTextEnabled_)
+        {
+            status = SpeechToTextStatus::Disabled;
+        }
+        else if (text.empty())
+        {
+            status = SpeechToTextStatus::NoSpeech;
+        }
+
         speechToText_ = {
-            .status = !speechToTextEnabled_ ? SpeechToTextStatus::Disabled
-                                            : (text.empty() ? SpeechToTextStatus::NoSpeech
-                                                            : SpeechToTextStatus::Valid),
+            .status = status,
             .text = speechToTextEnabled_ ? text : std::string{},
         };
     }
@@ -275,10 +315,18 @@ auto DataProcessor::getEyeTrackingFromFrame(
 auto DataProcessor::updateSpeechToText() -> DataProcessorStatus
 {
     const auto text = speechToTextDetector_->process();
+    SpeechToTextStatus status = SpeechToTextStatus::Valid;
+    if (!speechToTextEnabled_)
+    {
+        status = SpeechToTextStatus::Disabled;
+    }
+    else if (text.empty())
+    {
+        status = SpeechToTextStatus::NoSpeech;
+    }
+
     speechToText_ = {
-        .status = !speechToTextEnabled_
-                      ? SpeechToTextStatus::Disabled
-                      : (text.empty() ? SpeechToTextStatus::NoSpeech : SpeechToTextStatus::Valid),
+        .status = status,
         .text = speechToTextEnabled_ ? text : std::string{},
     };
     return DataProcessorStatus::Ok;

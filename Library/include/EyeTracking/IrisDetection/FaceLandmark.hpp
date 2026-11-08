@@ -5,6 +5,7 @@
 #include "FaceDetection.hpp"
 #include "opencv2/core/types.hpp"
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -61,9 +62,13 @@ public:
     */
     [[nodiscard]] auto loadOutput(int index) const -> std::vector<float> override;
 
+protected:
+
+    FaceLandmark(const std::string& modelPath, std::unique_ptr<my::ModelLoader> landmarkModel);
+
 private:
 
-    my::ModelLoader landmarkModel_;
+    std::unique_ptr<my::ModelLoader> landmarkModel_;
 };
 
 } // namespace my

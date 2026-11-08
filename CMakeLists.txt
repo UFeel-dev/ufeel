@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.24)
 
 project(ufeel_detection_library LANGUAGES CXX)
 
@@ -47,7 +47,6 @@ set(LIBTORCH_DIR "${THIRDPARTY_DIR}/libtorch")
 set(TFLITE_DIR "${THIRDPARTY_DIR}/tensorflowlite")
 set(VOSK_DIR "${THIRDPARTY_DIR}/vosk")
 set(PORTAUDIO_DIR "${THIRDPARTY_DIR}/portaudio")
-set(CPR_DIR "${THIRDPARTY_DIR}/cpr")
 set(JSON_DIR "${THIRDPARTY_DIR}/json")
 set(YAML_CPP_DIR "${THIRDPARTY_DIR}/yaml-cpp")
 
@@ -58,7 +57,6 @@ foreach(DIR IN ITEMS
     "${TFLITE_DIR}"
     "${VOSK_DIR}"
     "${PORTAUDIO_DIR}"
-    "${CPR_DIR}"
     "${JSON_DIR}"
     "${YAML_CPP_DIR}"
 )
@@ -73,6 +71,22 @@ endif()
 
 set(Torch_DIR "${LIBTORCH_DIR}/share/cmake/Torch")
 find_package(Torch REQUIRED)
+find_package(CURL REQUIRED)
+
+include(FetchContent)
+
+set(CPR_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(CPR_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+set(CPR_ENABLE_SSL OFF CACHE BOOL "" FORCE)
+set(CPR_USE_EXISTING_CURL_TARGET ON CACHE BOOL "" FORCE)
+
+FetchContent_Declare(
+    cpr
+    URL https://github.com/libcpr/cpr/archive/refs/tags/1.15.1.tar.gz
+    URL_HASH SHA256=c2fc62a030c4ca5d7c3517e8068531297f938bf4ab52bf951d4fc9bbc9222716
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+FetchContent_MakeAvailable(cpr)
 
 find_program(PATCHELF_EXECUTABLE NAMES patchelf REQUIRED)
 
@@ -178,7 +192,6 @@ target_include_directories(ufeel_detection_library
         "${TFLITE_DIR}/include"
         "${VOSK_DIR}/include"
         "${PORTAUDIO_DIR}/include"
-        "${CPR_DIR}/include"
         "${JSON_DIR}/include"
 )
 
@@ -195,7 +208,7 @@ target_link_libraries(ufeel_detection_library
         "-Wl,--end-group"
         "${PORTAUDIO_DIR}/lib/libportaudio.so"
         yaml-cpp::yaml-cpp
-        "${CPR_DIR}/lib/libcpr.so"
+        cpr::cpr
 )
 
 target_compile_options(ufeel_detection_library
@@ -203,7 +216,32 @@ target_compile_options(ufeel_detection_library
         ${TORCH_CXX_FLAGS}
 )
 
+option(UFEEL_ENABLE_COVERAGE "Enable LLVM source-based coverage" OFF)
+
+if(UFEEL_ENABLE_COVERAGE)
+    target_compile_options(ufeel_detection_library PRIVATE
+        -fprofile-instr-generate
+        -fcoverage-mapping
+    )
+
+    target_link_options(ufeel_detection_library INTERFACE
+        -fprofile-instr-generate
+    )
+
+endif()
+
 add_subdirectory(Wrapper)
+
+if(UFEEL_ENABLE_COVERAGE)
+    target_compile_options(ufeel_wrapper PRIVATE
+        -fprofile-instr-generate
+        -fcoverage-mapping
+    )
+
+    target_link_options(ufeel_wrapper PRIVATE
+        -fprofile-instr-generate
+    )
+endif()
 
 if(CLANG_TIDY_COMMAND)
     set_target_properties(
@@ -244,13 +282,6 @@ install(
 )
 
 install(
-    FILES
-        "${CPR_DIR}/lib/libcpr.so.1.15.1"
-    DESTINATION dependencies
-    RENAME libcpr.so.1
-)
-
-install(
     TARGETS yaml-cpp
     LIBRARY DESTINATION dependencies
     RUNTIME DESTINATION dependencies
@@ -270,5 +301,12 @@ install(
     DIRECTORY "${MODELS_DIR}/"
     DESTINATION models
 )
+
+option(UFEEL_BUILD_TESTS "Build unit tests" ON)
+
+if(UFEEL_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
 
 # TODO: improve device discovery logic

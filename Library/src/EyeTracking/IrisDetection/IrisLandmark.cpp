@@ -2,16 +2,19 @@
 
 #include "EyeTracking/IrisDetection/FaceDetection.hpp"
 #include "EyeTracking/IrisDetection/FaceLandmark.hpp"
+#include "EyeTracking/IrisDetection/ModelLoader.hpp"
+#include "opencv2/core/types.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <cstdlib>
 #include <exception>
-#include <opencv2/core/types.hpp>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 namespace
@@ -33,8 +36,20 @@ my::IrisLandmark::IrisLandmark(
     const std::string& modelPath
 )
     : FaceLandmark(modelPath)
-    , leftIrisLandmarker_(modelPath + "/iris_landmark.tflite")
-    , rightIrisLandmarker_(modelPath + "/iris_landmark.tflite")
+    , leftIrisLandmarker_(std::make_unique<ModelLoader>(modelPath + "/iris_landmark.tflite"))
+    , rightIrisLandmarker_(std::make_unique<ModelLoader>(modelPath + "/iris_landmark.tflite"))
+{
+}
+
+my::IrisLandmark::IrisLandmark(
+    const std::string& modelPath,
+    std::unique_ptr<my::ModelLoader> faceLandmarkModel,
+    std::unique_ptr<my::ModelLoader> leftIrisLandmarkModel,
+    std::unique_ptr<my::ModelLoader> rightIrisLandmarkModel
+)
+    : FaceLandmark(modelPath, std::move(faceLandmarkModel))
+    , leftIrisLandmarker_(std::move(leftIrisLandmarkModel))
+    , rightIrisLandmarker_(std::move(rightIrisLandmarkModel))
 {
 }
 
@@ -99,7 +114,7 @@ auto my::IrisLandmark::getEyeLandmarkAt(
         return {};
     }
 
-    auto const* model = isLeftEye ? &leftIrisLandmarker_ : &rightIrisLandmarker_;
+    auto const* model = isLeftEye ? leftIrisLandmarker_.get() : rightIrisLandmarker_.get();
     auto const eyeRoi = isLeftEye ? leftEyeRoi_ : rightEyeRoi_;
 
     if (eyeRoi.empty())
@@ -137,9 +152,15 @@ auto my::IrisLandmark::getEyeLandmarkAt(
     }
 
     int const imageX =
-        static_cast<int>(x / static_cast<float>(inputShape.at(2)) * eyeRoi.width) + eyeRoi.x;
+        static_cast<int>(
+            x / static_cast<float>(inputShape.at(2)) * static_cast<float>(eyeRoi.width)
+        ) +
+        eyeRoi.x;
     int const imageY =
-        static_cast<int>(y / static_cast<float>(inputShape.at(1)) * eyeRoi.height) + eyeRoi.y;
+        static_cast<int>(
+            y / static_cast<float>(inputShape.at(1)) * static_cast<float>(eyeRoi.height)
+        ) +
+        eyeRoi.y;
 
     return {imageX, imageY};
 }
@@ -170,7 +191,7 @@ auto my::IrisLandmark::loadOutput(
     int index, bool isLeftEye
 ) const -> std::vector<float>
 {
-    auto const* model = isLeftEye ? &leftIrisLandmarker_ : &rightIrisLandmarker_;
+    auto const* model = isLeftEye ? leftIrisLandmarker_.get() : rightIrisLandmarker_.get();
     return model->loadOutput(index);
 }
 
@@ -208,10 +229,10 @@ void my::IrisLandmark::runEyeInference(
     int const secondLandmarkIndex = isLeftEye ? 464 : 226;
 
     auto* eyeRoi = isLeftEye ? &leftEyeRoi_ : &rightEyeRoi_;
-    auto* model = isLeftEye ? &leftIrisLandmarker_ : &rightIrisLandmarker_;
+    auto* model = isLeftEye ? leftIrisLandmarker_.get() : rightIrisLandmarker_.get();
 
-    auto const firstPoint = FaceLandmark::getFaceLandmarkAt(firstLandmarkIndex);
-    auto const secondPoint = FaceLandmark::getFaceLandmarkAt(secondLandmarkIndex);
+    auto const firstPoint = getFaceLandmarkAt(firstLandmarkIndex);
+    auto const secondPoint = getFaceLandmarkAt(secondLandmarkIndex);
 
     *eyeRoi = calculateEyeRoi(firstPoint, secondPoint);
     if (eyeRoi->empty())

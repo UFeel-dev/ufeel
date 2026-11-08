@@ -5,11 +5,13 @@
 #include "EyeTracking/EyeTrackingKalmanFilter.hpp"
 #include "EyeTracking/IrisDetection/IrisLandmark.hpp"
 #include "Utils/FrameChecker.hpp"
+#include "opencv2/core/types.hpp"
 
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <deque>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -20,6 +22,32 @@ namespace cv
 class Mat;
 
 } // namespace cv
+
+namespace ufeel::internal
+{
+
+class EyeTrackingLandmarkProvider
+{
+public:
+
+    EyeTrackingLandmarkProvider() = default;
+    virtual ~EyeTrackingLandmarkProvider() = default;
+    EyeTrackingLandmarkProvider(const EyeTrackingLandmarkProvider&) = delete;
+    auto operator=(const EyeTrackingLandmarkProvider&) -> EyeTrackingLandmarkProvider& = delete;
+    EyeTrackingLandmarkProvider(EyeTrackingLandmarkProvider&&) = delete;
+    auto operator=(EyeTrackingLandmarkProvider&&) -> EyeTrackingLandmarkProvider& = delete;
+
+    virtual void loadImageToInput(const cv::Mat& frame) = 0;
+    virtual void runInference() = 0;
+    [[nodiscard]] virtual auto getFaceRoi() const -> cv::Rect = 0;
+    [[nodiscard]] virtual auto getAllEyeLandmarks(bool leftEye, bool iris) const
+        -> std::vector<cv::Point> = 0;
+    [[nodiscard]] virtual auto getEyeRoi(bool leftEye) const -> cv::Rect = 0;
+    [[nodiscard]] virtual auto getFaceLandmarkAt(int index) const -> cv::Point = 0;
+    [[nodiscard]] virtual auto getFaceLandmark3DAt(int index) const -> cv::Point3f = 0;
+};
+
+} // namespace ufeel::internal
 
 enum class EyeTrackingStatus : std::uint8_t
 {
@@ -52,7 +80,8 @@ struct CalibrationProgress
     std::uint32_t requiredSamplesPerTarget = 0;
 };
 
-enum EyeTrackingDirectionFlags : std::uint8_t
+enum EyeTrackingDirectionFlags : std::uint8_t // NOLINT(cppcoreguidelines-use-enum-class): unscoped
+                                              // bit flags are part of the existing public API.
 {
     EyeTrackingLeft = 1U << 0U,
     EyeTrackingRight = 1U << 1U,
@@ -66,6 +95,9 @@ class EyeTrackingDetector
 public:
 
     explicit EyeTrackingDetector(const std::string& modelDirectory);
+    explicit EyeTrackingDetector(
+        std::unique_ptr<ufeel::internal::EyeTrackingLandmarkProvider> landmarkProvider
+    );
     ~EyeTrackingDetector();
 
     EyeTrackingDetector(const EyeTrackingDetector&) = delete;
@@ -103,7 +135,7 @@ private:
 
     CalibrationDiagnostics lastCalibrationDiagnostics_{};
 
-    my::IrisLandmark irisLandmarker_;
+    std::unique_ptr<ufeel::internal::EyeTrackingLandmarkProvider> landmarkProvider_;
 
     FrameChecker<EyeTrackingResult> frameChecker_;
 };

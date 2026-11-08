@@ -126,3 +126,7 @@ package
 # IDE
 
 .vscode
+
+# Coverage
+*.profraw
+cmake_test_discovery*.json

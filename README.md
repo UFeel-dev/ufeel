@@ -102,23 +102,26 @@ git lfs pull
 ```text
 .
 ├── build.sh
-├── csharp/        # C# test project
 ├── Library/       # Native sources
 ├── Wrapper/       # C++ wrapper
+├── tests/
+│   ├── unit/
+│   │   ├── Library/  # Native library unit tests
+│   │   └── Wrapper/  # Native wrapper unit tests
+│   └── integration/  # C# integration test
 ├── 3rdparty/      # External dependencies
 ├── build/         # Generated build files
 ├── docker/        # Docker environment
 └── docs/          # Feature documentation
 ```
 
-## Manual Build
-
-If you prefer running the steps manually:
+## Build and Test
 
 ```bash
-./build.sh configure
-./build.sh build
-./build.sh package
+./build.sh all              # Configure, build, and package
+./build.sh run-unit-tests   # Run native unit tests and generate coverage
+./build.sh test             # Run unit and integration tests
+./build.sh format           # Format C++ sources and tests
 ```
 
 ## Documentation

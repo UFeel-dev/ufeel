@@ -9,6 +9,7 @@
 #include "opencv2/videoio.hpp"
 
 #include <cstdint>
+#include <functional>
 #include <map>
 #include <memory>
 #include <string>
@@ -17,7 +18,8 @@ class EmotionDetector;
 class SpeechToTextDetector;
 class HeartRateSensorDetector;
 
-enum DetectionType : std::uint8_t
+enum DetectionType : std::uint8_t // NOLINT(cppcoreguidelines-use-enum-class): unscoped bit flags
+                                  // are part of the existing public API.
 {
     None = 0U,
     Emotions = 1U << 0U,
@@ -72,6 +74,14 @@ class DataProcessor
 public:
 
     DataProcessor(const std::string& modelDirectory, const std::string& speechModelPath);
+    DataProcessor(
+        const std::string& modelDirectory, const std::string& speechModelPath, int cameraIndex
+    );
+    DataProcessor(
+        const std::string& modelDirectory,
+        const std::string& speechModelPath,
+        std::function<bool(cv::Mat&)> frameReader
+    );
 
     ~DataProcessor();
 
@@ -117,7 +127,10 @@ public:
 
 private:
 
+    void initializeDetectors(const std::string& modelDirectory, const std::string& speechModelPath);
+
     cv::VideoCapture cap_;
+    std::function<bool(cv::Mat&)> frameReader_;
     cv::Mat frame_;
 
     EmotionResult emotions_;
