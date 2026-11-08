@@ -76,6 +76,7 @@ public enum UFeelStatus
     InternalError = 9,
     InvalidProcessor = 10,
     InvalidFrame = 11,
+    UnsupportedFeature = 12,
 }
 
 public enum CalibrationFailureReason

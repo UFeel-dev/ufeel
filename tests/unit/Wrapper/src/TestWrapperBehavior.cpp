@@ -140,6 +140,8 @@ TEST(
     EXPECT_EQ(ufeel_update(&test.processor, 0), UFEEL_STATUS_INVALID_FRAME);
     test.backend->updateStatus = DataProcessorStatus::InvalidDetectionType;
     EXPECT_EQ(ufeel_update(&test.processor, 0), UFEEL_STATUS_INVALID_ARGUMENT);
+    test.backend->updateStatus = DataProcessorStatus::UnsupportedFeature;
+    EXPECT_EQ(ufeel_update(&test.processor, 0), UFEEL_STATUS_UNSUPPORTED_FEATURE);
     test.backend->updateStatus = DataProcessorStatus::Ok;
     EXPECT_EQ(ufeel_update(&test.processor, 0), UFEEL_STATUS_OK);
     test.backend->throwOnUpdate = true;

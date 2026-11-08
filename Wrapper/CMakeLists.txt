@@ -24,6 +24,13 @@ target_link_libraries(ufeel_wrapper
         ufeel_detection_library
 )
 
+if(UFEEL_ENABLE_EYE_TRACKING)
+    target_link_libraries(ufeel_wrapper
+        PRIVATE
+            "$<LINK_GROUP:RESCAN,ufeel_feature_eye_tracking,${TFLITE_STATIC_LIBRARIES}>"
+    )
+endif()
+
 target_compile_options(ufeel_wrapper
     PRIVATE
         ${TORCH_CXX_FLAGS}

@@ -80,6 +80,8 @@ constexpr auto toUFeelStatus(
         return UFEEL_STATUS_INVALID_FRAME;
     case DataProcessorStatus::InvalidDetectionType:
         return UFEEL_STATUS_INVALID_ARGUMENT;
+    case DataProcessorStatus::UnsupportedFeature:
+        return UFEEL_STATUS_UNSUPPORTED_FEATURE;
     }
 
     return UFEEL_STATUS_INTERNAL_ERROR;

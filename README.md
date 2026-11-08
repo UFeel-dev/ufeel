@@ -35,6 +35,7 @@ cd ..
 ./docker/run.sh
 
 ./build.sh all
+./build.sh run-integration-tests
 ```
 
 Docker is the recommended build environment. It provides a reproducible toolchain and avoids requiring the native build dependencies on the host.
@@ -87,8 +88,6 @@ If some dependencies are missing for your system, please open an issue. The [Doc
 
 This project uses Git LFS to store large third-party libraries in `3rdparty/`, including prebuilt `.so` and `.a` files.
 
-yaml-cpp is maintained as a Git submodule.
-
 After cloning, initialize all submodules and download the Git LFS files:
 
 ```bash
@@ -102,27 +101,49 @@ git lfs pull
 ```text
 .
 ├── build.sh
-├── Library/       # Native sources
-├── Wrapper/       # C++ wrapper
+├── Tools/            # Development tools
+├── Library/          # Native sources
+├── Wrapper/          # C++ wrapper
 ├── tests/
 │   ├── unit/
 │   │   ├── Library/  # Native library unit tests
 │   │   └── Wrapper/  # Native wrapper unit tests
 │   └── integration/  # C# integration test
-├── 3rdparty/      # External dependencies
-├── build/         # Generated build files
-├── docker/        # Docker environment
-└── docs/          # Feature documentation
+├── 3rdparty/         # External dependencies
+├── build/            # Configuration-specific generated build files
+├── docker/           # Docker environment
+└── docs/             # Feature documentation
 ```
 
 ## Build and Test
 
 ```bash
-./build.sh all              # Configure, build, and package
-./build.sh run-unit-tests   # Run native unit tests and generate coverage
-./build.sh test             # Run unit and integration tests
-./build.sh format           # Format C++ sources and tests
+./build.sh all                 # Configure, build, and package (Release)
+./build.sh test                # Run unit tests and integration tests
+./build.sh run-feature-matrix  # Test every feature configuration
 ```
+
+The complete command list is available with:
+
+```bash
+./build.sh --help
+```
+
+### Selecting features
+
+The default build includes every detection domain. To produce a smaller library and package, disable any domain at configure time:
+
+```bash
+./build.sh configure \
+  -DUFEEL_ENABLE_EMOTIONS=OFF \
+  -DUFEEL_ENABLE_EYE_TRACKING=ON \
+  -DUFEEL_ENABLE_SPEECH_TO_TEXT=OFF \
+  -DUFEEL_ENABLE_HEART_RATE=OFF
+./build.sh build
+./build.sh package
+```
+
+The available options are `UFEEL_ENABLE_EMOTIONS`, `UFEEL_ENABLE_EYE_TRACKING`, `UFEEL_ENABLE_SPEECH_TO_TEXT`, and `UFEEL_ENABLE_HEART_RATE`. All default to `ON`. The package contains only the selected domain's models and native runtime dependencies. The C ABI remains available for disabled domains and returns `UFEEL_STATUS_UNSUPPORTED_FEATURE` when a disabled domain is requested.
 
 ## Documentation
 

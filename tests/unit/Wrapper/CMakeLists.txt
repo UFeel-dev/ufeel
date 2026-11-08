@@ -1,18 +1,24 @@
 add_executable(
     run_wrapper_unit_tests
 
-    src/TestEmotions.cpp
-    src/TestEyeTracking.cpp
-    src/TestHeartRate.cpp
-    src/TestProcessor.cpp
-    src/TestSpeechToText.cpp
-    src/TestApiIntegration.cpp
     src/TestWrapperBehavior.cpp
 
     internal/TestErrorHandling.cpp
     internal/TestFrameConversion.cpp
     internal/TestMemory.cpp
 )
+
+if(UFEEL_ENABLE_EMOTIONS AND UFEEL_ENABLE_EYE_TRACKING AND
+   UFEEL_ENABLE_SPEECH_TO_TEXT AND UFEEL_ENABLE_HEART_RATE)
+    target_sources(run_wrapper_unit_tests PRIVATE
+        src/TestEmotions.cpp
+        src/TestEyeTracking.cpp
+        src/TestHeartRate.cpp
+        src/TestProcessor.cpp
+        src/TestSpeechToText.cpp
+        src/TestApiIntegration.cpp
+    )
+endif()
 
 target_include_directories(run_wrapper_unit_tests PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../include"
@@ -44,6 +50,7 @@ include(GoogleTest)
 gtest_discover_tests(
     run_wrapper_unit_tests
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+    DISCOVERY_MODE PRE_TEST
 )
 
 if(UFEEL_ENABLE_COVERAGE)
