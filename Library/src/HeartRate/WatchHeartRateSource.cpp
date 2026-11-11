@@ -3,7 +3,6 @@
 #include "HeartRate/HeartRateSource.hpp"
 #include "HeartRate/UFeelHeartRateStatus.hpp"
 
-#include <arpa/inet.h>
 #include <array>
 #include <asm-generic/socket.h>
 #include <charconv>

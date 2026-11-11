@@ -34,12 +34,19 @@ void my::FaceDetection::runInference()
 
     auto const regressor = getFaceRegressor();
     auto const classificator = getFaceClassificator();
-    auto const detection = postProcessor_.getHighestScoreDetection(regressor, classificator);
+    auto const detection = detectFace(regressor, classificator);
 
     if (detection.classId != -1)
     {
         roi_ = calculateRoiFromDetection(detection);
     }
+}
+
+auto my::FaceDetection::detectFace(
+    const std::vector<float>& regressor, const std::vector<float>& classificator
+) const -> Detection
+{
+    return postProcessor_.getHighestScoreDetection(regressor, classificator);
 }
 
 auto my::FaceDetection::getOriginalImage() const -> cv::Mat

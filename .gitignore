@@ -39,7 +39,6 @@
 # Build directories
 build/
 Build/
-build-*/
 
 # CMake generated files
 CMakeFiles/
@@ -126,3 +125,7 @@ package
 # IDE
 
 .vscode
+
+# Coverage
+*.profraw
+cmake_test_discovery*.json

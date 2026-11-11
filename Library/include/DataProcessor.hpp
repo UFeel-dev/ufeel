@@ -9,15 +9,30 @@
 #include "opencv2/videoio.hpp"
 
 #include <cstdint>
+#include <functional>
 #include <map>
 #include <memory>
 #include <string>
+
+#ifndef UFEEL_ENABLE_EMOTIONS
+#define UFEEL_ENABLE_EMOTIONS 1
+#endif
+#ifndef UFEEL_ENABLE_EYE_TRACKING
+#define UFEEL_ENABLE_EYE_TRACKING 1
+#endif
+#ifndef UFEEL_ENABLE_SPEECH_TO_TEXT
+#define UFEEL_ENABLE_SPEECH_TO_TEXT 1
+#endif
+#ifndef UFEEL_ENABLE_HEART_RATE
+#define UFEEL_ENABLE_HEART_RATE 1
+#endif
 
 class EmotionDetector;
 class SpeechToTextDetector;
 class HeartRateSensorDetector;
 
-enum DetectionType : std::uint8_t
+enum DetectionType : std::uint8_t // NOLINT(cppcoreguidelines-use-enum-class): unscoped bit flags
+                                  // are part of the existing public API.
 {
     None = 0U,
     Emotions = 1U << 0U,
@@ -32,6 +47,7 @@ enum class DataProcessorStatus : std::uint8_t
     InvalidFrame,
     FrameUnavailable,
     InvalidDetectionType,
+    UnsupportedFeature,
 };
 
 enum class EmotionStatus : std::uint8_t
@@ -72,6 +88,14 @@ class DataProcessor
 public:
 
     DataProcessor(const std::string& modelDirectory, const std::string& speechModelPath);
+    DataProcessor(
+        const std::string& modelDirectory, const std::string& speechModelPath, int cameraIndex
+    );
+    DataProcessor(
+        const std::string& modelDirectory,
+        const std::string& speechModelPath,
+        std::function<bool(cv::Mat&)> frameReader
+    );
 
     ~DataProcessor();
 
@@ -117,7 +141,10 @@ public:
 
 private:
 
+    void initializeDetectors(const std::string& modelDirectory, const std::string& speechModelPath);
+
     cv::VideoCapture cap_;
+    std::function<bool(cv::Mat&)> frameReader_;
     cv::Mat frame_;
 
     EmotionResult emotions_;
@@ -126,10 +153,18 @@ private:
     HeartRateResult heartRate_{};
     bool speechToTextEnabled_ = false;
 
+#if UFEEL_ENABLE_EMOTIONS
     std::unique_ptr<EmotionDetector> emotionDetector_;
+#endif
+#if UFEEL_ENABLE_EYE_TRACKING
     std::unique_ptr<EyeTrackingDetector> eyeTrackingDetector_;
+#endif
+#if UFEEL_ENABLE_SPEECH_TO_TEXT
     std::unique_ptr<SpeechToTextDetector> speechToTextDetector_;
+#endif
+#if UFEEL_ENABLE_HEART_RATE
     std::unique_ptr<HeartRateSensorDetector> heartRateSensorDetector_;
+#endif
 };
 
 #endif // DATAPROCESSOR_HPP

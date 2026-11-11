@@ -1,3 +1,7 @@
+#include "DataProcessor.hpp"
+#include "EyeTracking/EyeTrackingCalibrationModel.hpp"
+#include "EyeTracking/EyeTrackingDetector.hpp"
+#include "HeartRate/HeartRateSource.hpp"
 #include "internal/ErrorHandling.hpp"
 #include "internal/FrameConversion.hpp"
 #include "internal/UFeelProcessor.hpp"
@@ -21,10 +25,184 @@ using ufeel::internal::guarded;
 using ufeel::internal::guardedVoid;
 using ufeel::internal::toUFeelStatus;
 
+namespace
+{
+
+class DataProcessorBackend final : public ufeel::internal::ProcessorBackend
+{
+public:
+
+    DataProcessorBackend(
+        const std::string& modelDirectory, const std::string& speechModelPath
+    )
+        : processor_(modelDirectory, speechModelPath)
+    {
+    }
+
+    auto update(
+        std::uint32_t detectionType
+    ) -> DataProcessorStatus override
+    {
+        return processor_.update(detectionType);
+    }
+
+    auto updateFromFrame(
+        std::uint32_t detectionType, const cv::Mat& frame
+    ) -> DataProcessorStatus override
+    {
+        return processor_.updateFromFrame(detectionType, frame);
+    }
+
+    auto updateFrame() -> DataProcessorStatus override
+    {
+        return processor_.updateFrame();
+    }
+
+    auto setFrame(
+        const cv::Mat& frame
+    ) -> DataProcessorStatus override
+    {
+        return processor_.setFrame(frame);
+    }
+
+    [[nodiscard]] auto getFrame() const -> cv::Mat override
+    {
+        return processor_.getFrame();
+    }
+
+    auto updateEmotions() -> DataProcessorStatus override
+    {
+        return processor_.updateEmotions();
+    }
+
+    auto updateEmotionsFromFrame(
+        const cv::Mat& frame
+    ) -> DataProcessorStatus override
+    {
+        return processor_.updateEmotionsFromFrame(frame);
+    }
+
+    [[nodiscard]] auto getEmotions() const -> const EmotionResult& override
+    {
+        return processor_.getEmotions();
+    }
+
+    [[nodiscard]] auto getEmotionsFromFrame(
+        const cv::Mat& frame
+    ) const -> EmotionResult override
+    {
+        return processor_.getEmotionsFromFrame(frame);
+    }
+
+    auto updateEyeTracking() -> DataProcessorStatus override
+    {
+        return processor_.updateEyeTracking();
+    }
+
+    auto updateEyeTrackingFromFrame(
+        const cv::Mat& frame
+    ) -> DataProcessorStatus override
+    {
+        return processor_.updateEyeTrackingFromFrame(frame);
+    }
+
+    [[nodiscard]] auto getEyeTracking() const -> EyeTrackingResult override
+    {
+        return processor_.getEyeTracking();
+    }
+
+    [[nodiscard]] auto getEyeTrackingFromFrame(
+        const cv::Mat& frame
+    ) const -> EyeTrackingResult override
+    {
+        return processor_.getEyeTrackingFromFrame(frame);
+    }
+
+    auto updateSpeechToText() -> DataProcessorStatus override
+    {
+        return processor_.updateSpeechToText();
+    }
+
+    [[nodiscard]] auto getSpeechToText() const -> const SpeechToTextResult& override
+    {
+        return processor_.getSpeechToText();
+    }
+
+    void toggleSpeechToText(
+        bool enabled
+    ) override
+    {
+        processor_.toggleSpeechToText(enabled);
+    }
+
+    auto updateHeartRate() -> DataProcessorStatus override
+    {
+        return processor_.updateHeartRate();
+    }
+
+    [[nodiscard]] auto getHeartRate() const -> HeartRateResult override
+    {
+        return processor_.getHeartRate();
+    }
+
+    void beginEyeTrackingCalibration() override
+    {
+        processor_.beginEyeTrackingCalibration();
+    }
+
+    [[nodiscard]] auto setEyeTrackingCalibrationTarget(
+        float x, float y
+    ) -> bool override
+    {
+        return processor_.setEyeTrackingCalibrationTarget(x, y);
+    }
+
+    [[nodiscard]] auto finishEyeTrackingCalibration() -> bool override
+    {
+        return processor_.finishEyeTrackingCalibration();
+    }
+
+    void cancelEyeTrackingCalibration() override
+    {
+        processor_.cancelEyeTrackingCalibration();
+    }
+
+    [[nodiscard]] auto getEyeTrackingCalibrationProgress() const -> CalibrationProgress override
+    {
+        return processor_.getEyeTrackingCalibrationProgress();
+    }
+
+    [[nodiscard]] auto getEyeTrackingCalibrationDiagnostics() const
+        -> CalibrationDiagnostics override
+    {
+        return processor_.getEyeTrackingCalibrationDiagnostics();
+    }
+
+    [[nodiscard]] auto saveEyeTrackingCalibrationProfile(
+        const std::string& path
+    ) const -> bool override
+    {
+        return processor_.saveEyeTrackingCalibrationProfile(path);
+    }
+
+    [[nodiscard]] auto loadEyeTrackingCalibrationProfile(
+        const std::string& path
+    ) -> bool override
+    {
+        return processor_.loadEyeTrackingCalibrationProfile(path);
+    }
+
+private:
+
+    DataProcessor processor_;
+};
+
+} // namespace
+
 UFeelProcessor::UFeelProcessor(
     const std::string& modelDirectory, const std::string& speechModelPath
 )
-    : processor(modelDirectory, speechModelPath)
+    : processor(std::make_unique<DataProcessorBackend>(modelDirectory, speechModelPath))
 {
 }
 
@@ -65,6 +243,8 @@ auto tightFrameLayout(
 
 extern "C" {
 
+// TODO: make it possible to choose the frame reader (OpenCV cap.read() by default)
+
 auto ufeel_create(
     const char* utf8ModelDirectory, const char* utf8SpeechModelPath
 ) -> UFeelProcessor*
@@ -104,7 +284,7 @@ auto ufeel_update(
         "ufeel_update",
         int32_t{UFEEL_STATUS_INTERNAL_ERROR},
         [processor, detectionType] -> int32_t {
-            return toUFeelStatus(processor->processor.update(detectionType));
+            return toUFeelStatus(processor->processor->update(detectionType));
         }
     );
 }
@@ -129,7 +309,7 @@ auto ufeel_update_from_frame(
             }
 
             return toUFeelStatus(
-                processor->processor.updateFromFrame(detectionType, frameConverted)
+                processor->processor->updateFromFrame(detectionType, frameConverted)
             );
         }
     );
@@ -146,7 +326,7 @@ auto ufeel_update_frame(
 
     return guarded(
         "ufeel_update_frame", int32_t{UFEEL_STATUS_INTERNAL_ERROR}, [processor] -> int32_t {
-            return toUFeelStatus(processor->processor.updateFrame());
+            return toUFeelStatus(processor->processor->updateFrame());
         }
     );
 }
@@ -168,7 +348,7 @@ auto ufeel_set_frame(
                 return UFEEL_STATUS_INVALID_FRAME;
             }
 
-            return toUFeelStatus(processor->processor.setFrame(frameConverted));
+            return toUFeelStatus(processor->processor->setFrame(frameConverted));
         }
     );
 }
@@ -184,7 +364,7 @@ auto ufeel_get_frame(
 
     return guarded(
         "ufeel_get_frame", static_cast<UFeelFrame*>(nullptr), [processor] -> UFeelFrame* {
-            const cv::Mat frame = processor->processor.getFrame();
+            const cv::Mat frame = processor->processor->getFrame();
             if (frame.empty())
             {
                 return static_cast<UFeelFrame*>(nullptr);
@@ -195,7 +375,7 @@ auto ufeel_get_frame(
                 return static_cast<UFeelFrame*>(nullptr);
             }
 
-            const size_t stride = frame.step[0];
+            const size_t stride = frame.step1(0) * frame.elemSize1();
             const auto height = static_cast<size_t>(frame.rows);
 
             const auto width = static_cast<size_t>(frame.cols);
@@ -211,13 +391,13 @@ auto ufeel_get_frame(
 
             const size_t byteCount = stride * height;
 
-            auto output = std::unique_ptr<UFeelFrame>(new (std::nothrow) UFeelFrame{});
+            auto output = std::unique_ptr<UFeelFrame>(processor->allocator->createFrame());
             if (!output)
             {
                 return static_cast<UFeelFrame*>(nullptr);
             }
 
-            output->data = static_cast<uint8_t*>(std::malloc(byteCount));
+            output->data = processor->allocator->allocateFrameData(byteCount);
             if (output->data == nullptr)
             {
                 return static_cast<UFeelFrame*>(nullptr);
@@ -270,7 +450,7 @@ auto ufeel_get_frame_info(
         "ufeel_get_frame_info",
         static_cast<int32_t>(UFEEL_STATUS_INTERNAL_ERROR),
         [processor, info] -> int32_t {
-            const cv::Mat frame = processor->processor.getFrame();
+            const cv::Mat frame = processor->processor->getFrame();
 
             int32_t stride = 0;
             int32_t byteCount = 0;
@@ -309,7 +489,7 @@ auto ufeel_copy_frame(
         "ufeel_copy_frame",
         static_cast<int32_t>(UFEEL_STATUS_INTERNAL_ERROR),
         [processor, destination, destinationSize] -> int32_t {
-            const cv::Mat frame = processor->processor.getFrame();
+            const cv::Mat frame = processor->processor->getFrame();
 
             int32_t stride = 0;
             int32_t byteCount = 0;
@@ -359,7 +539,7 @@ auto ufeel_copy_frame_bgra(
         "ufeel_copy_frame_bgra",
         static_cast<int32_t>(UFEEL_STATUS_INTERNAL_ERROR),
         [processor, destination, destinationRowBytes, width, height] -> int32_t {
-            const cv::Mat frame = processor->processor.getFrame();
+            const cv::Mat frame = processor->processor->getFrame();
 
             if (frame.empty() || frame.depth() != CV_8U)
             {

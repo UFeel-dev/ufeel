@@ -24,13 +24,13 @@ auto ufeel_update_heart_rate(
                 return UFEEL_STATUS_INVALID_PROCESSOR;
             }
 
-            const auto updateStatus = processor->processor.updateHeartRate();
+            const auto updateStatus = processor->processor->updateHeartRate();
             if (updateStatus != DataProcessorStatus::Ok)
             {
                 return toUFeelStatus(updateStatus);
             }
 
-            return processor->processor.getHeartRate().status == HeartRateStatus::Valid
+            return processor->processor->getHeartRate().status == HeartRateStatus::Valid
                        ? UFEEL_STATUS_OK
                        : UFEEL_STATUS_NO_HEARTRATE;
         }
@@ -55,7 +55,7 @@ auto ufeel_get_heart_rate_result(
             }
 
             *result = {};
-            const auto heartrate = processor->processor.getHeartRate();
+            const auto heartrate = processor->processor->getHeartRate();
 
             result->status = static_cast<int32_t>(heartrate.status);
             result->bpm = heartrate.bpm;

@@ -30,13 +30,13 @@ auto ufeel_update_eye_tracking(
             {
                 return UFEEL_STATUS_INVALID_PROCESSOR;
             }
-            const auto updateStatus = processor->processor.updateEyeTracking();
+            const auto updateStatus = processor->processor->updateEyeTracking();
             if (updateStatus != DataProcessorStatus::Ok)
             {
                 return toUFeelStatus(updateStatus);
             }
 
-            return processor->processor.getEyeTracking().status == EyeTrackingStatus::Valid
+            return processor->processor->getEyeTracking().status == EyeTrackingStatus::Valid
                        ? UFEEL_STATUS_OK
                        : UFEEL_STATUS_NO_EYE_TRACKING;
         }
@@ -64,13 +64,13 @@ auto ufeel_update_eye_tracking_from_frame(
             }
 
             const auto updateStatus =
-                processor->processor.updateEyeTrackingFromFrame(frameConverted);
+                processor->processor->updateEyeTrackingFromFrame(frameConverted);
             if (updateStatus != DataProcessorStatus::Ok)
             {
                 return toUFeelStatus(updateStatus);
             }
 
-            return processor->processor.getEyeTracking().status == EyeTrackingStatus::Valid
+            return processor->processor->getEyeTracking().status == EyeTrackingStatus::Valid
                        ? UFEEL_STATUS_OK
                        : UFEEL_STATUS_NO_EYE_TRACKING;
         }
@@ -89,7 +89,7 @@ auto ufeel_begin_eye_tracking_calibration(
             {
                 return UFEEL_STATUS_INVALID_PROCESSOR;
             }
-            processor->processor.beginEyeTrackingCalibration();
+            processor->processor->beginEyeTrackingCalibration();
             return UFEEL_STATUS_OK;
         }
     );
@@ -112,7 +112,7 @@ auto ufeel_set_eye_tracking_calibration_target(
             {
                 return UFEEL_STATUS_INVALID_ARGUMENT;
             }
-            return processor->processor.setEyeTrackingCalibrationTarget(screenX, screenY)
+            return processor->processor->setEyeTrackingCalibrationTarget(screenX, screenY)
                        ? UFEEL_STATUS_OK
                        : UFEEL_STATUS_INVALID_STATE;
         }
@@ -131,7 +131,7 @@ auto ufeel_finish_eye_tracking_calibration(
             {
                 return UFEEL_STATUS_INVALID_PROCESSOR;
             }
-            return processor->processor.finishEyeTrackingCalibration()
+            return processor->processor->finishEyeTrackingCalibration()
                        ? UFEEL_STATUS_OK
                        : UFEEL_STATUS_EYE_TRACKING_CALIBRATION_FAILED;
         }
@@ -150,7 +150,7 @@ auto ufeel_cancel_eye_tracking_calibration(
             {
                 return UFEEL_STATUS_INVALID_PROCESSOR;
             }
-            processor->processor.cancelEyeTrackingCalibration();
+            processor->processor->cancelEyeTrackingCalibration();
             return UFEEL_STATUS_OK;
         }
     );
@@ -175,7 +175,7 @@ auto ufeel_get_eye_tracking_result(
 
             *result = {};
 
-            const auto eyeTracking = processor->processor.getEyeTracking();
+            const auto eyeTracking = processor->processor->getEyeTracking();
 
             result->status = static_cast<int32_t>(eyeTracking.status);
             result->x = static_cast<float>(eyeTracking.x);
@@ -221,7 +221,7 @@ void ufeel_get_eye_tracking_result_from_frame(
             return;
         }
 
-        const auto gaze = processor->processor.getEyeTrackingFromFrame(frameConverted);
+        const auto gaze = processor->processor->getEyeTrackingFromFrame(frameConverted);
 
         result->status = static_cast<int32_t>(gaze.status);
         result->x = static_cast<float>(gaze.x);
@@ -254,7 +254,7 @@ auto ufeel_get_eye_tracking_calibration_progress(
 
             *progress = {};
 
-            const auto value = processor->processor.getEyeTrackingCalibrationProgress();
+            const auto value = processor->processor->getEyeTrackingCalibrationProgress();
 
             progress->targetsWithEnoughSamples =
                 static_cast<int32_t>(value.targetsWithEnoughSamples);
@@ -286,7 +286,7 @@ auto ufeel_get_eye_tracking_calibration_diagnostics(
             }
 
             *diagnostics = {};
-            const auto value = processor->processor.getEyeTrackingCalibrationDiagnostics();
+            const auto value = processor->processor->getEyeTrackingCalibrationDiagnostics();
 
             diagnostics->failureReason = static_cast<int32_t>(value.failureReason);
 
@@ -343,7 +343,7 @@ auto ufeel_save_eye_tracking_calibration_profile(
             {
                 return UFEEL_STATUS_INVALID_ARGUMENT;
             }
-            return processor->processor.saveEyeTrackingCalibrationProfile(utf8Path)
+            return processor->processor->saveEyeTrackingCalibrationProfile(utf8Path)
                        ? UFEEL_STATUS_OK
                        : UFEEL_STATUS_EYE_TRACKING_PROFILE_FAILED;
         }
@@ -366,7 +366,7 @@ auto ufeel_load_eye_tracking_calibration_profile(
             {
                 return UFEEL_STATUS_INVALID_ARGUMENT;
             }
-            return processor->processor.loadEyeTrackingCalibrationProfile(utf8Path)
+            return processor->processor->loadEyeTrackingCalibrationProfile(utf8Path)
                        ? UFEEL_STATUS_OK
                        : UFEEL_STATUS_EYE_TRACKING_PROFILE_FAILED;
         }

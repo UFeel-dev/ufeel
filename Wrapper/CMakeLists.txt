@@ -16,13 +16,20 @@ target_include_directories(ufeel_wrapper
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
     PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}/src"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/include"
 )
 
 target_link_libraries(ufeel_wrapper
     PRIVATE
         ufeel_detection_library
 )
+
+if(UFEEL_ENABLE_EYE_TRACKING)
+    target_link_libraries(ufeel_wrapper
+        PRIVATE
+            "$<LINK_GROUP:RESCAN,ufeel_feature_eye_tracking,${TFLITE_STATIC_LIBRARIES}>"
+    )
+endif()
 
 target_compile_options(ufeel_wrapper
     PRIVATE
@@ -38,7 +45,7 @@ set_target_properties(ufeel_wrapper PROPERTIES
     CXX_VISIBILITY_PRESET hidden
     VISIBILITY_INLINES_HIDDEN YES
     BUILD_RPATH
-        "${OPENCV_DIR}/lib;${LIBTORCH_DIR}/lib;${PORTAUDIO_DIR}/lib;${CPR_DIR}/lib"
+        "${OPENCV_DIR}/lib;${LIBTORCH_DIR}/lib;${PORTAUDIO_DIR}/lib"
     INSTALL_RPATH
         "$ORIGIN/dependencies"
     INSTALL_RPATH_USE_LINK_PATH FALSE

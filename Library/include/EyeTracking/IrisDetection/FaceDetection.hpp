@@ -67,6 +67,12 @@ public:
     */
     [[nodiscard]] auto cropFrame(const cv::Rect& roi) const -> cv::Mat;
 
+protected:
+
+    [[nodiscard]] virtual auto
+    detectFace(const std::vector<float>& regressor, const std::vector<float>& classificator) const
+        -> Detection;
+
 private:
 
     /*

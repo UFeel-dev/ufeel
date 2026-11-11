@@ -25,7 +25,7 @@ RUN apt-get update && \
         clang-22 \
         clang-tidy-22 \
         clang-format-22 \
-        cmake \
+        llvm-22 \
         ninja-build \
         libasound2 \
         libfontconfig1 \
@@ -42,6 +42,15 @@ RUN apt-get update && \
         libxkbcommon0 \
         && \
     rm -rf /var/lib/apt/lists/*
+
+ARG CMAKE_VERSION=3.31.6
+
+RUN wget "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz" \
+        -O /tmp/cmake.tar.gz && \
+    tar -xzf /tmp/cmake.tar.gz -C /opt && \
+    rm /tmp/cmake.tar.gz
+
+ENV PATH="/opt/cmake-${CMAKE_VERSION}-linux-x86_64/bin:${PATH}"
 
 RUN ln -s /usr/bin/clang-format-22 /usr/local/bin/clang-format && \
     ln -s /usr/bin/clang-tidy-22 /usr/local/bin/clang-tidy && \

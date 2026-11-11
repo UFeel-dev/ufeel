@@ -19,8 +19,10 @@ static auto generateAnchors(
         {
             for (auto x = 0; x < size; ++x)
             {
-                float const xCenter = (x + options.offsetX) * 1.f / size;
-                float const yCenter = (y + options.offsetY) * 1.f / size;
+                float const xCenter =
+                    (static_cast<float>(x) + options.offsetX) / static_cast<float>(size);
+                float const yCenter =
+                    (static_cast<float>(y) + options.offsetY) / static_cast<float>(size);
                 float const w = 1.f;
                 float const h = 1.f;
                 anchors.insert(

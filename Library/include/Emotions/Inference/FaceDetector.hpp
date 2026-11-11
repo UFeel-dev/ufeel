@@ -27,9 +27,17 @@ public:
         int topK = 5000
     );
 
+    [[nodiscard]] static auto fromDetector(cv::Ptr<cv::FaceDetectorYN> detector) -> FaceDetector;
+
     [[nodiscard]] auto detect(const cv::Mat& image) -> std::optional<FaceDetection>;
 
 private:
+
+    struct DetectorTag
+    {
+    };
+
+    FaceDetector(cv::Ptr<cv::FaceDetectorYN> detector, DetectorTag tag);
 
     cv::Ptr<cv::FaceDetectorYN> detector_;
 };
