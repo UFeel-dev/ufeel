@@ -87,7 +87,7 @@ jobs:
       #       -v "$GITHUB_WORKSPACE:/mnt" \
       #       -w /mnt \
       #       ufeeldocker:latest \
-      #       bash -lc "./build.sh run-unit-tests"
+      #       bash -lc "./build.sh test"
 
       - name: Run Clang-Tidy in Docker
         shell: bash

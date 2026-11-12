@@ -7,7 +7,7 @@ version: 2
 
 updates:
   - package-ecosystem: "nuget"
-    directory: "/tests/integration"
+    directory: "/tests/test-harnesses/csharp/UFeel.TestHarness"
     schedule:
       interval: "weekly"
 

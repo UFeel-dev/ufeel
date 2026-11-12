@@ -35,7 +35,7 @@ cd ..
 ./docker/run.sh
 
 ./build.sh all
-./build.sh run-integration-tests
+./build.sh test
 ```
 
 Docker is the recommended build environment. It provides a reproducible toolchain and avoids requiring the native build dependencies on the host.
@@ -104,11 +104,7 @@ git lfs pull
 ├── Tools/            # Development tools
 ├── Library/          # Native sources
 ├── Wrapper/          # C++ wrapper
-├── tests/
-│   ├── unit/
-│   │   ├── Library/  # Native library unit tests
-│   │   └── Wrapper/  # Native wrapper unit tests
-│   └── integration/  # C# integration test
+├── tests/            # Tests
 ├── 3rdparty/         # External dependencies
 ├── build/            # Configuration-specific generated build files
 ├── docker/           # Docker environment
@@ -118,9 +114,14 @@ git lfs pull
 ## Build and Test
 
 ```bash
-./build.sh all                 # Configure, build, and package (Release)
-./build.sh test                # Run unit tests and integration tests
-./build.sh run-feature-matrix  # Test every feature configuration
+./build.sh all                   # Configure, build, and package (Release)
+./build.sh test                  # Run all automated tests
+./build.sh test-unit             # Run C++ unit tests
+./build.sh test-integration      # Run C++ and C# integration tests
+./build.sh test-e2e              # Run C++ end-to-end tests
+./build.sh test-harness          # Build the interactive C# test harness
+./build.sh test-feature-matrix   # Test every feature configuration through C# integration tests
+./build.sh coverage              # Run native tests and generate coverage
 ```
 
 The complete command list is available with:
