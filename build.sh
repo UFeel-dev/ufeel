@@ -386,7 +386,8 @@ run_native_tests()
     [[ -f "$directory/build.ninja" ]] || configure_test_build "$directory"
     build "$directory"
     run_with_environment LD_LIBRARY_PATH "$(runtime_path "$directory")" \
-        ctest --test-dir "$directory" --output-on-failure "$@"
+        ctest --test-dir "$directory" --output-on-failure "$@" \
+        --parallel "$(nproc)"
 }
 
 test_all()
@@ -425,7 +426,8 @@ run_native_tests_with_coverage()
     rm -f "$directory"/coverage-*.profraw
     run_with_environment LLVM_PROFILE_FILE "$directory/coverage-%p.profraw" \
         env LD_LIBRARY_PATH="$(runtime_path "$directory")" \
-        ctest --test-dir "$directory" --output-on-failure
+        ctest --test-dir "$directory" --output-on-failure \
+        --parallel "$(nproc)"
     local profdata
     local cov
     profdata="$(command -v llvm-profdata-22 || command -v llvm-profdata)" ||
@@ -468,7 +470,8 @@ test_feature_matrix()
         run cmake --build "$directory" --parallel
         run cmake --install "$directory" --prefix "$destination"
         run_with_environment LD_LIBRARY_PATH "$(runtime_path "$directory" "$destination")" \
-            ctest --test-dir "$directory" --label-exclude '^hardware$' --output-on-failure
+            ctest --test-dir "$directory" --label-exclude '^hardware$' --output-on-failure \
+            --parallel "$(nproc)"
         run_with_environment UFEEL_PACKAGE_PATH "$destination/libufeel_wrapper.so" \
             env LD_LIBRARY_PATH="$(runtime_path "$directory" "$destination")" \
             dotnet run --project "$CSHARP_INTEGRATION_PROJECT" \
