@@ -19,5 +19,5 @@
 .clang-tidy @augustin-grosnon
 
 # Documentation
-/Documentation/ @Annita23 @milimarg
+/docs/ @Annita23 @milimarg
 README.md @milimarg
