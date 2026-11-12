@@ -152,8 +152,12 @@ The available options are `UFEEL_ENABLE_EMOTIONS`, `UFEEL_ENABLE_EYE_TRACKING`, 
 | --- | --- |
 | [Contributing](CONTRIBUTING.md) | Contribution guidelines |
 | [Disclaimer](DISCLAIMER.md) | Limitations and prohibited use |
+| [Architecture](docs/architecture.md) | Layers, feature flags, packaging |
 | [Docker](docker/README.md) | Docker setup instructions |
 | [Heart rate](docs/heart-rate.md) | Heart-rate sources: sensor and smartwatch |
+| [Testing](docs/testing.md) | Test levels, layout and rules |
+| [Versioning](VERSIONING.md) | Semantic Versioning policy |
+| [Security](SECURITY.md) | Vulnerability reporting |
 
 ## License
 
