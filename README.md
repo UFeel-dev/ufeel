@@ -79,6 +79,7 @@ Manual builds are supported but require compatible versions of all third-party d
 - clang-format >= 22.0
 - patchelf
 - IWYU >= 0.26
+- act  => 0.2.97
 
 The native package still relies on some operating-system libraries, including glibc, libstdc++, audio libraries and other system dependencies.
 

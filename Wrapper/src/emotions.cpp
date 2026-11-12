@@ -2,6 +2,7 @@
 #include "internal/ErrorHandling.hpp"
 #include "internal/FrameConversion.hpp"
 #include "internal/UFeelProcessor.hpp" // IWYU pragma: keep
+#include "internal/WrapperAllocator.hpp"
 #include "opencv2/core/mat.hpp"
 #include "ufeel.h"
 
@@ -20,6 +21,7 @@ using ufeel::internal::FrameCopyPolicy;
 using ufeel::internal::guarded;
 using ufeel::internal::guardedVoid;
 using ufeel::internal::toUFeelStatus;
+using ufeel::internal::WrapperAllocator;
 
 namespace
 {
@@ -55,7 +57,7 @@ struct EmotionResultDeleter
 };
 
 auto convertEmotionsResultToUFeelPair(
-    const std::map<std::string, float>& emotions, ufeel::internal::WrapperAllocator& allocator
+    const std::map<std::string, float>& emotions, WrapperAllocator& allocator
 ) -> UFeelPair*
 {
     if (emotions.empty() ||

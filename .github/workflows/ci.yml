@@ -2,12 +2,13 @@
 name: CI
 
 on:
-  pull_request_review:
-    types: [submitted]
+  pull_request:
+    branches: [main]
+  merge_group:
+    types: [checks_requested]
 
 jobs:
   build-and-analysis:
-    if: github.event.review.state == 'approved'
     name: Build and Static Analysis
     runs-on: ubuntu-22.04
 
@@ -89,48 +90,10 @@ jobs:
       #       ufeeldocker:latest \
       #       bash -lc "./build.sh run-unit-tests"
 
-      - name: Run Clang-Tidy in Docker
-        shell: bash
+      - name: Run lint (clang-tidy + clang-format) in Docker
         run: |
-          set +e
-
           docker run --rm \
             -v "$GITHUB_WORKSPACE:/mnt" \
             -w /mnt \
             ufeeldocker:latest \
-            bash -lc '
-              find Library Wrapper -type f -name "*.cpp" -print0 |
-              while IFS= read -r -d "" file; do
-                echo "::group::Clang-Tidy: $file"
-                ./build.sh lint "$file"
-                echo "::endgroup::"
-              done
-            ' > clang-tidy.log 2>&1
-
-          lint_status=$?
-          cat clang-tidy.log
-
-          while IFS= read -r line; do
-            if [[ "$line" =~ ^/mnt/(Library|Wrapper)/.*:([0-9]+):([0-9]+):\ (warning|error):\ (.*)$ ]]; then
-              file="${BASH_REMATCH[1]}"
-              number="${BASH_REMATCH[2]}"
-              column="${BASH_REMATCH[3]}"
-              level="${BASH_REMATCH[4]}"
-              message="${BASH_REMATCH[5]}"
-
-              message="${message//%/%25}"
-              message="${message//$'\r'/%0D}"
-              message="${message//$'\n'/%0A}"
-
-              file="${file//%/%25}"
-              file="${file//,/%2C}"
-
-              if [[ "$level" == "error" ]]; then
-                echo "::error file=$file,line=$number,col=$column,title=Clang-Tidy::$message"
-              else
-                echo "::warning file=$file,line=$number,col=$column,title=Clang-Tidy::$message"
-              fi
-            fi
-          done < clang-tidy.log
-
-          exit "$lint_status"
+            bash -lc './build.sh lint'

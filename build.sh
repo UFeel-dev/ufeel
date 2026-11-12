@@ -42,8 +42,9 @@ Commands:
   run-integration-tests   Run C# integration tests
   run-feature-matrix      Test all features and each feature separately
   format                  Format C++ files
-  lint                    Run clang-tidy
-  fix                     Run clang-tidy with fixes
+  check-format            Report unformatted C++ files without changing them
+  lint                    Run clang-tidy and check-format (lint --fix applies both fixes)
+  fix                     Same as lint --fix
   include-fix             Run include-what-you-use fixes
   clean                   Remove build and package directories
 
@@ -171,7 +172,7 @@ parse_args()
                 cmake_extra+=("$@")
                 break
                 ;;
-            configure|build|package|all|test|clean|format|lint|fix|include-fix|\
+            configure|build|package|all|test|clean|format|check-format|lint|fix|include-fix|\
             run-unit-tests|run-integration-tests|run-feature-matrix)
                 [[ -z "$command" ]] || error "only one command may be specified"
                 command="$1"
@@ -382,38 +383,48 @@ run_feature_matrix()
     done
 }
 
-format_sources()
+collect_format_sources()
 {
-    require_commands clang-format
+    local -n collected="$1"
+    shift
     if (("$#")); then
-        run clang-format -i "$@"
+        collected=("$@")
         return
     fi
-    local -a sources=()
-    while IFS= read -r -d '' file; do sources+=("$file"); done < <(
+    local file
+    while IFS= read -r -d '' file; do collected+=("$file"); done < <(
         find "$ROOT_DIR/Library" "$ROOT_DIR/Wrapper" "$ROOT_DIR/tests" -type f \
             \( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \) -print0
     )
+}
+
+format_sources()
+{
+    local -a sources=()
+    collect_format_sources sources "$@"
     run clang-format -i "${sources[@]}"
 }
 
-lint()
+check_format()
+{
+    local -a sources=()
+    collect_format_sources sources "$@"
+    run clang-format --dry-run --Werror "${sources[@]}"
+}
+
+static_analysis()
 {
     local include_tests=false
     local apply_fixes=false
     local -a targets=()
     local target
     for target in "$@"; do
-        [[ "$target" == --tests ]] && include_tests=true || targets+=("$target")
-        [[ "$target" == --fix ]] && apply_fixes=true
+        case "$target" in
+            --tests) include_tests=true ;;
+            --fix) apply_fixes=true ;;
+            *) targets+=("$target") ;;
+        esac
     done
-    if "$apply_fixes"; then
-        local filtered=()
-        for target in "${targets[@]}"; do
-            [[ "$target" != --fix ]] && filtered+=("$target")
-        done
-        targets=("${filtered[@]}")
-    fi
     local directory
     if "$include_tests"; then
         directory="$BUILD_ROOT/coverage"
@@ -426,9 +437,44 @@ lint()
         targets=(Library/.* Wrapper/.*)
         "$include_tests" && targets+=(tests/unit/.*)
     fi
-    local -a options=(run-clang-tidy -p "$directory" -header-filter='.*(Library|Wrapper|tests/unit)/.*')
-    "$apply_fixes" && options+=(-fix)
+    # -quiet drops clang-tidy's per-file "N warnings generated" / "Suppressed N warnings" summaries
+    # (diagnostics from third-party headers outside -header-filter); real diagnostics still print.
+    local -a options=(run-clang-tidy -quiet -p "$directory" -header-filter='.*(Library|Wrapper|tests/unit)/.*')
+    "$apply_fixes" && options+=(-fix '-warnings-as-errors=-*')
+    # run-clang-tidy pipes clang-tidy's output, so clang-tidy never sees a terminal and stays
+    # uncolored; force colors when our own output is a terminal (logs and CI stay plain). The value
+    # is explicit because a bare -use-color would swallow the next argument (the first target).
+    [[ -t 1 ]] && options+=(-use-color=1)
     run "${options[@]}" "${targets[@]}"
+}
+
+lint()
+{
+    local apply_fixes=false
+    local has_targets=false
+    local -a format_targets=()
+    local argument
+    for argument in "$@"; do
+        case "$argument" in
+            --fix) apply_fixes=true ;;
+            --tests) ;;
+            *)
+                has_targets=true
+                [[ -f "$argument" ]] && format_targets+=("$argument")
+                ;;
+        esac
+    done
+    # Run both checks even when the first fails, so one run reports every problem.
+    local status=0
+    static_analysis "$@" || status=1
+    if ! "$has_targets" || ((${#format_targets[@]})); then
+        if "$apply_fixes"; then
+            format_sources "${format_targets[@]}" || status=1
+        else
+            check_format "${format_targets[@]}" || status=1
+        fi
+    fi
+    return "$status"
 }
 
 include_fix()
@@ -456,6 +502,7 @@ dispatch()
         test) run_unit_tests; run_integration_tests ;;
         clean) remove_generated "$BUILD_ROOT" "$PACKAGE_ROOT" ;;
         format) format_sources "${cmake_extra[@]}" ;;
+        check-format) check_format "${cmake_extra[@]}" ;;
         lint) lint "${cmake_extra[@]}" ;;
         fix) lint --fix "${cmake_extra[@]}" ;;
         include-fix) include_fix "${cmake_extra[@]}" ;;
@@ -469,8 +516,8 @@ dispatch()
 parse_args "$@"
 case "$command" in
     clean) ;;
-    format) require_commands clang-format ;;
-    lint|fix) require_commands cmake run-clang-tidy ;;
+    format|check-format) require_commands clang-format ;;
+    lint|fix) require_commands cmake run-clang-tidy clang-format ;;
     include-fix) require_commands cmake iwyu_tool.py fix_includes.py ;;
     run-integration-tests) require_commands cmake dotnet ;;
     run-feature-matrix) require_commands cmake ctest dotnet ;;
