@@ -16,6 +16,7 @@ public partial class MainWindow : Window
     private readonly FeatureScheduler scheduler = FeatureScheduler.CreateDefault();
     private readonly EyeTrackingSmoother eyeTrackingSmoother = new();
     private readonly FrameBitmapBuffer frameBitmaps = new();
+    private readonly LatestFrameCapture frameCapture = new();
 
     private readonly Task processTask;
     private readonly string calibrationProfilePath;

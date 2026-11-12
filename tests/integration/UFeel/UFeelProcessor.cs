@@ -70,6 +70,34 @@ public sealed class UFeelProcessor : IDisposable
         return (UFeelStatus)UFeelNative.ufeel_update(Handle, (int)detection);
     }
 
+    public UFeelStatus UpdateFromFrame(DetectionType detection, FrameData frame)
+    {
+        ArgumentNullException.ThrowIfNull(frame);
+
+        IntPtr processor = Handle;
+        GCHandle pinned = GCHandle.Alloc(frame.Data, GCHandleType.Pinned);
+
+        try
+        {
+            var nativeFrame = new UFeelNative.NativeFrame
+            {
+                Data = pinned.AddrOfPinnedObject(),
+                Width = frame.Width,
+                Height = frame.Height,
+                Channels = frame.Channels,
+                Stride = frame.Stride,
+                DataSize = (ulong)frame.Data.Length,
+            };
+
+            return (UFeelStatus)UFeelNative.ufeel_update_from_frame(
+                processor, (int)detection, in nativeFrame);
+        }
+        finally
+        {
+            pinned.Free();
+        }
+    }
+
     public FrameData? GetFrame()
     {
         IntPtr processor = Handle;
