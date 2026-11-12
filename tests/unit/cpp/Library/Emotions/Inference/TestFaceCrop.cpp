@@ -37,43 +37,13 @@ auto faceCropWithDetection(
 } // namespace
 
 TEST(
-    FaceCropTest, ResizesFrameToModelInputWhenNoFaceIsDetected
+    FaceCropTest, ReturnsNothingWhenNoFaceIsDetected
 )
 {
     FaceCrop crop(FaceDetector::fromDetector(cv::makePtr<StubFaceDetectorYN>(cv::Mat{})), 64);
     const cv::Mat image(80, 120, CV_8UC3, cv::Scalar(10, 20, 30));
 
-    const auto cropped = crop(image);
-
-    ASSERT_EQ(cropped.size(), cv::Size(64, 64));
-    EXPECT_EQ(cropped.type(), CV_8UC3);
-    EXPECT_EQ(cropped.at<cv::Vec3b>(32, 32), cv::Vec3b(10, 20, 30));
-}
-
-TEST(
-    FaceCropTest, PreservesSquareInputAtModelSizeWhenNoFaceIsDetected
-)
-{
-    FaceCrop crop(FaceDetector::fromDetector(cv::makePtr<StubFaceDetectorYN>(cv::Mat{})), 64);
-    const cv::Mat image(64, 64, CV_8UC3, cv::Scalar(40, 50, 60));
-
-    const auto cropped = crop(image);
-
-    ASSERT_EQ(cropped.size(), image.size());
-    EXPECT_EQ(cropped.at<cv::Vec3b>(32, 32), image.at<cv::Vec3b>(32, 32));
-}
-
-TEST(
-    FaceCropTest, ResizesTallFrameUsingAreaInterpolationWhenNoFaceIsDetected
-)
-{
-    FaceCrop crop(FaceDetector::fromDetector(cv::makePtr<StubFaceDetectorYN>(cv::Mat{})), 64);
-    const cv::Mat image(120, 40, CV_8UC3, cv::Scalar(40, 50, 60));
-
-    const auto cropped = crop(image);
-
-    ASSERT_EQ(cropped.size(), cv::Size(64, 64));
-    EXPECT_EQ(cropped.at<cv::Vec3b>(32, 32), cv::Vec3b(40, 50, 60));
+    EXPECT_FALSE(crop(image).has_value());
 }
 
 TEST(
@@ -86,10 +56,14 @@ TEST(
     const cv::Mat image(100, 100, CV_8UC3, cv::Scalar(10, 20, 30));
 
     const auto cropped = crop(image);
+    if (!cropped)
+    {
+        FAIL() << "the detected face was not cropped";
+    }
 
-    ASSERT_EQ(cropped.size(), cv::Size(64, 64));
-    EXPECT_EQ(cropped.at<cv::Vec3b>(0, 0), cv::Vec3b(0, 0, 0));
-    EXPECT_EQ(cropped.at<cv::Vec3b>(32, 32), cv::Vec3b(10, 20, 30));
+    ASSERT_EQ(cropped->size(), cv::Size(64, 64));
+    EXPECT_EQ(cropped->at<cv::Vec3b>(0, 0), cv::Vec3b(0, 0, 0));
+    EXPECT_EQ(cropped->at<cv::Vec3b>(32, 32), cv::Vec3b(10, 20, 30));
 }
 
 TEST(
@@ -106,13 +80,17 @@ TEST(
     const cv::Mat image(50, 50, CV_8UC3, cv::Scalar(10, 20, 30));
 
     const auto cropped = crop(image);
+    if (!cropped)
+    {
+        FAIL() << "the detected face was not cropped";
+    }
 
-    EXPECT_EQ(cropped.size(), cv::Size(64, 64));
-    EXPECT_NE(cropped.at<cv::Vec3b>(32, 32), cv::Vec3b(0, 0, 0));
+    EXPECT_EQ(cropped->size(), cv::Size(64, 64));
+    EXPECT_NE(cropped->at<cv::Vec3b>(32, 32), cv::Vec3b(0, 0, 0));
 }
 
 TEST(
-    FaceCropTest, FallsBackToResizedFrameWhenFaceBoxDoesNotIntersectImage
+    FaceCropTest, ReturnsNothingWhenFaceBoxDoesNotIntersectImage
 )
 {
     FaceCrop crop = faceCropWithDetection(
@@ -122,14 +100,11 @@ TEST(
     );
     const cv::Mat image(100, 100, CV_8UC3, cv::Scalar(70, 80, 90));
 
-    const auto cropped = crop(image);
-
-    ASSERT_EQ(cropped.size(), cv::Size(64, 64));
-    EXPECT_EQ(cropped.at<cv::Vec3b>(32, 32), cv::Vec3b(70, 80, 90));
+    EXPECT_FALSE(crop(image).has_value());
 }
 
 TEST(
-    FaceCropTest, FallsBackWhenFaceBoxHasNoHeight
+    FaceCropTest, ReturnsNothingWhenFaceBoxHasNoHeight
 )
 {
     FaceCrop crop = faceCropWithDetection(
@@ -137,10 +112,7 @@ TEST(
     );
     const cv::Mat image(100, 100, CV_8UC3, cv::Scalar(70, 80, 90));
 
-    const auto cropped = crop(image);
-
-    ASSERT_EQ(cropped.size(), cv::Size(64, 64));
-    EXPECT_EQ(cropped.at<cv::Vec3b>(32, 32), cv::Vec3b(70, 80, 90));
+    EXPECT_FALSE(crop(image).has_value());
 }
 
 TEST(
@@ -153,7 +125,11 @@ TEST(
     const cv::Mat image(80, 80, CV_8UC3, cv::Scalar(90, 100, 110));
 
     const auto cropped = crop(image);
+    if (!cropped)
+    {
+        FAIL() << "the detected face was not cropped";
+    }
 
-    ASSERT_EQ(cropped.size(), cv::Size(64, 64));
-    EXPECT_EQ(cropped.at<cv::Vec3b>(32, 32), cv::Vec3b(90, 100, 110));
+    ASSERT_EQ(cropped->size(), cv::Size(64, 64));
+    EXPECT_EQ(cropped->at<cv::Vec3b>(32, 32), cv::Vec3b(90, 100, 110));
 }

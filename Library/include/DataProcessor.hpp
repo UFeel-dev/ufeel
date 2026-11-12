@@ -5,6 +5,7 @@
 #include "EyeTracking/EyeTrackingDetector.hpp"
 #include "HeartRate/HeartRateDetector.hpp"
 #include "HeartRate/HeartRateSource.hpp"
+#include "SpeechToText/AudioSource.hpp"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/videoio.hpp"
 
@@ -13,6 +14,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #ifndef UFEEL_ENABLE_EMOTIONS
 #define UFEEL_ENABLE_EMOTIONS 1
@@ -76,6 +78,14 @@ struct SpeechToTextResult
     std::string text;
 };
 
+struct DataProcessorDevices
+{
+    std::function<bool(cv::Mat&)> frameReader;
+    int cameraIndex = 0;
+    std::unique_ptr<AudioSource> audioSource;
+    std::vector<std::unique_ptr<HeartRateSource>> heartRateSources;
+};
+
 constexpr auto hasDetection(
     std::uint32_t detectionType, DetectionType flag
 ) noexcept -> bool
@@ -95,6 +105,11 @@ public:
         const std::string& modelDirectory,
         const std::string& speechModelPath,
         std::function<bool(cv::Mat&)> frameReader
+    );
+    DataProcessor(
+        const std::string& modelDirectory,
+        const std::string& speechModelPath,
+        DataProcessorDevices devices
     );
 
     ~DataProcessor();
@@ -140,8 +155,6 @@ public:
     void toggleSpeechToText(bool state);
 
 private:
-
-    void initializeDetectors(const std::string& modelDirectory, const std::string& speechModelPath);
 
     cv::VideoCapture cap_;
     std::function<bool(cv::Mat&)> frameReader_;

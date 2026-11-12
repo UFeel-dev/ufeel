@@ -1,19 +1,25 @@
 #include "DataProcessor.hpp"
 #include "EyeTracking/EyeTrackingCalibrationModel.hpp"
 #include "EyeTracking/EyeTrackingDetector.hpp"
+#include "HeartRate/HeartRateSource.hpp"
 #include "HeartRate/UFeelHeartRateStatus.hpp"
+#include "Library/HeartRate/TestSupport/HeartRateSourceFake.hpp"
+#include "Library/SpeechToText/TestSupport/WavAudioSource.hpp"
+#include "Library/TestSupport/Fixtures.hpp"
+#include "SpeechToText/AudioCapture.hpp"
+#include "SpeechToText/AudioSource.hpp"
 #include "SpeechToText/TestDoubles.hpp"
 #include "opencv2/core/hal/interface.h"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/core/types.hpp"
 
-#include <chrono>
 #include <cstdint>
 #include <functional>
 #include <gtest/gtest.h>
+#include <memory>
 #include <stdexcept>
-#include <thread>
 #include <utility>
+#include <vector>
 
 #ifndef DATA_PROCESSOR_MODEL_DIR_PATH
 #define DATA_PROCESSOR_MODEL_DIR_PATH ""
@@ -22,18 +28,45 @@
 namespace
 {
 
-auto createProcessor(
-    int cameraIndex = 0
-) -> DataProcessor
+constexpr HeartRateResult kHeartRate{.bpm = 72, .status = HeartRateStatus::Valid};
+
+auto makeAudioSource() -> std::unique_ptr<WavAudioSource>
 {
-    return {DATA_PROCESSOR_MODEL_DIR_PATH, "fake-model", cameraIndex};
+    return std::make_unique<WavAudioSource>(std::vector<int16_t>(AudioCapture::framesPerBuffer));
+}
+
+auto makeDevices(
+    std::function<bool(cv::Mat&)> frameReader = frameSequence({}),
+    std::unique_ptr<AudioSource> audioSource = makeAudioSource()
+) -> DataProcessorDevices
+{
+    DataProcessorDevices devices{
+        .frameReader = std::move(frameReader),
+        .audioSource = std::move(audioSource),
+    };
+    devices.heartRateSources.push_back(std::make_unique<HeartRateSourceFake>(kHeartRate));
+    return devices;
 }
 
 auto createProcessor(
-    std::function<bool(cv::Mat&)> frameReader
+    DataProcessorDevices devices = makeDevices()
 ) -> DataProcessor
 {
-    return {DATA_PROCESSOR_MODEL_DIR_PATH, "fake-model", std::move(frameReader)};
+    return {DATA_PROCESSOR_MODEL_DIR_PATH, "fake-model", std::move(devices)};
+}
+
+auto startSpeech() -> std::unique_ptr<DataProcessor>
+{
+    auto audioSource = makeAudioSource();
+    auto* audio = audioSource.get();
+    auto processor = std::make_unique<DataProcessor>(
+        DATA_PROCESSOR_MODEL_DIR_PATH,
+        "fake-model",
+        makeDevices(frameSequence({}), std::move(audioSource))
+    );
+    processor->toggleSpeechToText(true);
+    EXPECT_TRUE(audio->waitUntilDrained());
+    return processor;
 }
 
 } // namespace
@@ -76,7 +109,10 @@ TEST(
     DataProcessorTest, ReportsUnavailableCameraFrames
 )
 {
-    auto processor = createProcessor(999999);
+    auto devices = makeDevices();
+    devices.frameReader = nullptr;
+    devices.cameraIndex = 999999;
+    auto processor = createProcessor(std::move(devices));
     const cv::Mat frame(8, 8, CV_8UC3, cv::Scalar(0, 0, 0));
     ASSERT_EQ(processor.setFrame(frame), DataProcessorStatus::Ok);
 
@@ -118,7 +154,7 @@ TEST(
     EXPECT_EQ(processor.getSpeechToText().status, SpeechToTextStatus::Disabled);
     EXPECT_TRUE(processor.getSpeechToText().text.empty());
     EXPECT_EQ(processor.updateHeartRate(), DataProcessorStatus::Ok);
-    EXPECT_EQ(processor.getHeartRate().status, HeartRateStatus::NoData);
+    EXPECT_EQ(processor.getHeartRate().bpm, kHeartRate.bpm);
 }
 
 TEST(
@@ -132,7 +168,8 @@ TEST(
     EXPECT_EQ(processor.getEyeTracking().status, EyeTrackingStatus::FaceUnavailable);
 
     EXPECT_EQ(processor.updateFromFrame(HeartRate, cv::Mat{}), DataProcessorStatus::Ok);
-    EXPECT_EQ(processor.getHeartRate().status, HeartRateStatus::NoData);
+    EXPECT_EQ(processor.getHeartRate().status, kHeartRate.status);
+    EXPECT_EQ(processor.getHeartRate().bpm, kHeartRate.bpm);
 }
 
 TEST(
@@ -140,26 +177,17 @@ TEST(
 )
 {
     speech_to_text_test::VoskFake::reset();
-    auto processor = createProcessor();
+    auto processor = startSpeech();
 
-    processor.toggleSpeechToText(true);
-    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
-    while (!speech_to_text_test::VoskFake::hasProcessedAudio() &&
-           std::chrono::steady_clock::now() < deadline)
-    {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    }
+    EXPECT_EQ(processor->updateSpeechToText(), DataProcessorStatus::Ok);
+    EXPECT_EQ(processor->getSpeechToText().status, SpeechToTextStatus::Valid);
+    EXPECT_EQ(processor->getSpeechToText().text, "hello");
+    EXPECT_EQ(processor->updateFromFrame(Speech, cv::Mat{}), DataProcessorStatus::Ok);
+    EXPECT_EQ(processor->getSpeechToText().status, SpeechToTextStatus::Valid);
 
-    ASSERT_TRUE(speech_to_text_test::VoskFake::hasProcessedAudio());
-    EXPECT_EQ(processor.updateSpeechToText(), DataProcessorStatus::Ok);
-    EXPECT_EQ(processor.getSpeechToText().status, SpeechToTextStatus::Valid);
-    EXPECT_EQ(processor.getSpeechToText().text, "hello");
-    EXPECT_EQ(processor.updateFromFrame(Speech, cv::Mat{}), DataProcessorStatus::Ok);
-    EXPECT_EQ(processor.getSpeechToText().status, SpeechToTextStatus::Valid);
-
-    processor.toggleSpeechToText(false);
-    EXPECT_EQ(processor.getSpeechToText().status, SpeechToTextStatus::Disabled);
-    EXPECT_TRUE(processor.getSpeechToText().text.empty());
+    processor->toggleSpeechToText(false);
+    EXPECT_EQ(processor->getSpeechToText().status, SpeechToTextStatus::Disabled);
+    EXPECT_TRUE(processor->getSpeechToText().text.empty());
 }
 
 TEST(
@@ -169,22 +197,13 @@ TEST(
     speech_to_text_test::VoskFake::reset();
     speech_to_text_test::VoskFake::setPartialResult(R"({"partial": ""})");
     speech_to_text_test::VoskFake::setFinalizedResult(R"({"text": ""})");
-    auto processor = createProcessor();
+    auto processor = startSpeech();
 
-    processor.toggleSpeechToText(true);
-    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
-    while (!speech_to_text_test::VoskFake::hasProcessedAudio() &&
-           std::chrono::steady_clock::now() < deadline)
-    {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    }
-
-    ASSERT_TRUE(speech_to_text_test::VoskFake::hasProcessedAudio());
-    EXPECT_EQ(processor.updateSpeechToText(), DataProcessorStatus::Ok);
-    EXPECT_EQ(processor.getSpeechToText().status, SpeechToTextStatus::NoSpeech);
-    EXPECT_EQ(processor.updateFromFrame(Speech, cv::Mat{}), DataProcessorStatus::Ok);
-    EXPECT_EQ(processor.getSpeechToText().status, SpeechToTextStatus::NoSpeech);
-    processor.toggleSpeechToText(false);
+    EXPECT_EQ(processor->updateSpeechToText(), DataProcessorStatus::Ok);
+    EXPECT_EQ(processor->getSpeechToText().status, SpeechToTextStatus::NoSpeech);
+    EXPECT_EQ(processor->updateFromFrame(Speech, cv::Mat{}), DataProcessorStatus::Ok);
+    EXPECT_EQ(processor->getSpeechToText().status, SpeechToTextStatus::NoSpeech);
+    processor->toggleSpeechToText(false);
 }
 
 TEST(
@@ -231,35 +250,38 @@ TEST(
 )
 {
     auto processor = createProcessor();
-    const cv::Mat frame(480, 640, CV_8UC3, cv::Scalar(0, 0, 0));
+    const auto face = loadFaceFrame();
+    const auto blank = makeBlankFrame();
+    ASSERT_FALSE(face.empty());
 
-    EXPECT_EQ(processor.updateFromFrame(Emotions | EyeTracking, frame), DataProcessorStatus::Ok);
-    EXPECT_EQ(processor.getFrame().size(), frame.size());
+    EXPECT_EQ(processor.updateFromFrame(Emotions | EyeTracking, face), DataProcessorStatus::Ok);
+    EXPECT_EQ(processor.getFrame().size(), face.size());
     EXPECT_EQ(processor.getEmotions().status, EmotionStatus::Valid);
-    EXPECT_EQ(processor.getEyeTracking().status, EyeTrackingStatus::FaceUnavailable);
+    EXPECT_EQ(processor.getEyeTracking().status, EyeTrackingStatus::NotCalibrated);
 
-    EXPECT_EQ(processor.updateEmotionsFromFrame(frame), DataProcessorStatus::Ok);
-    EXPECT_EQ(processor.getEmotionsFromFrame(frame).status, EmotionStatus::Valid);
-    EXPECT_EQ(processor.updateEyeTrackingFromFrame(frame), DataProcessorStatus::Ok);
-    EXPECT_EQ(processor.getEyeTrackingFromFrame(frame).status, EyeTrackingStatus::FaceUnavailable);
+    EXPECT_EQ(processor.updateEmotionsFromFrame(blank), DataProcessorStatus::Ok);
+    EXPECT_EQ(processor.getEmotions().status, EmotionStatus::FaceUnavailable);
+    EXPECT_EQ(processor.getEmotionsFromFrame(face).status, EmotionStatus::Valid);
+    EXPECT_EQ(processor.getEmotionsFromFrame(blank).status, EmotionStatus::FaceUnavailable);
+    EXPECT_EQ(processor.updateEyeTrackingFromFrame(blank), DataProcessorStatus::Ok);
+    EXPECT_EQ(processor.getEyeTracking().status, EyeTrackingStatus::FaceUnavailable);
+    EXPECT_EQ(processor.getEyeTrackingFromFrame(blank).status, EyeTrackingStatus::FaceUnavailable);
 }
 
 TEST(
     DataProcessorTest, UpdatesFeaturesFromInjectedFrameReader
 )
 {
-    const cv::Mat frame(480, 640, CV_8UC3, cv::Scalar(0, 0, 0));
-    auto processor = createProcessor([&frame](cv::Mat& capturedFrame) -> bool {
-        capturedFrame = frame.clone();
-        return true;
-    });
+    const auto face = loadFaceFrame();
+    ASSERT_FALSE(face.empty());
+    auto processor = createProcessor(makeDevices(frameSequence({face, makeBlankFrame()})));
 
     EXPECT_EQ(processor.updateFrame(), DataProcessorStatus::Ok);
-    EXPECT_EQ(processor.getFrame().size(), frame.size());
+    EXPECT_EQ(processor.getFrame().size(), face.size());
     EXPECT_EQ(processor.updateEmotions(), DataProcessorStatus::Ok);
-    EXPECT_EQ(processor.getEmotions().status, EmotionStatus::Valid);
-    EXPECT_EQ(processor.updateEyeTracking(), DataProcessorStatus::Ok);
-    EXPECT_EQ(processor.getEyeTracking().status, EyeTrackingStatus::FaceUnavailable);
+    EXPECT_EQ(processor.getEmotions().status, EmotionStatus::FaceUnavailable);
+    EXPECT_EQ(processor.updateEyeTracking(), DataProcessorStatus::FrameUnavailable);
+    EXPECT_EQ(processor.getEyeTracking().status, EyeTrackingStatus::FrameUnavailable);
 }
 
 TEST(

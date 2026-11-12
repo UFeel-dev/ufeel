@@ -3,6 +3,7 @@
 #include "EyeTracking/EyeTrackingCalibrationModel.hpp"
 #include "EyeTracking/IrisDetection/IrisLandmark.hpp"
 #include "Utils/FrameChecker.hpp"
+#include "Utils/FrameFormat.hpp"
 #include "opencv2/core/mat.hpp"
 #include "opencv2/core/types.hpp"
 
@@ -307,7 +308,7 @@ void EyeTrackingDetector::toggleEyeTrackingDetection(
 }
 
 auto EyeTrackingDetector::process(
-    const cv::Mat& frame
+    const cv::Mat& frame, Clock::time_point now
 ) -> EyeTrackingResult
 {
     if (frameChecker_.isFrameIdentical(frame))
@@ -349,7 +350,6 @@ auto EyeTrackingDetector::process(
         if (calibrationTargetIndex_ && *calibrationTargetIndex_ < calibrationTargets_.size())
         {
             auto& samples = calibrationTargets_.at(*calibrationTargetIndex_).samples;
-            auto const now = std::chrono::steady_clock::now();
             if (calibrationTargetSetAt_ &&
                 now - *calibrationTargetSetAt_ >= CALIBRATION_SETTLE_TIME &&
                 samples.size() < GAZE_MAXIMUM_SAMPLES_PER_TARGET)
@@ -379,7 +379,8 @@ auto EyeTrackingDetector::process(
         std::clamp(prediction->x, 0.0F, 1.0F), std::clamp(prediction->y, 0.0F, 1.0F)
     );
 
-    cv::Point2f const estimatedEyeTracking = gazeEstimator_.update(rawEyeTracking, featureQuality);
+    cv::Point2f const estimatedEyeTracking =
+        gazeEstimator_.update(rawEyeTracking, featureQuality, now);
 
     result_.recordedX = rawEyeTracking.x;
     result_.recordedY = rawEyeTracking.y;
@@ -428,7 +429,7 @@ void EyeTrackingDetector::beginCalibration()
 }
 
 auto EyeTrackingDetector::setCalibrationTarget(
-    float x, float y
+    float x, float y, Clock::time_point now
 ) -> bool
 {
     if (!calibrationActive_ || !std::isfinite(x) || !std::isfinite(y) || x < 0.0F || x > 1.0F ||
@@ -461,7 +462,7 @@ auto EyeTrackingDetector::setCalibrationTarget(
     calibrationTargetIndex_ = targetIndex;
     if (!previousTargetIndex || *previousTargetIndex != targetIndex)
     {
-        calibrationTargetSetAt_ = std::chrono::steady_clock::now();
+        calibrationTargetSetAt_ = now;
     }
     return true;
 }
@@ -511,7 +512,7 @@ auto EyeTrackingDetector::extractFeatures(
 {
     status = EyeTrackingStatus::FaceUnavailable;
     quality = 0.0F;
-    landmarkProvider_->loadImageToInput(frame);
+    landmarkProvider_->loadImageToInput(toBgr(frame));
     landmarkProvider_->runInference();
     if (landmarkProvider_->getFaceRoi().empty())
     {

@@ -38,10 +38,10 @@ Commands:
   configure               Configure a build directory
   build                   Build a configured directory
   package                 Install a built package
-  test                    Run all automated tests
+  test                    Run all tests that need no camera, microphone or fixed port
   test-unit               Run C++ unit tests
   test-integration        Run C++ and C# integration tests
-  test-e2e                Run C++ end-to-end tests
+  test-e2e                Run C++ end-to-end tests (hardware: camera, microphone, ports)
   test-harness            Build the interactive C# test harness
   test-feature-matrix     Test all feature configurations through C# integration tests
   coverage                Run all native tests and generate coverage
@@ -382,28 +382,33 @@ configure_test_build()
 
 run_native_tests()
 {
-    local label="$1"
     local directory="$BUILD_ROOT/tests"
     [[ -f "$directory/build.ninja" ]] || configure_test_build "$directory"
     build "$directory"
     run_with_environment LD_LIBRARY_PATH "$(runtime_path "$directory")" \
-        ctest --test-dir "$directory" --label-regex "^${label}$" --output-on-failure
+        ctest --test-dir "$directory" --output-on-failure "$@"
+}
+
+test_all()
+{
+    run_native_tests --label-exclude '^hardware$'
+    test_csharp_integration
 }
 
 test_unit()
 {
-    run_native_tests unit
+    run_native_tests --label-regex '^unit$'
 }
 
 test_integration()
 {
-    run_native_tests integration
+    run_native_tests --label-regex '^integration$'
     test_csharp_integration
 }
 
 test_e2e()
 {
-    run_native_tests e2e
+    run_native_tests --label-regex '^e2e$'
 }
 
 run_native_tests_with_coverage()
@@ -431,6 +436,7 @@ run_native_tests_with_coverage()
     run "$profdata" merge -sparse "${profiles[@]}" -o "$directory/coverage.profdata"
     run "$cov" report "$directory/tests/unit/cpp/Library/run_library_unit_tests" \
         -object="$directory/tests/unit/cpp/Wrapper/run_wrapper_unit_tests" \
+        -object="$directory/tests/integration/cpp/run_library_integration_tests" \
         -object="$directory/tests/integration/cpp/run_wrapper_integration_tests" \
         -object="$directory/tests/e2e/cpp/run_wrapper_e2e_tests" \
         -object="$directory/libufeel_detection_library.a" \
@@ -462,7 +468,7 @@ test_feature_matrix()
         run cmake --build "$directory" --parallel
         run cmake --install "$directory" --prefix "$destination"
         run_with_environment LD_LIBRARY_PATH "$(runtime_path "$directory" "$destination")" \
-            ctest --test-dir "$directory" --output-on-failure
+            ctest --test-dir "$directory" --label-exclude '^hardware$' --output-on-failure
         run_with_environment UFEEL_PACKAGE_PATH "$destination/libufeel_wrapper.so" \
             env LD_LIBRARY_PATH="$(runtime_path "$directory" "$destination")" \
             dotnet run --project "$CSHARP_INTEGRATION_PROJECT" \
@@ -554,12 +560,7 @@ dispatch()
         build) build ;;
         package) package ;;
         all) configure; build; package ;;
-        test)
-            test_unit
-            test_integration
-            test_e2e
-            test_csharp_integration
-            ;;
+        test) test_all ;;
         clean) remove_generated "$BUILD_ROOT" "$PACKAGE_ROOT" ;;
         format) format_sources "${cmake_extra[@]}" ;;
         lint) lint "${cmake_extra[@]}" ;;

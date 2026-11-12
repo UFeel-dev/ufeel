@@ -60,7 +60,8 @@ typedef struct
     float value;
 } UFeelPair;
 
-/** Status describing whether an emotion result is usable. */
+/** Status describing whether an emotion result is usable. FACE_UNAVAILABLE means no face was
+ * detected or no emotion passed its threshold. */
 typedef enum
 {
     UFEEL_EMOTIONS_STATUS_FACE_UNAVAILABLE = 0, // TODO: keep the same position for similar names
@@ -162,7 +163,8 @@ typedef enum
     UFEEL_SPEECH_STATUS_VALID = 2
 } UFeelSpeechStatus;
 
-/** Latest speech transcription and its UFeelSpeechStatus value. */
+/** Latest speech transcription and its UFeelSpeechStatus value. The text is cleared 3 seconds
+ * after the last recognized speech. TODO: provide option to configure clear timer. */
 typedef struct
 {
     int32_t status;

@@ -2,6 +2,7 @@ add_executable(
     run_library_unit_tests
 
     Utils/TestFrameChecker.cpp
+    Utils/TestFrameFormat.cpp
 )
 
 if(NOT UFEEL_ENABLE_EMOTIONS AND NOT UFEEL_ENABLE_EYE_TRACKING AND

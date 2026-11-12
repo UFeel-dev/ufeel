@@ -1,12 +1,17 @@
+#include "Library/SpeechToText/TestSupport/WavAudioSource.hpp"
+#include "SpeechToText/AudioCapture.hpp"
 #include "SpeechToText/SpeechToTextDetector.hpp"
 #include "TestDoubles.hpp"
 #include "portaudio.h"
 
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <gtest/gtest.h>
 #include <memory>
+#include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace
@@ -441,6 +446,35 @@ TEST_F(
         detector.toggle(false);
         detector.toggle(false);
     });
+}
+
+TEST_F(
+    TestSpeechToTextDetector, RejectsMissingAudioSource
+)
+{
+    EXPECT_THROW(SpeechToTextDetector(modelPath_, nullptr), std::invalid_argument);
+}
+
+TEST_F(
+    TestSpeechToTextDetector, RecognizesInjectedAudioUntilTextExpires
+)
+{
+    auto audioSource =
+        std::make_unique<WavAudioSource>(std::vector<int16_t>(AudioCapture::framesPerBuffer));
+    auto* audio = audioSource.get();
+    SpeechToTextDetector detector(modelPath_, std::move(audioSource));
+
+    detector.toggle(true);
+    ASSERT_TRUE(audio->waitUntilDrained());
+    const auto now = SpeechToTextDetector::Clock::now();
+
+    EXPECT_EQ(detector.process(now), "hello");
+    EXPECT_TRUE(detector
+                    .process(now + SpeechToTextDetector::kTextLifetime + std::chrono::seconds(1))
+                    .empty());
+
+    detector.toggle(false);
+    EXPECT_EQ(detector.process(), "final sentence");
 }
 
 TEST_F(

@@ -40,7 +40,7 @@ cd ..
 
 Docker is the recommended build environment. It provides a reproducible toolchain and avoids requiring the native build dependencies on the host.
 
-Note: you will need appropriate input devices to test some features, such as a camera and a microphone.
+Note: `./build.sh test` needs no devices. You need a camera and a microphone for the hardware tests (`./build.sh test-e2e`) and to try features live.
 
 To use clang-related tools (e.g. linting, formatting, or IDE features), set up the compilation database:
 

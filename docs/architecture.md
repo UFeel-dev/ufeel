@@ -42,7 +42,7 @@ Each domain (emotions, eye tracking, speech to text, heart rate) is toggled by a
 ## Adding a feature
 
 1. Add the detector under `Library/include/<Domain>` and `Library/src/<Domain>`.
-2. Expose it through `DataProcessor`, then through `ufeel.h` and `Wrapper/src/`.
+2. Expose it through `DataProcessor`, then through `ufeel.h` and `Wrapper/src/`. If it reads a device, add the device to `DataProcessorDevices` with the real device as default, so tests can replace it.
 3. Add tests mirroring the source tree, see [Testing](testing.md).
 4. Document it in `docs/` and link it from the README table.
 

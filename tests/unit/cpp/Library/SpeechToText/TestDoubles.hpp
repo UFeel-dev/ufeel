@@ -38,7 +38,6 @@ public:
     static void setResultNull(bool isNull);
     static void setPartialResultNull(bool isNull);
     static void setWaveformResult(int result);
-    static auto hasProcessedAudio() -> bool;
 };
 
 } // namespace speech_to_text_test

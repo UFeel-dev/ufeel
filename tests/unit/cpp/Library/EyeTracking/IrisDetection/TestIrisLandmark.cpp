@@ -220,10 +220,7 @@ TEST_F(
     TestIrisLandmark, LoadImageAndRunInference
 )
 {
-    if (!prepareInference())
-    {
-        GTEST_SKIP() << "No face detected in astronaut.png.";
-    }
+    ASSERT_TRUE(prepareInference()) << "No face detected in astronaut.png.";
 
     EXPECT_FALSE(irisLandmark_->getFaceRoi().empty());
     EXPECT_FALSE(irisLandmark_->getEyeRoi(true).empty());
@@ -234,10 +231,7 @@ TEST_F(
     TestIrisLandmark, EyeRoisAreValidAndSquare
 )
 {
-    if (!prepareInference())
-    {
-        GTEST_SKIP() << "No face detected in astronaut.png.";
-    }
+    ASSERT_TRUE(prepareInference()) << "No face detected in astronaut.png.";
 
     const cv::Rect leftRoi = irisLandmark_->getEyeRoi(true);
     const cv::Rect rightRoi = irisLandmark_->getEyeRoi(false);
@@ -258,10 +252,7 @@ TEST_F(
     TestIrisLandmark, GetFirstAndLastEyeLandmarks
 )
 {
-    if (!prepareInference())
-    {
-        GTEST_SKIP() << "No face detected in astronaut.png.";
-    }
+    ASSERT_TRUE(prepareInference()) << "No face detected in astronaut.png.";
 
     const auto leftLandmarks = irisLandmark_->getAllEyeLandmarks(true, false);
 
@@ -280,10 +271,7 @@ TEST_F(
     TestIrisLandmark, InvalidEyeLandmarkIndicesReturnZero
 )
 {
-    if (!prepareInference())
-    {
-        GTEST_SKIP() << "No face detected in astronaut.png.";
-    }
+    ASSERT_TRUE(prepareInference()) << "No face detected in astronaut.png.";
 
     EXPECT_EQ(irisLandmark_->getEyeLandmarkAt(-1, true, false), cv::Point());
     EXPECT_EQ(irisLandmark_->getEyeLandmarkAt(71, true, false), cv::Point());
@@ -295,10 +283,7 @@ TEST_F(
     TestIrisLandmark, GetAllLandmarksReturnsExpectedCounts
 )
 {
-    if (!prepareInference())
-    {
-        GTEST_SKIP() << "No face detected in astronaut.png.";
-    }
+    ASSERT_TRUE(prepareInference()) << "No face detected in astronaut.png.";
 
     EXPECT_EQ(irisLandmark_->getAllEyeLandmarks(true, false).size(), 71);
     EXPECT_EQ(irisLandmark_->getAllEyeLandmarks(false, false).size(), 71);
@@ -310,10 +295,7 @@ TEST_F(
     TestIrisLandmark, GetFirstAndLastIrisLandmarks
 )
 {
-    if (!prepareInference())
-    {
-        GTEST_SKIP() << "No face detected in astronaut.png.";
-    }
+    ASSERT_TRUE(prepareInference()) << "No face detected in astronaut.png.";
 
     const auto leftLandmarks = irisLandmark_->getAllEyeLandmarks(true, true);
 
@@ -332,10 +314,7 @@ TEST_F(
     TestIrisLandmark, InvalidIrisLandmarkIndicesReturnZero
 )
 {
-    if (!prepareInference())
-    {
-        GTEST_SKIP() << "No face detected in astronaut.png.";
-    }
+    ASSERT_TRUE(prepareInference()) << "No face detected in astronaut.png.";
 
     EXPECT_EQ(irisLandmark_->getEyeLandmarkAt(-1, true, true), cv::Point());
     EXPECT_EQ(irisLandmark_->getEyeLandmarkAt(5, true, true), cv::Point());
@@ -463,10 +442,7 @@ TEST_F(
     TestIrisLandmark, LoadOutputsForBothEyesAndLandmarkTypes
 )
 {
-    if (!prepareInference())
-    {
-        GTEST_SKIP() << "No face detected in astronaut.png.";
-    }
+    ASSERT_TRUE(prepareInference()) << "No face detected in astronaut.png.";
 
     EXPECT_FALSE(irisLandmark_->loadOutput(0, true).empty());
     EXPECT_FALSE(irisLandmark_->loadOutput(0, false).empty());
@@ -478,10 +454,7 @@ TEST_F(
     TestIrisLandmark, DefaultLoadOutputReturnsLeftEyeOutput
 )
 {
-    if (!prepareInference())
-    {
-        GTEST_SKIP() << "No face detected in astronaut.png.";
-    }
+    ASSERT_TRUE(prepareInference()) << "No face detected in astronaut.png.";
 
     const auto defaultOutput = irisLandmark_->loadOutput();
     const auto leftEyeOutput = irisLandmark_->loadOutput(0, true);

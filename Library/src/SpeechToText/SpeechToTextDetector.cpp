@@ -1,9 +1,12 @@
 #include "SpeechToText/SpeechToTextDetector.hpp"
 
 #include "SpeechToText/AudioCapture.hpp"
+#include "SpeechToText/AudioSource.hpp"
 
 #include <cstdint>
+#include <memory>
 #include <mutex>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <utility>
@@ -12,8 +15,20 @@
 SpeechToTextDetector::SpeechToTextDetector(
     const std::string& modelPath
 )
-    : recognizer_(modelPath)
+    : SpeechToTextDetector(modelPath, std::make_unique<AudioCapture>())
 {
+}
+
+SpeechToTextDetector::SpeechToTextDetector(
+    const std::string& modelPath, std::unique_ptr<AudioSource> audioSource
+)
+    : audioSource_(std::move(audioSource))
+    , recognizer_(modelPath)
+{
+    if (!audioSource_)
+    {
+        throw std::invalid_argument("speech-to-text audio source must not be null");
+    }
 }
 
 SpeechToTextDetector::~SpeechToTextDetector()
@@ -34,9 +49,11 @@ void SpeechToTextDetector::toggle(
     stop();
 }
 
-auto SpeechToTextDetector::process() const -> std::string
+auto SpeechToTextDetector::process(
+    Clock::time_point now
+) const -> std::string
 {
-    return getText();
+    return getText(now);
 }
 
 void SpeechToTextDetector::start()
@@ -46,7 +63,7 @@ void SpeechToTextDetector::start()
         return;
     }
 
-    if (!audioCapture_.start())
+    if (!audioSource_->start())
     {
         running_ = false;
         return;
@@ -62,7 +79,7 @@ void SpeechToTextDetector::stop()
         return;
     }
 
-    audioCapture_.stop();
+    audioSource_->stop();
 
     if (worker_.joinable())
     {
@@ -76,7 +93,7 @@ void SpeechToTextDetector::run()
 
     while (running_)
     {
-        if (!audioCapture_.read(buffer))
+        if (!audioSource_->read(buffer))
         {
             break;
         }
@@ -110,10 +127,17 @@ void SpeechToTextDetector::setText(
 {
     std::scoped_lock const lock(textMutex_);
     currentText_ = std::move(text);
+    textUpdatedAt_ = Clock::now();
 }
 
-auto SpeechToTextDetector::getText() const -> std::string
+auto SpeechToTextDetector::getText(
+    Clock::time_point now
+) const -> std::string
 {
     std::scoped_lock const lock(textMutex_);
+    if (now - textUpdatedAt_ > kTextLifetime)
+    {
+        return {};
+    }
     return currentText_;
 }

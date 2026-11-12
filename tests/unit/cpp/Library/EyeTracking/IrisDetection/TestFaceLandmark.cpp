@@ -105,7 +105,6 @@ protected:
 
         if (image.empty())
         {
-            testImageUnavailable_ = true;
             return false;
         }
 
@@ -116,7 +115,6 @@ protected:
     }
 
     std::unique_ptr<my::FaceLandmark> landmark_;
-    bool testImageUnavailable_{false};
 
 public:
 
@@ -296,10 +294,7 @@ TEST_F(
     TestFaceLandmark, Returns468LandmarksWhenFaceIsDetected
 )
 {
-    if (!createImageWithFace())
-    {
-        GTEST_SKIP() << "Test image is unavailable or no face was detected.";
-    }
+    ASSERT_TRUE(createImageWithFace()) << "No face detected in astronaut.png.";
 
     auto const landmarks = landmark_->getAllFaceLandmarks();
 
@@ -310,10 +305,7 @@ TEST_F(
     TestFaceLandmark, ReturnsLandmarkAtFirstIndexWhenFaceIsDetected
 )
 {
-    if (!createImageWithFace())
-    {
-        GTEST_SKIP() << "Test image is unavailable or no face was detected.";
-    }
+    ASSERT_TRUE(createImageWithFace()) << "No face detected in astronaut.png.";
 
     auto const point = landmark_->getFaceLandmarkAt(0);
 
@@ -325,10 +317,7 @@ TEST_F(
     TestFaceLandmark, ReturnsLandmarkAtLastIndexWhenFaceIsDetected
 )
 {
-    if (!createImageWithFace())
-    {
-        GTEST_SKIP() << "Test image is unavailable or no face was detected.";
-    }
+    ASSERT_TRUE(createImageWithFace()) << "No face detected in astronaut.png.";
 
     auto const point = landmark_->getFaceLandmarkAt(467);
 
@@ -349,10 +338,7 @@ TEST_F(
     TestFaceLandmark, LandmarkCoordinatesAreInsideOriginalImage
 )
 {
-    if (!createImageWithFace())
-    {
-        GTEST_SKIP() << "Test image is unavailable or no face was detected.";
-    }
+    ASSERT_TRUE(createImageWithFace()) << "No face detected in astronaut.png.";
 
     auto const landmarks = landmark_->getAllFaceLandmarks();
 
@@ -374,10 +360,7 @@ TEST_F(
     TestFaceLandmark, Landmark3DCoordinatesAreFinite
 )
 {
-    if (!createImageWithFace())
-    {
-        GTEST_SKIP() << "Test image is unavailable or no face was detected.";
-    }
+    ASSERT_TRUE(createImageWithFace()) << "No face detected in astronaut.png.";
 
     for (int i = 0; i < 468; ++i)
     {
@@ -393,11 +376,5 @@ TEST_F(
     TestFaceLandmark, DetectsFaceInTestImage
 )
 {
-    const bool detected = createImageWithFace();
-    if (testImageUnavailable_)
-    {
-        GTEST_SKIP() << "Optional test image tests/ressources/face.png is not present.";
-    }
-
-    ASSERT_TRUE(detected) << "The test image does not contain a detectable face.";
+    EXPECT_TRUE(createImageWithFace()) << "No face detected in astronaut.png.";
 }

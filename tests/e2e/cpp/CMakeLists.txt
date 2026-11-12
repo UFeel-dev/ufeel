@@ -37,7 +37,7 @@ include(GoogleTest)
 gtest_discover_tests(
     run_wrapper_e2e_tests
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-    PROPERTIES LABELS e2e
+    PROPERTIES LABELS "e2e\;hardware"
     DISCOVERY_MODE PRE_TEST
 )
 

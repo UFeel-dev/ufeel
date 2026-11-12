@@ -3,7 +3,6 @@
 #include "vosk_api.h"
 
 #include <array>
-#include <atomic>
 #include <cstdint>
 #include <gtest/gtest.h>
 #include <stdexcept>
@@ -34,7 +33,6 @@ struct FakeVoskState
     std::string finalizedResult = R"({"text": "final sentence"})";
 
     int lastSampleCount = 0;
-    std::atomic<bool> audioProcessed = false;
 };
 
 auto fakeVoskState() -> FakeVoskState&
@@ -74,7 +72,6 @@ void VoskFake::reset()
     state.partialResult = R"({"partial": "hello"})";
     state.finalizedResult = R"({"text": "final sentence"})";
     state.lastSampleCount = 0;
-    state.audioProcessed.store(false);
 }
 
 void VoskFake::setFinalizedResult(
@@ -120,11 +117,6 @@ void VoskFake::setWaveformResult(
 )
 {
     fakeVoskState().waveformResult = result;
-}
-
-auto VoskFake::hasProcessedAudio() -> bool
-{
-    return fakeVoskState().audioProcessed.load();
 }
 
 } // namespace speech_to_text_test
@@ -179,7 +171,6 @@ auto vosk_recognizer_accept_waveform(
     (void)recognizer;
     (void)data;
     fakeVoskState().lastSampleCount = length;
-    fakeVoskState().audioProcessed = true;
     return fakeVoskState().waveformResult;
 }
 

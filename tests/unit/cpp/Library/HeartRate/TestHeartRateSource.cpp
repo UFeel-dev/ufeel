@@ -3,7 +3,6 @@
 
 #include <chrono>
 #include <gtest/gtest.h>
-#include <thread>
 
 TEST(
     LatestReadingTest, ReturnsNoDataBeforeFirstReading
@@ -32,18 +31,20 @@ TEST(
 }
 
 TEST(
-    LatestReadingTest, ExpiresReadingAfterFiveSeconds
+    LatestReadingTest, KeepsReadingUntilItIsStale
 )
 {
+    const auto now = LatestReading::Clock::now();
     LatestReading reading;
-    reading.set({.bpm = 72, .status = HeartRateStatus::Valid});
+    reading.set({.bpm = 72, .status = HeartRateStatus::Valid}, now);
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(5100));
+    const auto fresh = reading.get(now + LatestReading::kStaleAfter);
+    const auto stale = reading.get(now + LatestReading::kStaleAfter + std::chrono::milliseconds(1));
 
-    const auto result = reading.get();
-
-    EXPECT_EQ(result.bpm, 0U);
-    EXPECT_EQ(result.status, HeartRateStatus::NoData);
+    EXPECT_EQ(fresh.bpm, 72U);
+    EXPECT_EQ(fresh.status, HeartRateStatus::Valid);
+    EXPECT_EQ(stale.bpm, 0U);
+    EXPECT_EQ(stale.status, HeartRateStatus::NoData);
 }
 
 TEST(

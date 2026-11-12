@@ -4,13 +4,15 @@
 #include "FaceDetector.hpp"
 #include "opencv2/core/mat.hpp"
 
+#include <optional>
+
 class FaceCrop
 {
 public:
 
     FaceCrop(FaceDetector detector, int size, float margin = 0.1F);
 
-    [[nodiscard]] auto operator()(const cv::Mat& image) -> cv::Mat;
+    [[nodiscard]] auto operator()(const cv::Mat& image) -> std::optional<cv::Mat>;
 
 private:
 
