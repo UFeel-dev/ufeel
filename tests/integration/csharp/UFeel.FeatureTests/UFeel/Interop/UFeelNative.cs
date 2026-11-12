@@ -188,7 +188,7 @@ internal static class UFeelNative
     internal static extern int ufeel_update_from_frame(
         IntPtr processor,
         int detectionType,
-        IntPtr frame);
+        in NativeFrame frame);
 
     // * frame
 

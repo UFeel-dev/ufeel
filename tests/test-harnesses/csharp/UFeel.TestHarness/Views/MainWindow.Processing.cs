@@ -47,42 +47,71 @@ public partial class MainWindow
 
         while (!token.IsCancellationRequested)
         {
-            Bitmap? bitmap = null;
-
             try
             {
-                bool updated;
-                DetectionType due = scheduler.GetDue(Stopwatch.GetTimestamp());
+                UFeelStatus captureStatus;
+                Bitmap? bitmap = null;
+                FrameData? frame = null;
+                DetectionType due = DetectionType.None;
 
                 await processorGate.WaitAsync(token);
 
                 try
                 {
-                    UFeelStatus status = due == DetectionType.None
-                        ? processor.UpdateFrame()
-                        : processor.Update(due);
-                    updated = status == UFeelStatus.Ok;
+                    captureStatus = frameCapture.Capture(processor);
 
-                    if (!updated)
-                    {
-                        if (status != UFeelStatus.InvalidFrame)
-                            throw new InvalidOperationException(
-                                $"Processor update failed with status {status}.");
-
-                        emotions = new EmotionResultData(
-                            EmotionStatus.FrameUnavailable,
-                            new Dictionary<string, float>());
-                        eyeTracking = FrameUnavailableEyeTracking;
-                        eyeTrackingSmoother.Reset();
-                        speechToText = new SpeechToTextResultData(
-                            SpeechToTextStatus.NoSpeech,
-                            string.Empty);
-                        heartRate = RequestFailedHeartRate;
-                    }
-                    else
+                    if (captureStatus == UFeelStatus.Ok)
                     {
                         bitmap = frameBitmaps.Update(processor);
+                        due = scheduler.GetDue(Stopwatch.GetTimestamp());
 
+                        if (due != DetectionType.None)
+                            frame = processor.GetFrame();
+                    }
+                }
+                finally
+                {
+                    processorGate.Release();
+                }
+
+                if (captureStatus != UFeelStatus.Ok)
+                {
+                    if (captureStatus != UFeelStatus.InvalidFrame)
+                        throw new InvalidOperationException(
+                            $"Camera capture failed with status {captureStatus}.");
+
+                    emotions = new EmotionResultData(
+                        EmotionStatus.FrameUnavailable,
+                        new Dictionary<string, float>());
+                    eyeTracking = FrameUnavailableEyeTracking;
+                    eyeTrackingSmoother.Reset();
+                    speechToText = new SpeechToTextResultData(
+                        SpeechToTextStatus.NoSpeech,
+                        string.Empty);
+                    heartRate = RequestFailedHeartRate;
+
+                    EyeTrackingResultData unavailable = eyeTracking;
+                    await Dispatcher.UIThread.InvokeAsync(() => ShowFrameUnavailable(unavailable));
+                    await Task.Delay(50, token);
+                    continue;
+                }
+
+                if (bitmap is not null)
+                    await Dispatcher.UIThread.InvokeAsync(() => ShowFrame(bitmap));
+
+                if (frame is null)
+                    continue;
+
+                UFeelStatus detectionStatus;
+
+                await processorGate.WaitAsync(token);
+
+                try
+                {
+                    detectionStatus = processor.UpdateFromFrame(due, frame);
+
+                    if (detectionStatus == UFeelStatus.Ok)
+                    {
                         if (due.HasFlag(DetectionType.Emotions))
                             emotions = processor.GetEmotions();
 
@@ -104,29 +133,20 @@ public partial class MainWindow
                 {
                     processorGate.Release();
                 }
-
-                if (!updated)
-                {
-                    EyeTrackingResultData unavailable = eyeTracking;
-                    await Dispatcher.UIThread.InvokeAsync(() => ShowFrameUnavailable(unavailable));
-                    await Task.Delay(50, token);
-                    continue;
-                }
-
+                string status = detectionStatus == UFeelStatus.Ok
+                    ? string.Empty
+                    : $"Detection failed ({detectionStatus}), retrying on the next frame";
                 EmotionResultData shownEmotions = emotions;
                 EyeTrackingResultData shownEyeTracking = eyeTracking;
                 SpeechToTextResultData shownSpeech = speechToText;
                 HeartRateResultData shownHeartRate = heartRate;
 
                 await Dispatcher.UIThread.InvokeAsync(() =>
-                    ShowResults(
-                        bitmap,
+                    ShowResults( status,
                         shownEmotions,
                         shownEyeTracking,
                         shownSpeech,
                         shownHeartRate));
-
-                await Task.Delay(33, token);
             }
             catch (OperationCanceledException) when (token.IsCancellationRequested)
             {
@@ -164,8 +184,14 @@ public partial class MainWindow
         EyeTrackingOverlay.IsVisible = false;
     }
 
+    private void ShowFrame(Bitmap bitmap)
+    {
+        if (!closing)
+            FrameImage.Source = bitmap;
+    }
+
     private void ShowResults(
-        Bitmap? bitmap,
+        string status,
         EmotionResultData emotions,
         EyeTrackingResultData eyeTracking,
         SpeechToTextResultData speechToText,
@@ -174,10 +200,7 @@ public partial class MainWindow
         if (closing)
             return;
 
-        if (bitmap is not null)
-            FrameImage.Source = bitmap;
-
-        StatusText.Text = string.Empty;
+        StatusText.Text = status;
         EmotionsText.Text = DisplayFormatter.FormatEmotions(emotions);
         DirectionsText.Text = DisplayFormatter.FormatDirections(eyeTracking);
         EyeTrackingText.Text = DisplayFormatter.FormatEyeTracking(eyeTracking);

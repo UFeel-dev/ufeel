@@ -15,6 +15,9 @@ internal sealed class FeatureScheduler
         DetectionType.HeartRate,
     ];
 
+    private const DetectionType ImageFeatures =
+        DetectionType.Emotions | DetectionType.EyeTracking;
+
     private readonly object sync = new();
     private readonly Dictionary<DetectionType, TimeSpan> intervals;
     private readonly Dictionary<DetectionType, TimeSpan> overrides = [];
@@ -56,26 +59,48 @@ internal sealed class FeatureScheduler
     public DetectionType GetDue(long timestamp)
     {
         DetectionType due = DetectionType.None;
+        DetectionType imageFeature = DetectionType.None;
+        double imageFeatureOverdue = 0.0;
 
         lock (sync)
         {
             foreach (DetectionType feature in Features)
             {
-                TimeSpan interval = overrides.TryGetValue(feature, out TimeSpan overridden)
-                    ? overridden
-                    : intervals[feature];
-
-                if (lastRun.TryGetValue(feature, out long last) &&
-                    Stopwatch.GetElapsedTime(last, timestamp) < interval)
-                {
+                double overdue = Overdue(feature, timestamp);
+                if (overdue < 1.0)
                     continue;
-                }
 
-                lastRun[feature] = timestamp;
-                due |= feature;
+                if ((feature & ImageFeatures) == 0)
+                {
+                    lastRun[feature] = timestamp;
+                    due |= feature;
+                }
+                else if (overdue > imageFeatureOverdue)
+                {
+                    imageFeature = feature;
+                    imageFeatureOverdue = overdue;
+                }
+            }
+
+            if (imageFeature != DetectionType.None)
+            {
+                lastRun[imageFeature] = timestamp;
+                due |= imageFeature;
             }
         }
 
         return due;
+    }
+
+    private double Overdue(DetectionType feature, long timestamp)
+    {
+        TimeSpan interval = overrides.TryGetValue(feature, out TimeSpan overridden)
+            ? overridden
+            : intervals[feature];
+
+        if (!lastRun.TryGetValue(feature, out long last) || interval <= TimeSpan.Zero)
+            return double.PositiveInfinity;
+
+        return Stopwatch.GetElapsedTime(last, timestamp) / interval;
     }
 }
