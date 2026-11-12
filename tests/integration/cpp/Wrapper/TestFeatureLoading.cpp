@@ -82,12 +82,14 @@ struct Feature
     bool enabled;
 };
 
-constexpr std::array<Feature, 4> kFeatures{{
-    {.name = "emotions", .flag = 1 << 0, .enabled = UFEEL_ENABLE_EMOTIONS != 0},
-    {.name = "eye tracking", .flag = 1 << 1, .enabled = UFEEL_ENABLE_EYE_TRACKING != 0},
-    {.name = "speech to text", .flag = 1 << 2, .enabled = UFEEL_ENABLE_SPEECH_TO_TEXT != 0},
-    {.name = "heart rate", .flag = 1 << 3, .enabled = UFEEL_ENABLE_HEART_RATE != 0},
-},};
+constexpr std::array<Feature, 4> kFeatures{
+    {
+        {.name = "emotions", .flag = 1 << 0, .enabled = UFEEL_ENABLE_EMOTIONS != 0},
+        {.name = "eye tracking", .flag = 1 << 1, .enabled = UFEEL_ENABLE_EYE_TRACKING != 0},
+        {.name = "speech to text", .flag = 1 << 2, .enabled = UFEEL_ENABLE_SPEECH_TO_TEXT != 0},
+        {.name = "heart rate", .flag = 1 << 3, .enabled = UFEEL_ENABLE_HEART_RATE != 0},
+    },
+};
 
 struct LibraryCloser
 {
@@ -173,5 +175,3 @@ TEST(
         ) << feature.name;
     }
 }
-
-// TODO: fix: currently out of ./build.sh format path
