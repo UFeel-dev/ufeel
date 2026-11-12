@@ -5,7 +5,6 @@ set -euo pipefail
 readonly ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly BUILD_ROOT="${ROOT_DIR}/build"
 readonly PACKAGE_ROOT="${ROOT_DIR}/package"
-readonly CSHARP_INTEGRATION_PROJECT="${ROOT_DIR}/tests/integration/csharp/UFeel.FeatureTests"
 readonly TEST_HARNESS_PROJECT="${ROOT_DIR}/tests/test-harnesses/csharp/UFeel.TestHarness"
 readonly GENERATOR="Ninja"
 readonly CXX_COMPILER="clang++-22"
@@ -40,10 +39,10 @@ Commands:
   package                 Install a built package
   test                    Run all tests that need no camera, microphone or fixed port
   test-unit               Run C++ unit tests
-  test-integration        Run C++ and C# integration tests
+  test-integration        Run C++ integration tests
   test-e2e                Run C++ end-to-end tests (hardware: camera, microphone, ports)
   test-harness            Build the interactive C# test harness
-  test-feature-matrix     Test all feature configurations through C# integration tests
+  test-feature-matrix     Build, package and test every feature configuration
   coverage                Run all native tests and generate coverage
   format                  Format C++ files
   lint                    Run clang-tidy
@@ -312,33 +311,6 @@ package()
     run cmake --install "$directory" --prefix "$destination"
 }
 
-test_csharp_integration()
-{
-    local package_directory
-    local build_directory
-
-    package_directory="$(package_dir "$configuration")"
-    build_directory="$(build_dir "$configuration")"
-
-    require_commands dotnet
-
-    if [[ ! -f "$package_directory/libufeel_wrapper.so" ]]; then
-        configure
-        build
-        package
-    fi
-
-    run dotnet build "$CSHARP_INTEGRATION_PROJECT" \
-        --configuration "$configuration"
-
-    run_with_environment UFEEL_PACKAGE_PATH "$package_directory/libufeel_wrapper.so" \
-        env LD_LIBRARY_PATH="$(runtime_path "$build_directory" "$package_directory")" \
-        dotnet run \
-            --project "$CSHARP_INTEGRATION_PROJECT" \
-            --configuration "$configuration" \
-            --no-build -- --feature-test all
-}
-
 test_harness()
 {
     local package_directory
@@ -393,7 +365,6 @@ run_native_tests()
 test_all()
 {
     run_native_tests --label-exclude '^hardware$'
-    test_csharp_integration
 }
 
 test_unit()
@@ -404,7 +375,6 @@ test_unit()
 test_integration()
 {
     run_native_tests --label-regex '^integration$'
-    test_csharp_integration
 }
 
 test_e2e()
@@ -472,12 +442,6 @@ test_feature_matrix()
         run_with_environment LD_LIBRARY_PATH "$(runtime_path "$directory" "$destination")" \
             ctest --test-dir "$directory" --label-exclude '^hardware$' --output-on-failure \
             --parallel "$(nproc)"
-        run_with_environment UFEEL_PACKAGE_PATH "$destination/libufeel_wrapper.so" \
-            env LD_LIBRARY_PATH="$(runtime_path "$directory" "$destination")" \
-            dotnet run --project "$CSHARP_INTEGRATION_PROJECT" \
-                -p:OutputPath="$directory/dotnet-output/" \
-                -p:IntermediateOutputPath="$directory/dotnet-intermediate/" \
-                -- --feature-test "$name"
     done
 }
 
@@ -586,9 +550,9 @@ case "$command" in
     lint|fix) require_commands cmake run-clang-tidy ;;
     include-fix) require_commands cmake iwyu_tool.py fix_includes.py ;;
     test-unit|test-integration|test-e2e|coverage) require_commands cmake ctest ;;
-    test) require_commands cmake ctest dotnet ;;
+    test) require_commands cmake ctest ;;
     test-harness) require_commands cmake dotnet ;;
-    test-feature-matrix) require_commands cmake ctest dotnet ;;
+    test-feature-matrix) require_commands cmake ctest ;;
     *) require_commands cmake ;;
 esac
 dispatch

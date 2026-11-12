@@ -2,14 +2,14 @@
 
 > [<- Back to README](../README.md)
 
-Tests use GoogleTest (C++) and .NET (C#). Run them inside the [Docker environment](../docker/README.md).
+Automated tests use GoogleTest. Run them inside the [Docker environment](../docker/README.md).
 
 | Level | Command | Location | Scope |
 | --- | --- | --- | --- |
 | Unit | `./build.sh test-unit` | [tests/unit/cpp](../tests/unit/cpp) | Library and Wrapper classes in isolation. |
-| Integration | `./build.sh test-integration` | [tests/integration](../tests/integration) | `DataProcessor` with real models on [fixtures](../tests/resources), wrapper tests, plus C# P/Invoke tests ([UFeel.FeatureTests](../tests/integration/csharp/UFeel.FeatureTests)). |
+| Integration | `./build.sh test-integration` | [tests/integration](../tests/integration) | `DataProcessor` with real models on [fixtures](../tests/resources), wrapper tests, and a check that the built library exports every `ufeel_*` symbol and reports exactly the disabled features as unsupported. |
 | E2E | `./build.sh test-e2e` | [tests/e2e](../tests/e2e) | Full C API flow with the real camera, microphone and heart-rate ports. |
-| Feature matrix | `./build.sh test-feature-matrix` | `package/matrix` | C# tests against every feature combination. |
+| Feature matrix | `./build.sh test-feature-matrix` | `package/matrix` | Builds, packages and runs the hardware-free tests for every feature combination. |
 | All | `./build.sh test` | | Every test except the `hardware` group. Runs in CI. |
 | Coverage | `./build.sh coverage` | | Native tests with coverage report. |
 
