@@ -5,7 +5,8 @@ set -euo pipefail
 readonly ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly BUILD_ROOT="${ROOT_DIR}/build"
 readonly PACKAGE_ROOT="${ROOT_DIR}/package"
-readonly TEST_PROJECT="${ROOT_DIR}/tests/integration"
+readonly CSHARP_INTEGRATION_PROJECT="${ROOT_DIR}/tests/integration/csharp/UFeel.FeatureTests"
+readonly TEST_HARNESS_PROJECT="${ROOT_DIR}/tests/test-harnesses/csharp/UFeel.TestHarness"
 readonly GENERATOR="Ninja"
 readonly CXX_COMPILER="clang++-22"
 readonly FEATURES=(emotions eye-tracking speech-to-text heart-rate)
@@ -37,10 +38,13 @@ Commands:
   configure               Configure a build directory
   build                   Build a configured directory
   package                 Install a built package
-  test                    Run native and integration tests
-  run-unit-tests          Run native tests and generate coverage
-  run-integration-tests   Run C# integration tests
-  run-feature-matrix      Test all features and each feature separately
+  test                    Run all automated tests
+  test-unit               Run C++ unit tests
+  test-integration        Run C++ and C# integration tests
+  test-e2e                Run C++ end-to-end tests
+  test-harness            Build the interactive C# test harness
+  test-feature-matrix     Test all feature configurations through C# integration tests
+  coverage                Run all native tests and generate coverage
   format                  Format C++ files
   lint                    Run clang-tidy
   fix                     Run clang-tidy with fixes
@@ -172,7 +176,8 @@ parse_args()
                 break
                 ;;
             configure|build|package|all|test|clean|format|lint|fix|include-fix|\
-            run-unit-tests|run-integration-tests|run-feature-matrix)
+            test-unit|test-integration|test-e2e|test-harness|\
+            test-feature-matrix|coverage)
                 [[ -z "$command" ]] || error "only one command may be specified"
                 command="$1"
                 ;;
@@ -307,18 +312,101 @@ package()
     run cmake --install "$directory" --prefix "$destination"
 }
 
-run_integration_tests()
+test_csharp_integration()
 {
     local package_directory
+    local build_directory
+
     package_directory="$(package_dir "$configuration")"
-    require_package "$package_directory"
+    build_directory="$(build_dir "$configuration")"
+
     require_commands dotnet
+
+    if [[ ! -f "$package_directory/libufeel_wrapper.so" ]]; then
+        configure
+        build
+        package
+    fi
+
+    run dotnet build "$CSHARP_INTEGRATION_PROJECT" \
+        --configuration "$configuration"
+
     run_with_environment UFEEL_PACKAGE_PATH "$package_directory/libufeel_wrapper.so" \
-        env LD_LIBRARY_PATH="$(runtime_path "$(build_dir "$configuration")" "$package_directory")" \
-        dotnet run --project "$TEST_PROJECT"
+        env LD_LIBRARY_PATH="$(runtime_path "$build_directory" "$package_directory")" \
+        dotnet run \
+            --project "$CSHARP_INTEGRATION_PROJECT" \
+            --configuration "$configuration" \
+            --no-build -- --feature-test all
 }
 
-run_unit_tests()
+test_harness()
+{
+    local package_directory
+    local build_directory
+
+    package_directory="$(package_dir "$configuration")"
+    build_directory="$(build_dir "$configuration")"
+
+    require_commands dotnet
+
+    if [[ ! -f "$package_directory/libufeel_wrapper.so" ]]; then
+        configure
+        build
+        package
+    fi
+
+    run dotnet build "$TEST_HARNESS_PROJECT" \
+        --configuration "$configuration"
+
+    run_with_environment UFEEL_PACKAGE_PATH "$package_directory/libufeel_wrapper.so" \
+        env LD_LIBRARY_PATH="$(runtime_path "$build_directory" "$package_directory")" \
+        dotnet run \
+            --project "$TEST_HARNESS_PROJECT" \
+            --configuration "$configuration" \
+            --no-build
+}
+
+configure_test_build()
+{
+    local directory="${1:-$BUILD_ROOT/tests}"
+    "$clean" && remove_generated "$directory"
+    local -a options=()
+    mapfile -t options < <(feature_options)
+    run cmake -S "$ROOT_DIR" -B "$directory" -G "$GENERATOR" \
+        "-DCMAKE_BUILD_TYPE=$configuration" \
+        "-DCMAKE_CXX_COMPILER=$CXX_COMPILER" \
+        -DUFEEL_BUILD_TESTS=ON \
+        -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+        "${options[@]}"
+}
+
+run_native_tests()
+{
+    local label="$1"
+    local directory="$BUILD_ROOT/tests"
+    [[ -f "$directory/build.ninja" ]] || configure_test_build "$directory"
+    build "$directory"
+    run_with_environment LD_LIBRARY_PATH "$(runtime_path "$directory")" \
+        ctest --test-dir "$directory" --label-regex "^${label}$" --output-on-failure
+}
+
+test_unit()
+{
+    run_native_tests unit
+}
+
+test_integration()
+{
+    run_native_tests integration
+    test_csharp_integration
+}
+
+test_e2e()
+{
+    run_native_tests e2e
+}
+
+run_native_tests_with_coverage()
 {
     require_commands cmake ctest
     local directory="$BUILD_ROOT/coverage"
@@ -341,8 +429,10 @@ run_unit_tests()
         error "llvm-cov is required for coverage"
     local -a profiles=("$directory"/coverage-*.profraw)
     run "$profdata" merge -sparse "${profiles[@]}" -o "$directory/coverage.profdata"
-    run "$cov" report "$directory/tests/unit/Library/run_library_unit_tests" \
-        -object="$directory/tests/unit/Wrapper/run_wrapper_unit_tests" \
+    run "$cov" report "$directory/tests/unit/cpp/Library/run_library_unit_tests" \
+        -object="$directory/tests/unit/cpp/Wrapper/run_wrapper_unit_tests" \
+        -object="$directory/tests/integration/cpp/run_wrapper_integration_tests" \
+        -object="$directory/tests/e2e/cpp/run_wrapper_e2e_tests" \
         -object="$directory/libufeel_detection_library.a" \
         -object="$directory/Wrapper/libufeel_wrapper.so" \
         -instr-profile="$directory/coverage.profdata" \
@@ -350,7 +440,7 @@ run_unit_tests()
     configuration="$old_configuration"
 }
 
-run_feature_matrix()
+test_feature_matrix()
 {
     local matrix="$BUILD_ROOT/matrix"
     local packages="$PACKAGE_ROOT/matrix"
@@ -375,7 +465,7 @@ run_feature_matrix()
             ctest --test-dir "$directory" --output-on-failure
         run_with_environment UFEEL_PACKAGE_PATH "$destination/libufeel_wrapper.so" \
             env LD_LIBRARY_PATH="$(runtime_path "$directory" "$destination")" \
-            dotnet run --project "$TEST_PROJECT" \
+            dotnet run --project "$CSHARP_INTEGRATION_PROJECT" \
                 -p:OutputPath="$directory/dotnet-output/" \
                 -p:IntermediateOutputPath="$directory/dotnet-intermediate/" \
                 -- --feature-test "$name"
@@ -403,10 +493,12 @@ lint()
     local apply_fixes=false
     local -a targets=()
     local target
+
     for target in "$@"; do
         [[ "$target" == --tests ]] && include_tests=true || targets+=("$target")
         [[ "$target" == --fix ]] && apply_fixes=true
     done
+
     if "$apply_fixes"; then
         local filtered=()
         for target in "${targets[@]}"; do
@@ -414,19 +506,28 @@ lint()
         done
         targets=("${filtered[@]}")
     fi
+
     local directory
     if "$include_tests"; then
         directory="$BUILD_ROOT/coverage"
-        [[ -f "$directory/build.ninja" ]] || run_unit_tests
+        [[ -f "$directory/build.ninja" ]] || run_native_tests_with_coverage
     else
         directory="$(build_dir Release)"
     fi
+
     require_configured "$directory"
+
     if ((${#targets[@]} == 0)); then
         targets=(Library/.* Wrapper/.*)
-        "$include_tests" && targets+=(tests/unit/.*)
+        "$include_tests" && targets+=( 'tests/(unit|integration|e2e)/.*' )
     fi
-    local -a options=(run-clang-tidy -p "$directory" -header-filter='.*(Library|Wrapper|tests/unit)/.*')
+
+    local -a options=(
+        run-clang-tidy
+        -p "$directory"
+        -header-filter='.*(Library|Wrapper|tests/(unit|integration|e2e))/.*'
+    )
+
     "$apply_fixes" && options+=(-fix)
     run "${options[@]}" "${targets[@]}"
 }
@@ -453,15 +554,23 @@ dispatch()
         build) build ;;
         package) package ;;
         all) configure; build; package ;;
-        test) run_unit_tests; run_integration_tests ;;
+        test)
+            test_unit
+            test_integration
+            test_e2e
+            test_csharp_integration
+            ;;
         clean) remove_generated "$BUILD_ROOT" "$PACKAGE_ROOT" ;;
         format) format_sources "${cmake_extra[@]}" ;;
         lint) lint "${cmake_extra[@]}" ;;
         fix) lint --fix "${cmake_extra[@]}" ;;
         include-fix) include_fix "${cmake_extra[@]}" ;;
-        run-unit-tests) run_unit_tests ;;
-        run-integration-tests) run_integration_tests ;;
-        run-feature-matrix) require_commands cmake ctest dotnet; run_feature_matrix ;;
+        test-unit) test_unit ;;
+        test-integration) test_integration ;;
+        test-e2e) test_e2e ;;
+        test-harness) test_harness ;;
+        test-feature-matrix) test_feature_matrix ;;
+        coverage) run_native_tests_with_coverage ;;
         *) error "unsupported command '$command'" ;;
     esac
 }
@@ -472,8 +581,10 @@ case "$command" in
     format) require_commands clang-format ;;
     lint|fix) require_commands cmake run-clang-tidy ;;
     include-fix) require_commands cmake iwyu_tool.py fix_includes.py ;;
-    run-integration-tests) require_commands cmake dotnet ;;
-    run-feature-matrix) require_commands cmake ctest dotnet ;;
+    test-unit|test-integration|test-e2e|coverage) require_commands cmake ctest ;;
+    test) require_commands cmake ctest dotnet ;;
+    test-harness) require_commands cmake dotnet ;;
+    test-feature-matrix) require_commands cmake ctest dotnet ;;
     *) require_commands cmake ;;
 esac
 dispatch

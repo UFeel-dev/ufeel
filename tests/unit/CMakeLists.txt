@@ -1,2 +1,1 @@
-add_subdirectory(Library)
-add_subdirectory(Wrapper)
+add_subdirectory(cpp)

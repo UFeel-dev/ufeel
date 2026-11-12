@@ -3,7 +3,7 @@ using System.IO;
 
 namespace UFeelTest;
 
-internal sealed record UFeelPaths(
+public sealed record UFeelPaths(
     string LibraryPath,
     string ModelDirectory,
     string SpeechModelPath,

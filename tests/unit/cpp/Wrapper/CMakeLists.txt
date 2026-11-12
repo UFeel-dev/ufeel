@@ -14,9 +14,7 @@ if(UFEEL_ENABLE_EMOTIONS AND UFEEL_ENABLE_EYE_TRACKING AND
         src/TestEmotions.cpp
         src/TestEyeTracking.cpp
         src/TestHeartRate.cpp
-        src/TestProcessor.cpp
         src/TestSpeechToText.cpp
-        src/TestApiIntegration.cpp
     )
 endif()
 
@@ -50,6 +48,7 @@ include(GoogleTest)
 gtest_discover_tests(
     run_wrapper_unit_tests
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+    PROPERTIES LABELS unit
     DISCOVERY_MODE PRE_TEST
 )
 
