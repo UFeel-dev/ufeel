@@ -7,6 +7,7 @@ readonly BUILD_ROOT="${ROOT_DIR}/build"
 readonly PACKAGE_ROOT="${ROOT_DIR}/package"
 readonly TEST_HARNESS_PROJECT="${ROOT_DIR}/tests/test-harnesses/csharp/UFeel.TestHarness"
 readonly GENERATOR="Ninja"
+readonly C_COMPILER="clang-22"
 readonly CXX_COMPILER="clang++-22"
 readonly FEATURES=(emotions eye-tracking speech-to-text heart-rate)
 
@@ -290,6 +291,7 @@ configure()
     mapfile -t options < <(feature_options)
     run cmake -S "$ROOT_DIR" -B "$directory" -G "$GENERATOR" \
         "-DCMAKE_BUILD_TYPE=$configuration" \
+        "-DCMAKE_C_COMPILER=$C_COMPILER" \
         "-DCMAKE_CXX_COMPILER=$CXX_COMPILER" \
         -DUFEEL_BUILD_TESTS=OFF \
         -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
@@ -347,6 +349,7 @@ configure_test_build()
     mapfile -t options < <(feature_options)
     run cmake -S "$ROOT_DIR" -B "$directory" -G "$GENERATOR" \
         "-DCMAKE_BUILD_TYPE=$configuration" \
+        "-DCMAKE_C_COMPILER=$C_COMPILER" \
         "-DCMAKE_CXX_COMPILER=$CXX_COMPILER" \
         -DUFEEL_BUILD_TESTS=ON \
         -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
@@ -360,7 +363,7 @@ run_native_tests()
     build "$directory"
     run_with_environment LD_LIBRARY_PATH "$(runtime_path "$directory")" \
         ctest --test-dir "$directory" --output-on-failure "$@" \
-        --parallel "$(nproc)"
+        --parallel "$(nproc - 1)"
 }
 
 test_all()
@@ -390,7 +393,8 @@ run_native_tests_with_coverage()
     local old_configuration="$configuration"
     configuration=Debug
     run cmake -S "$ROOT_DIR" -B "$directory" -G "$GENERATOR" \
-        -DCMAKE_BUILD_TYPE=Debug "-DCMAKE_CXX_COMPILER=$CXX_COMPILER" \
+        -DCMAKE_BUILD_TYPE=Debug "-DCMAKE_C_COMPILER=$C_COMPILER" \
+        "-DCMAKE_CXX_COMPILER=$CXX_COMPILER" \
         -DUFEEL_BUILD_TESTS=ON -DUFEEL_ENABLE_COVERAGE=ON \
         -DCMAKE_POLICY_VERSION_MINIMUM=3.5
     build "$directory"
@@ -398,7 +402,7 @@ run_native_tests_with_coverage()
     run_with_environment LLVM_PROFILE_FILE "$directory/coverage-%p.profraw" \
         env LD_LIBRARY_PATH="$(runtime_path "$directory")" \
         ctest --test-dir "$directory" --output-on-failure \
-        --parallel "$(nproc)"
+        --parallel "$(nproc - 1)"
     local profdata
     local cov
     profdata="$(command -v llvm-profdata-22 || command -v llvm-profdata)" ||
@@ -435,14 +439,15 @@ test_feature_matrix()
                 options+=("-DUFEEL_ENABLE_$(feature_option_name "$feature")=OFF")
         done
         run cmake -S "$ROOT_DIR" -B "$directory" -G "$GENERATOR" \
-            -DCMAKE_BUILD_TYPE=Release "-DCMAKE_CXX_COMPILER=$CXX_COMPILER" \
+            -DCMAKE_BUILD_TYPE=Release "-DCMAKE_C_COMPILER=$C_COMPILER" \
+            "-DCMAKE_CXX_COMPILER=$CXX_COMPILER" \
             -DUFEEL_BUILD_TESTS=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             "${options[@]}"
         run cmake --build "$directory" --parallel
         run cmake --install "$directory" --prefix "$destination"
         run_with_environment LD_LIBRARY_PATH "$(runtime_path "$directory" "$destination")" \
             ctest --test-dir "$directory" --label-exclude '^hardware$' --output-on-failure \
-            --parallel "$(nproc)"
+            --parallel "$(nproc - 1)"
     done
 }
 
