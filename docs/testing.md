@@ -32,6 +32,7 @@ Every other test must pass without devices or network. Build `DataProcessor` wit
 - Integration and e2e C++ tests only build when all four features are enabled.
 - Assert on the known answer of a fixture instead of skipping: a face, a blank frame, a grayscale frame, a small face, a spoken sentence, silence.
 - Test resources and their licenses: [tests/resources/README.md](../tests/resources/README.md).
+- Whenever there is an issue that isn't catched by the testing suite, add a regression test (unit or integration, usually) to ensure it is properly catched.
 
 ## Manual testing
 
