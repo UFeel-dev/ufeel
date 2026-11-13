@@ -1,6 +1,7 @@
 #ifndef SPEECHTOTEXT_AUDIOCAPTURE_HPP
 #define SPEECHTOTEXT_AUDIOCAPTURE_HPP
 
+#include "SpeechToText/AudioSource.hpp"
 #include "portaudio.h"
 
 #include <array>
@@ -9,7 +10,7 @@
 #include <cstdint>
 #include <vector>
 
-class AudioCapture
+class AudioCapture final : public AudioSource
 {
 public:
 
@@ -19,7 +20,7 @@ public:
     static constexpr std::size_t channelCount = 2;
 
     AudioCapture();
-    ~AudioCapture();
+    ~AudioCapture() override;
 
     AudioCapture(const AudioCapture&) = delete;
     auto operator=(const AudioCapture&) -> AudioCapture& = delete;
@@ -27,10 +28,10 @@ public:
     AudioCapture(AudioCapture&&) = delete;
     auto operator=(AudioCapture&&) -> AudioCapture& = delete;
 
-    auto start() -> bool;
-    void stop();
+    auto start() -> bool override;
+    void stop() override;
 
-    auto read(std::vector<int16_t>& buffer) -> bool;
+    auto read(std::vector<int16_t>& buffer) -> bool override;
 
 private:
 

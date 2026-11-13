@@ -44,7 +44,7 @@ Pull requests that do not follow this process may be rejected without review.
 All contributions must:
 
 - Follow the existing project structure and conventions
-- Mirror each source tree under its matching `tests/unit/Library` or `tests/unit/Wrapper` directory
+- Mirror each source tree under its matching `tests/unit/cpp/Library` or `tests/unit/cpp/Wrapper` directory
 - Avoid unnecessary dependencies
 - Don't be platform-dependant unless explicitly targeting a plugin
 - Update documentation for any public API changes
@@ -52,7 +52,7 @@ All contributions must:
 
 Contributors are responsible for maintaining backward compatibility where applicable.
 
-Before submitting, run `./build.sh run-unit-tests` to test, and use `./build.sh format` to format C++ sources and tests.
+Before submitting, run `./build.sh test` to test and `./build.sh lint` to check C++ sources: it runs clang-tidy and then checks formatting, and fails on any warning or unformatted file. `./build.sh lint --fix` applies clang-tidy fixes and formats the sources. CI rejects pull requests to `main` when `./build.sh lint` fails. To run the CI locally, use `Tools/test-ci-with-act.sh`.
 
 ## Commit Message Format
 

@@ -5,7 +5,7 @@
 | | |
 | --- | --- |
 | **Description** | Color portrait photograph of Eileen Collins, an American NASA astronaut |
-| **Used for** | Unit tests of face detection and face landmark code (`TestFaceLandmark`) |
+| **Used for** | Face fixture of the emotion, eye tracking and `DataProcessor` tests. Greyscale, BGRA and small-face variants are derived from it in [Fixtures.hpp](../unit/cpp/include/Library/TestSupport/Fixtures.hpp) |
 | **Original source** | NASA Great Images database, image ID GPN-2000-001177 |
 | **Obtained via** | scikit-image, `skimage.data.astronaut()` |
 | **Modifications** | None. Exported to PNG with `skimage.io.imsave` |
@@ -32,3 +32,23 @@ license applies to the source code only.
 
 - scikit-image data documentation: <https://scikit-image.org/docs/stable/api/skimage.data.html>
 - image downloaded from the NASA Great Images database: <https://www.flickr.com/photos/nasacommons/16504233985/>
+
+## turn_on_the_light.wav
+
+| | |
+| --- | --- |
+| **Description** | Synthetic voice saying "turn on the light", 16 kHz mono 16-bit PCM |
+| **Used for** | Speech-to-text fixture of the `DataProcessor` integration tests (expected text: `turn on the light`) |
+| **Original source** | Generated for this repository with eSpeak NG |
+| **Modifications** | Resampled with SoX, 0.3 s of silence before and 0.8 s after |
+
+Regenerate it with:
+
+```bash
+espeak-ng -v en-us -s 140 -w speech.wav "turn on the light"
+sox speech.wav -r 16000 -c 1 -b 16 -e signed-integer turn_on_the_light.wav pad 0.3 0.8
+```
+
+### License / usage rights
+
+The file is synthesized speech with no recorded person. It is provided under this repository's license.

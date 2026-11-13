@@ -35,12 +35,12 @@ cd ..
 ./docker/run.sh
 
 ./build.sh all
-./build.sh run-integration-tests
+./build.sh test
 ```
 
 Docker is the recommended build environment. It provides a reproducible toolchain and avoids requiring the native build dependencies on the host.
 
-Note: you will need appropriate input devices to test some features, such as a camera and a microphone.
+Note: `./build.sh test` needs no devices. You need a camera and a microphone for the hardware tests (`./build.sh test-e2e`) and to try features live.
 
 To use clang-related tools (e.g. linting, formatting, or IDE features), set up the compilation database:
 
@@ -79,6 +79,7 @@ Manual builds are supported but require compatible versions of all third-party d
 - clang-format >= 22.0
 - patchelf
 - IWYU >= 0.26
+- act  => 0.2.97
 
 The native package still relies on some operating-system libraries, including glibc, libstdc++, audio libraries and other system dependencies.
 
@@ -104,11 +105,7 @@ git lfs pull
 ├── Tools/            # Development tools
 ├── Library/          # Native sources
 ├── Wrapper/          # C++ wrapper
-├── tests/
-│   ├── unit/
-│   │   ├── Library/  # Native library unit tests
-│   │   └── Wrapper/  # Native wrapper unit tests
-│   └── integration/  # C# integration test
+├── tests/            # Tests
 ├── 3rdparty/         # External dependencies
 ├── build/            # Configuration-specific generated build files
 ├── docker/           # Docker environment
@@ -118,9 +115,14 @@ git lfs pull
 ## Build and Test
 
 ```bash
-./build.sh all                 # Configure, build, and package (Release)
-./build.sh test                # Run unit tests and integration tests
-./build.sh run-feature-matrix  # Test every feature configuration
+./build.sh all                   # Configure, build, and package (Release)
+./build.sh test                  # Run all automated tests
+./build.sh test-unit             # Run C++ unit tests
+./build.sh test-integration      # Run C++ and C# integration tests
+./build.sh test-e2e              # Run C++ end-to-end tests
+./build.sh test-harness          # Build the interactive C# test harness
+./build.sh test-feature-matrix   # Test every feature configuration through C# integration tests
+./build.sh coverage              # Run native tests and generate coverage
 ```
 
 The complete command list is available with:
@@ -151,8 +153,12 @@ The available options are `UFEEL_ENABLE_EMOTIONS`, `UFEEL_ENABLE_EYE_TRACKING`, 
 | --- | --- |
 | [Contributing](CONTRIBUTING.md) | Contribution guidelines |
 | [Disclaimer](DISCLAIMER.md) | Limitations and prohibited use |
+| [Architecture](docs/architecture.md) | Layers, feature flags, packaging |
 | [Docker](docker/README.md) | Docker setup instructions |
 | [Heart rate](docs/heart-rate.md) | Heart-rate sources: sensor and smartwatch |
+| [Testing](docs/testing.md) | Test levels, layout and rules |
+| [Versioning](VERSIONING.md) | Semantic Versioning policy |
+| [Security](SECURITY.md) | Vulnerability reporting |
 
 ## License
 

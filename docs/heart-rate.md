@@ -34,7 +34,15 @@ A local HTTP server at `http://localhost:8000` must answer with:
 | `Watch` | Smartwatch only |
 
 ```cpp
-DataProcessor processor(modelDirectory, speechModelPath, HeartRateSourceType::Watch);
+HeartRateSensorDetector detector(HeartRateSourceType::Watch);
+```
+
+`HeartRateSensorDetector` also takes the watch UDP port and the sensor URL. To choose the sources of a `DataProcessor`, pass them in `DataProcessorDevices::heartRateSources`. An empty list uses `Auto`:
+
+```cpp
+DataProcessorDevices devices;
+devices.heartRateSources.push_back(std::make_unique<WatchHeartRateSource>(9999));
+DataProcessor processor(modelDirectory, speechModelPath, std::move(devices));
 ```
 
 The C API always uses `Auto`.

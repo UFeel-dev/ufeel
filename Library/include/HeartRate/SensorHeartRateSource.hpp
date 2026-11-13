@@ -11,7 +11,9 @@ class SensorHeartRateSource final : public HeartRateSource
 {
 public:
 
-    explicit SensorHeartRateSource(std::string url = "http://localhost:8000");
+    static constexpr const char* kDefaultUrl = "http://localhost:8000";
+
+    explicit SensorHeartRateSource(std::string url = kDefaultUrl);
 
     [[nodiscard]]
     auto read() const -> HeartRateResult override;

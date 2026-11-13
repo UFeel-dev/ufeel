@@ -16,6 +16,12 @@ docker build --pull --no-cache -t ufeeldocker:latest .
 cd ..
 ```
 
+The Dockerfile has two targets. The default one (`dev`, used above) contains everything: build toolchain, .NET SDK for the integration tests, Xvfb/X11/Wayland libraries, coverage tools, clangd, lldb, and include-what-you-use 0.26 (built from source against clang 22, because Ubuntu 22.04 only ships 0.17). The `ci` target only contains what the CI needs to configure, build, and lint the native library, which makes it much smaller. It also ships [ccache](https://ccache.dev) and [ctcache](https://github.com/matus-chochlik/ctcache) (`clang-tidy-cache`), which the CI uses to reuse compilation and clang-tidy results between runs:
+
+```bash
+docker build --target ci -t ufeeldocker:ci .
+```
+
 1. Run the docker container from the root of the repository
 
 ```bash

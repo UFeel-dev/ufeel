@@ -7,6 +7,7 @@
 #include "Emotions/Inference/HeadCalibration.hpp"
 #include "Emotions/Inference/InferencePipeline.hpp"
 #include "Utils/FrameChecker.hpp"
+#include "Utils/FrameFormat.hpp"
 #include "opencv2/core/mat.hpp"
 #include "torch/headeronly/core/DeviceType.h"
 #include "yaml-cpp/node/node.h"
@@ -84,7 +85,8 @@ auto EmotionDetector::process(
         return frameChecker_.getResult();
     }
 
-    auto result = calibration_.select(pipeline_->predict(image));
+    const auto scores = pipeline_->predict(toBgr(image));
+    auto result = scores ? calibration_.select(*scores) : std::map<std::string, float>{};
 
     frameChecker_.setFrame(image);
     frameChecker_.setResult(result);

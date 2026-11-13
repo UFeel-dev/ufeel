@@ -47,6 +47,8 @@ Checks: >
 
   llvm-header-guard
 
+WarningsAsErrors: '*'
+
 CheckOptions:
   readability-identifier-naming.NamespaceCase: lower_case
 

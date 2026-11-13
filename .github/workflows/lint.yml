@@ -1,0 +1,65 @@
+name: Lint
+
+on:
+  pull_request:
+    branches: [main]
+  merge_group:
+    types: [checks_requested]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  lint:
+    name: Static Analysis
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          lfs: false
+          submodules: recursive
+          sparse-checkout: |
+            .github
+            3rdparty
+            Library
+            Wrapper
+            cmake
+            docker
+            models/EyeTracking
+            tests
+
+      - name: Build CI Docker image
+        uses: ./.github/actions/ci-image
+        with:
+          write-cache: "true"
+
+      - name: Compute clang-tidy cache key
+        id: ctcache
+        run: |
+          version="$(docker run --rm ufeeldocker:ci clang-tidy --version | sha256sum | cut -c1-16)"
+          echo "key=ctcache-$version" >> "$GITHUB_OUTPUT"
+
+      - name: Restore clang-tidy cache
+        uses: actions/cache@v6
+        with:
+          path: build/cache/ctcache
+          key: ${{ steps.ctcache.outputs.key }}-${{ github.sha }}
+          restore-keys: ${{ steps.ctcache.outputs.key }}-
+
+      - name: Run lint (clang-tidy + clang-format) in Docker
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/mnt" \
+            -e UFEEL_CLANG_TIDY=/usr/local/bin/clang-tidy-cache \
+            -e CTCACHE_DIR=/mnt/build/cache/ctcache \
+            -e CTCACHE_KEEP_COMMENTS=1 \
+            -w /mnt \
+            ufeeldocker:ci \
+            bash -lc './build.sh configure && ./build.sh lint'

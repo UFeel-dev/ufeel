@@ -44,18 +44,20 @@ constexpr auto kSupportedDetectionMask = 0U
 #endif
     ;
 
+constexpr auto kVideoDetectionMask = 0U
+#if UFEEL_ENABLE_EMOTIONS
+                                     | static_cast<std::uint32_t>(Emotions)
+#endif
+#if UFEEL_ENABLE_EYE_TRACKING
+                                     | static_cast<std::uint32_t>(EyeTracking)
+#endif
+    ;
+
 constexpr auto needsVideoFrame(
     std::uint32_t detectionType
 ) noexcept -> bool
 {
-    return
-#if UFEEL_ENABLE_EMOTIONS
-        hasDetection(detectionType, Emotions) ||
-#endif
-#if UFEEL_ENABLE_EYE_TRACKING
-        hasDetection(detectionType, EyeTracking) ||
-#endif
-        false;
+    return (detectionType & kVideoDetectionMask) != 0U;
 }
 
 auto makeEmotionResult(
@@ -68,27 +70,34 @@ auto makeEmotionResult(
     };
 }
 
+auto requireFrameReader(
+    std::function<bool(cv::Mat&)> frameReader
+) -> std::function<bool(cv::Mat&)>
+{
+    if (!frameReader)
+    {
+        throw std::invalid_argument("A frame reader is required.");
+    }
+
+    return frameReader;
+}
+
 } // namespace
 
 DataProcessor::DataProcessor(
     const std::string& modelDirectory, const std::string& speechModelPath
 )
-    : DataProcessor(modelDirectory, speechModelPath, 0)
+    : DataProcessor(modelDirectory, speechModelPath, DataProcessorDevices{})
 {
 }
 
 DataProcessor::DataProcessor(
     const std::string& modelDirectory, const std::string& speechModelPath, int cameraIndex
 )
-    : cap_(cameraIndex)
-    , frameReader_([this](cv::Mat& frame) -> bool { return cap_.read(frame); })
+    : DataProcessor(
+          modelDirectory, speechModelPath, DataProcessorDevices{.cameraIndex = cameraIndex}
+      )
 {
-    if (!cap_.isOpened())
-    {
-        std::cerr << "[ERROR] Cannot open camera capture_id=0\n";
-    }
-
-    initializeDetectors(modelDirectory, speechModelPath);
 }
 
 DataProcessor::DataProcessor(
@@ -96,19 +105,20 @@ DataProcessor::DataProcessor(
     const std::string& speechModelPath,
     std::function<bool(cv::Mat&)> frameReader
 )
-    : frameReader_(std::move(frameReader))
+    : DataProcessor(
+          modelDirectory,
+          speechModelPath,
+          DataProcessorDevices{.frameReader = requireFrameReader(std::move(frameReader))}
+      )
 {
-    if (!frameReader_)
-    {
-        throw std::invalid_argument("A frame reader is required.");
-    }
-
-    initializeDetectors(modelDirectory, speechModelPath);
 }
 
-void DataProcessor::initializeDetectors(
-    const std::string& modelDirectory, const std::string& speechModelPath
+DataProcessor::DataProcessor(
+    const std::string& modelDirectory,
+    const std::string& speechModelPath,
+    DataProcessorDevices devices
 )
+    : frameReader_(std::move(devices.frameReader))
 {
 #if UFEEL_ENABLE_EMOTIONS
     emotionDetector_ = std::make_unique<EmotionDetector>(modelDirectory);
@@ -117,11 +127,29 @@ void DataProcessor::initializeDetectors(
     eyeTrackingDetector_ = std::make_unique<EyeTrackingDetector>(modelDirectory);
 #endif
 #if UFEEL_ENABLE_SPEECH_TO_TEXT
-    speechToTextDetector_ = std::make_unique<SpeechToTextDetector>(speechModelPath);
+    speechToTextDetector_ = devices.audioSource
+                                ? std::make_unique<SpeechToTextDetector>(
+                                      speechModelPath, std::move(devices.audioSource)
+                                  )
+                                : std::make_unique<SpeechToTextDetector>(speechModelPath);
 #endif
 #if UFEEL_ENABLE_HEART_RATE
-    heartRateSensorDetector_ = std::make_unique<HeartRateSensorDetector>();
+    heartRateSensorDetector_ =
+        devices.heartRateSources.empty()
+            ? std::make_unique<HeartRateSensorDetector>()
+            : std::make_unique<HeartRateSensorDetector>(std::move(devices.heartRateSources));
 #endif
+
+    if (frameReader_)
+    {
+        return;
+    }
+
+    if (!cap_.open(devices.cameraIndex))
+    {
+        std::cerr << "[ERROR] Cannot open camera capture_id=" << devices.cameraIndex << "\n";
+    }
+    frameReader_ = [this](cv::Mat& frame) -> bool { return cap_.read(frame); };
 }
 
 auto DataProcessor::updateFrame() -> DataProcessorStatus

@@ -40,6 +40,8 @@
 build/
 Build/
 
+/ufeel-act/
+
 # CMake generated files
 CMakeFiles/
 CMakeCache.txt

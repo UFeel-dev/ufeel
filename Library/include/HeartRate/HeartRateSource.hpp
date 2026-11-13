@@ -34,16 +34,16 @@ class LatestReading
 {
 public:
 
-    void set(HeartRateResult result);
-
-    [[nodiscard]]
-    auto get() const -> HeartRateResult;
-
-private:
-
     using Clock = std::chrono::steady_clock;
 
     static constexpr std::chrono::seconds kStaleAfter{5};
+
+    void set(HeartRateResult result, Clock::time_point now = Clock::now());
+
+    [[nodiscard]]
+    auto get(Clock::time_point now = Clock::now()) const -> HeartRateResult;
+
+private:
 
     mutable std::mutex mutex_;
     HeartRateResult result_{};

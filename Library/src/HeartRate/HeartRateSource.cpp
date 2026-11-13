@@ -5,20 +5,22 @@
 #include <mutex>
 
 void LatestReading::set(
-    HeartRateResult result
+    HeartRateResult result, Clock::time_point now
 )
 {
     std::scoped_lock const lock(mutex_);
     result_ = result;
-    time_ = Clock::now();
+    time_ = now;
     hasData_ = true;
 }
 
-auto LatestReading::get() const -> HeartRateResult
+auto LatestReading::get(
+    Clock::time_point now
+) const -> HeartRateResult
 {
     std::scoped_lock const lock(mutex_);
 
-    if (!hasData_ || Clock::now() - time_ > kStaleAfter)
+    if (!hasData_ || now - time_ > kStaleAfter)
     {
         return {.bpm = 0, .status = HeartRateStatus::NoData};
     }

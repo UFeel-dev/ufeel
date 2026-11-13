@@ -1,0 +1,60 @@
+name: Build
+
+on:
+  pull_request:
+    branches: [main]
+  merge_group:
+    types: [checks_requested]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          lfs: false
+          submodules: recursive
+
+      - name: Fetch third-party Git LFS files
+        uses: ./.github/actions/lfs-3rdparty
+
+      - name: Build CI Docker image
+        uses: ./.github/actions/ci-image
+
+      - name: Restore ccache
+        uses: actions/cache@v6
+        with:
+          path: build/cache/ccache
+          key: ccache-${{ github.sha }}
+          restore-keys: ccache-
+
+      - name: Build project in Docker
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/mnt" \
+            -e CCACHE_DIR=/mnt/build/cache/ccache \
+            -e CCACHE_MAXSIZE=500M \
+            -w /mnt \
+            ufeeldocker:ci \
+            bash -lc './build.sh configure -- -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && ./build.sh build'
+
+      - name: Run unit tests in Docker
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/mnt" \
+            -e CCACHE_DIR=/mnt/build/cache/ccache \
+            -e CCACHE_MAXSIZE=500M \
+            -w /mnt \
+            ufeeldocker:ci \
+            bash -lc "./build.sh test"
