@@ -5,12 +5,28 @@ set -euo pipefail
 readonly ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly COPY_DIR="$ROOT_DIR/ufeel-act"
 readonly RUNNER_IMAGE="catthehacker/ubuntu:act-22.04"
-readonly JOBS=(lint build)
+readonly DEFAULT_JOBS=(lint build)
 
 error()
 {
     printf 'error: %s\n' "$*" >&2
     exit 1
+}
+
+usage()
+{
+    printf 'usage: %s [lint|build|release]...\n' "${0##*/}"
+    printf 'Runs the given CI jobs with act (default: %s).\n' "${DEFAULT_JOBS[*]}"
+    printf 'release runs as a push to the release branch and skips publishing.\n'
+}
+
+https_url()
+{
+    local url="$1"
+    if [[ "$url" =~ ^git@([^:]+):(.+)$ || "$url" =~ ^ssh://git@([^/]+)/(.+)$ ]]; then
+        url="https://${BASH_REMATCH[1]}/${BASH_REMATCH[2]}"
+    fi
+    printf '%s\n' "$url"
 }
 
 step()
@@ -53,6 +69,16 @@ seed_lfs_objects()
     done < <(git lfs ls-files --long --include='3rdparty/**')
 }
 
+jobs=("$@")
+((${#jobs[@]})) || jobs=("${DEFAULT_JOBS[@]}")
+for job in "${jobs[@]}"; do
+    case "$job" in
+        lint|build|release) ;;
+        -h|--help) usage; exit 0 ;;
+        *) usage >&2; error "unknown job '$job'" ;;
+    esac
+done
+
 for tool in act docker git tar; do
     command -v "$tool" >/dev/null 2>&1 || error "required command '$tool' is not installed"
 done
@@ -77,26 +103,36 @@ branch="$(git rev-parse --abbrev-ref HEAD)"
 [[ "$branch" != HEAD ]] || branch="ci-act-test"
 git -C "$COPY_DIR" init --quiet --initial-branch="$branch"
 if origin="$(git remote get-url origin 2>/dev/null)"; then
-    git -C "$COPY_DIR" remote add origin "$origin"
+    git -C "$COPY_DIR" remote add origin "$(https_url "$origin")"
 fi
 seed_lfs_objects
 git -C "$COPY_DIR" add --all --force
 git -C "$COPY_DIR" -c user.name=act -c user.email=act@localhost \
     commit --quiet --message "Local CI test"
 
-event_file="$(mktemp)"
-trap 'rm -f "$event_file"' EXIT
+pull_request_event="$(mktemp)"
+push_event="$(mktemp)"
+trap 'rm -f "$pull_request_event" "$push_event"' EXIT
 printf '{ "pull_request": { "base": { "ref": "main" }, "head": { "ref": "%s" } } }\n' "$branch" \
-    >"$event_file"
+    >"$pull_request_event"
+printf '{ "ref": "refs/heads/release" }\n' >"$push_event"
 
 status=0
-for job in "${JOBS[@]}"; do
-    step "Running the CI job '$job' with act (pull_request to main)"
+for job in "${jobs[@]}"; do
+    if [[ "$job" == release ]]; then
+        event=push
+        event_file="$push_event"
+        step "Running the CI job '$job' with act (push to release, publishing skipped)"
+    else
+        event=pull_request
+        event_file="$pull_request_event"
+        step "Running the CI job '$job' with act (pull_request to main)"
+    fi
     job_status=0
     (
         cd "$COPY_DIR"
-        act pull_request \
-            --workflows .github/workflows/ci.yml \
+        act "$event" \
+            --workflows .github/workflows \
             --job "$job" \
             --eventpath "$event_file" \
             --bind \

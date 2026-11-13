@@ -1,0 +1,30 @@
+name: Third-party Git LFS files
+description: Fetches the 3rdparty Git LFS files, restoring .git/lfs/objects from the Actions cache and saving it right after a fetch.
+
+runs:
+  using: composite
+  steps:
+    - name: Compute Git LFS cache key
+      id: key
+      shell: bash
+      run: |
+        hash="$(git ls-files -s -- ':(glob)3rdparty/**/*.so' ':(glob)3rdparty/**/*.a' | sha256sum | cut -c1-16)"
+        echo "key=lfs-3rdparty-$hash" >> "$GITHUB_OUTPUT"
+
+    - name: Restore Git LFS objects
+      id: restore
+      uses: actions/cache/restore@v6
+      with:
+        path: .git/lfs/objects
+        key: ${{ steps.key.outputs.key }}
+
+    - name: Fetch Git LFS files
+      shell: bash
+      run: git lfs pull --include="3rdparty/**"
+
+    - name: Save Git LFS objects
+      if: steps.restore.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v6
+      with:
+        path: .git/lfs/objects
+        key: ${{ steps.key.outputs.key }}
