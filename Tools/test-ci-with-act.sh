@@ -20,13 +20,43 @@ step()
 
 clean_copy()
 {
-    [[ -f "$COPY_DIR/build.sh" ]] || return 0
-    docker run --rm -v "$COPY_DIR:/mnt" -w /mnt "$RUNNER_IMAGE" ./build.sh clean
+    [[ -d "$COPY_DIR" ]] || return 0
+    docker run --rm -v "$COPY_DIR:/mnt" -w /mnt "$RUNNER_IMAGE" \
+        bash -c "if [[ -f build.sh ]]; then ./build.sh clean; fi; chown -R $(id -u):$(id -g) /mnt"
+}
+
+copy_working_tree()
+{
+    local lfs_pointers path
+    lfs_pointers="$(comm -23 <(git lfs ls-files --name-only | sort) <(git ls-files --modified | sort))"
+    { git ls-files -z --recurse-submodules; git ls-files -z --others --exclude-standard; } |
+        grep -zvxFf <(printf '%s\n' "$lfs_pointers") |
+        tar --null --files-from=- --ignore-failed-read -cf - | tar -xf - -C "$COPY_DIR"
+    while IFS= read -r path; do
+        [[ -n "$path" ]] || continue
+        mkdir -p "$COPY_DIR/$(dirname -- "$path")"
+        git cat-file blob ":$path" >"$COPY_DIR/$path"
+        chmod --reference="$path" "$COPY_DIR/$path"
+    done <<<"$lfs_pointers"
+}
+
+seed_lfs_objects()
+{
+    local source target oid object
+    source="$(git rev-parse --path-format=absolute --git-common-dir)/lfs/objects"
+    target="$COPY_DIR/.git/lfs/objects"
+    while read -r oid _; do
+        object="${oid:0:2}/${oid:2:2}/$oid"
+        [[ -f "$source/$object" ]] || continue
+        mkdir -p "$(dirname -- "$target/$object")"
+        ln "$source/$object" "$target/$object" 2>/dev/null || cp "$source/$object" "$target/$object"
+    done < <(git lfs ls-files --long --include='3rdparty/**')
 }
 
 for tool in act docker git tar; do
     command -v "$tool" >/dev/null 2>&1 || error "required command '$tool' is not installed"
 done
+git lfs version >/dev/null 2>&1 || error "required command 'git lfs' is not installed"
 
 if ! docker image inspect "$RUNNER_IMAGE" >/dev/null 2>&1; then
     step "Pulling the runner image $RUNNER_IMAGE"
@@ -37,22 +67,22 @@ step "Removing the previous ufeel-act/"
 clean_copy
 rm -rf "$COPY_DIR" || error "cannot remove $COPY_DIR, check its ownership"
 
+cd "$ROOT_DIR"
+
 step "Copying the working tree to ufeel-act/"
 mkdir "$COPY_DIR"
-(
-    cd "$ROOT_DIR"
-    { git ls-files -z --recurse-submodules; git ls-files -z --others --exclude-standard; } |
-        tar --null --files-from=- --ignore-failed-read -cf - | tar -xf - -C "$COPY_DIR"
-)
+copy_working_tree
 
-branch="$(git -C "$ROOT_DIR" rev-parse --abbrev-ref HEAD)"
+branch="$(git rev-parse --abbrev-ref HEAD)"
 [[ "$branch" != HEAD ]] || branch="ci-act-test"
 git -C "$COPY_DIR" init --quiet --initial-branch="$branch"
-if origin="$(git -C "$ROOT_DIR" remote get-url origin 2>/dev/null)"; then
+if origin="$(git remote get-url origin 2>/dev/null)"; then
     git -C "$COPY_DIR" remote add origin "$origin"
 fi
+seed_lfs_objects
+git -C "$COPY_DIR" add --all --force
 git -C "$COPY_DIR" -c user.name=act -c user.email=act@localhost \
-    commit --quiet --allow-empty --message "Local CI test"
+    commit --quiet --message "Local CI test"
 
 event_file="$(mktemp)"
 trap 'rm -f "$event_file"' EXIT

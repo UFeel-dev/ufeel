@@ -40,7 +40,6 @@
 build/
 Build/
 
-# Local CI test copy (Tools/test-ci-with-act.sh)
 /ufeel-act/
 
 # CMake generated files
