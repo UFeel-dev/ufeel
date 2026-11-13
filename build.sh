@@ -547,6 +547,7 @@ static_analysis()
     )
     "$apply_fixes" && options+=(-fix '-warnings-as-errors=-*')
     [[ -t 1 ]] && options+=(-use-color=1)
+    [[ -n "${UFEEL_CLANG_TIDY:-}" ]] && options+=(-clang-tidy-binary "$UFEEL_CLANG_TIDY")
 
     run "${options[@]}" "${targets[@]}"
 }

@@ -2,86 +2,137 @@
 name: CI
 
 on:
+  push:
+    branches: [main]
   pull_request:
     branches: [main]
   merge_group:
     types: [checks_requested]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  build-and-analysis:
-    name: Build and Static Analysis
+  lint:
+    name: Static Analysis
     runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          lfs: true
+          lfs: false
           submodules: recursive
-
-      - name: Add .NET repository
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y software-properties-common
-          sudo add-apt-repository -y ppa:dotnet/backports
-
-      - name: Install lint dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            wget \
-            ca-certificates \
-            git-lfs \
-            cmake \
-            ninja-build \
-            portaudio19-dev \
-            libcurl4-openssl-dev \
-            dotnet-sdk-10.0 \
-            libasound2 \
-            libfontconfig1 \
-            libice6 \
-            libsm6 \
-            patchelf \
-            iwyu
-
-          wget https://apt.llvm.org/llvm.sh
-          chmod +x llvm.sh
-          sudo ./llvm.sh 22
-          rm llvm.sh
-
-          sudo apt-get install -y \
-            clang-22 \
-            clang-tidy-22 \
-            clang-format-22
-
-      - name: Configure CMake for Clang-Tidy
-        run: |
-          cmake -S . -B build \
-            -G Ninja \
-            -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-            -DCLANG_TIDY_AS_ERRORS=OFF
+          sparse-checkout: |
+            3rdparty
+            Library
+            Wrapper
+            cmake
+            docker
+            models/EyeTracking
+            tests
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Build Docker image
+      - name: Build CI Docker image
         uses: docker/build-push-action@v7
         with:
           context: ./docker
+          target: ci
           load: true
-          tags: ufeeldocker:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: ufeeldocker:ci
+          cache-from: type=gha,scope=ufeeldocker-ci
+          cache-to: type=gha,scope=ufeeldocker-ci,mode=max
+
+      - name: Compute clang-tidy cache key
+        id: ctcache
+        run: |
+          version="$(docker run --rm ufeeldocker:ci clang-tidy --version | sha256sum | cut -c1-16)"
+          echo "key=ctcache-$version" >> "$GITHUB_OUTPUT"
+          mkdir -p "$RUNNER_TEMP/ctcache"
+
+      - name: Restore clang-tidy cache
+        uses: actions/cache@v6
+        with:
+          path: ${{ runner.temp }}/ctcache
+          key: ${{ steps.ctcache.outputs.key }}-${{ github.sha }}
+          restore-keys: ${{ steps.ctcache.outputs.key }}-
+
+      - name: Run lint (clang-tidy + clang-format) in Docker
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/mnt" \
+            -v "$RUNNER_TEMP/ctcache:/ctcache" \
+            -e UFEEL_CLANG_TIDY=/usr/local/bin/clang-tidy-cache \
+            -e CTCACHE_DIR=/ctcache \
+            -e CTCACHE_KEEP_COMMENTS=1 \
+            -w /mnt \
+            ufeeldocker:ci \
+            bash -lc './build.sh configure && ./build.sh lint'
+
+  build:
+    name: Build
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          lfs: false
+          submodules: recursive
+
+      - name: Compute Git LFS cache key
+        id: lfs
+        run: |
+          hash="$(git ls-files -s -- ':(glob)3rdparty/**/*.so' ':(glob)3rdparty/**/*.a' | sha256sum | cut -c1-16)"
+          echo "key=lfs-3rdparty-$hash" >> "$GITHUB_OUTPUT"
+
+      - name: Restore Git LFS objects
+        uses: actions/cache@v6
+        with:
+          path: .git/lfs/objects
+          key: ${{ steps.lfs.outputs.key }}
+
+      - name: Fetch Git LFS files
+        run: git lfs pull --include="3rdparty/**"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build CI Docker image
+        uses: docker/build-push-action@v7
+        with:
+          context: ./docker
+          target: ci
+          load: true
+          tags: ufeeldocker:ci
+          cache-from: type=gha,scope=ufeeldocker-ci
+
+      - name: Prepare ccache directory
+        run: mkdir -p "$RUNNER_TEMP/ccache"
+
+      - name: Restore ccache
+        uses: actions/cache@v6
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ccache-${{ github.sha }}
+          restore-keys: ccache-
 
       - name: Build project in Docker
         run: |
           docker run --rm \
             -v "$GITHUB_WORKSPACE:/mnt" \
+            -v "$RUNNER_TEMP/ccache:/ccache" \
+            -e CCACHE_DIR=/ccache \
+            -e CCACHE_MAXSIZE=500M \
             -w /mnt \
-            ufeeldocker:latest \
-            bash -lc "./build.sh configure && ./build.sh build"
+            ufeeldocker:ci \
+            bash -lc './build.sh configure -- -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && ./build.sh build && ccache --show-stats'
 
+      # `./build.sh test` also runs the .NET integration tests, which need the default (dev) image
+      # target instead of `ci`.
       # - name: Run unit tests in Docker
       #   run: |
       #     docker run --rm \
@@ -89,11 +140,3 @@ jobs:
       #       -w /mnt \
       #       ufeeldocker:latest \
       #       bash -lc "./build.sh test"
-
-      - name: Run lint (clang-tidy + clang-format) in Docker
-        run: |
-          docker run --rm \
-            -v "$GITHUB_WORKSPACE:/mnt" \
-            -w /mnt \
-            ufeeldocker:latest \
-            bash -lc './build.sh lint'
