@@ -1,4 +1,3 @@
-
 name: CI
 
 on:
@@ -8,6 +7,9 @@ on:
     branches: [main]
   merge_group:
     types: [checks_requested]
+
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -51,12 +53,11 @@ jobs:
         run: |
           version="$(docker run --rm ufeeldocker:ci clang-tidy --version | sha256sum | cut -c1-16)"
           echo "key=ctcache-$version" >> "$GITHUB_OUTPUT"
-          mkdir -p "$RUNNER_TEMP/ctcache"
 
       - name: Restore clang-tidy cache
         uses: actions/cache@v6
         with:
-          path: ${{ runner.temp }}/ctcache
+          path: build/cache/ctcache
           key: ${{ steps.ctcache.outputs.key }}-${{ github.sha }}
           restore-keys: ${{ steps.ctcache.outputs.key }}-
 
@@ -64,9 +65,8 @@ jobs:
         run: |
           docker run --rm \
             -v "$GITHUB_WORKSPACE:/mnt" \
-            -v "$RUNNER_TEMP/ctcache:/ctcache" \
             -e UFEEL_CLANG_TIDY=/usr/local/bin/clang-tidy-cache \
-            -e CTCACHE_DIR=/ctcache \
+            -e CTCACHE_DIR=/mnt/build/cache/ctcache \
             -e CTCACHE_KEEP_COMMENTS=1 \
             -w /mnt \
             ufeeldocker:ci \
@@ -90,13 +90,21 @@ jobs:
           echo "key=lfs-3rdparty-$hash" >> "$GITHUB_OUTPUT"
 
       - name: Restore Git LFS objects
-        uses: actions/cache@v6
+        id: lfs-cache
+        uses: actions/cache/restore@v6
         with:
           path: .git/lfs/objects
           key: ${{ steps.lfs.outputs.key }}
 
       - name: Fetch Git LFS files
         run: git lfs pull --include="3rdparty/**"
+
+      - name: Save Git LFS objects
+        if: steps.lfs-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: .git/lfs/objects
+          key: ${{ steps.lfs.outputs.key }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -110,13 +118,10 @@ jobs:
           tags: ufeeldocker:ci
           cache-from: type=gha,scope=ufeeldocker-ci
 
-      - name: Prepare ccache directory
-        run: mkdir -p "$RUNNER_TEMP/ccache"
-
       - name: Restore ccache
         uses: actions/cache@v6
         with:
-          path: ${{ runner.temp }}/ccache
+          path: build/cache/ccache
           key: ccache-${{ github.sha }}
           restore-keys: ccache-
 
@@ -124,15 +129,12 @@ jobs:
         run: |
           docker run --rm \
             -v "$GITHUB_WORKSPACE:/mnt" \
-            -v "$RUNNER_TEMP/ccache:/ccache" \
-            -e CCACHE_DIR=/ccache \
+            -e CCACHE_DIR=/mnt/build/cache/ccache \
             -e CCACHE_MAXSIZE=500M \
             -w /mnt \
             ufeeldocker:ci \
-            bash -lc './build.sh configure -- -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && ./build.sh build && ccache --show-stats'
+            bash -lc './build.sh configure -- -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && ./build.sh build'
 
-      # `./build.sh test` also runs the .NET integration tests, which need the default (dev) image
-      # target instead of `ci`.
       # - name: Run unit tests in Docker
       #   run: |
       #     docker run --rm \

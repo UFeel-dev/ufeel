@@ -568,7 +568,6 @@ lint()
                 ;;
         esac
     done
-    # Run both checks even when the first fails, so one run reports every problem.
     local status=0
     static_analysis "$@" || status=1
     if ! "$has_targets" || ((${#format_targets[@]})); then
