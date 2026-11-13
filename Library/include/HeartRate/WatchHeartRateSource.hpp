@@ -24,11 +24,15 @@ public:
     [[nodiscard]]
     auto read() const -> HeartRateResult override;
 
+    [[nodiscard]]
+    auto port() const -> std::uint16_t;
+
 private:
 
     void run(const std::stop_token& stop);
 
     int socket_{-1};
+    std::uint16_t port_{0};
     LatestReading latest_;
     std::jthread worker_;
 };

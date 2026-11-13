@@ -3,31 +3,51 @@
 #include "Emotions/Inference/FaceDetector.hpp"
 #include "Emotions/Inference/InferencePipeline.hpp"
 #include "Library/Emotions/EmotionTestPaths.hpp"
-#include "opencv2/core/hal/interface.h"
-#include "opencv2/core/mat.hpp"
-#include "opencv2/core/types.hpp"
+#include "Library/TestSupport/Fixtures.hpp"
 #include "torch/headeronly/core/DeviceType.h"
 
 #include <cmath>
 #include <gtest/gtest.h>
 
-TEST(
-    InferencePipelineTest, ReturnsFiniteProbabilityForEveryEmotion
-)
+namespace
 {
-    InferencePipeline pipeline(
+
+auto createPipeline() -> InferencePipeline
+{
+    return {
         EmotionModel("resnet34"),
         torch::kCPU,
-        FaceCrop(FaceDetector(emotionFaceDetectorModelPath()), 32)
-    );
-    const cv::Mat image(80, 120, CV_8UC3, cv::Scalar(10, 20, 30));
+        FaceCrop(FaceDetector(emotionFaceDetectorModelPath()), 32),
+    };
+}
 
-    const auto scores = pipeline.predict(image);
+} // namespace
 
-    for (const auto score : scores)
+TEST(
+    InferencePipelineTest, ReturnsFiniteProbabilityForEveryEmotionOfAFace
+)
+{
+    auto pipeline = createPipeline();
+
+    const auto scores = pipeline.predict(loadFaceFrame());
+    if (!scores)
+    {
+        FAIL() << "no face was found in the face fixture";
+    }
+
+    for (const auto score : *scores)
     {
         EXPECT_TRUE(std::isfinite(score));
         EXPECT_GE(score, 0.0F);
         EXPECT_LE(score, 1.0F);
     }
+}
+
+TEST(
+    InferencePipelineTest, ReturnsNothingWithoutAFace
+)
+{
+    auto pipeline = createPipeline();
+
+    EXPECT_FALSE(pipeline.predict(makeBlankFrame()).has_value());
 }

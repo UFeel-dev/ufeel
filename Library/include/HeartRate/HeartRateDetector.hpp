@@ -2,9 +2,12 @@
 #define HEARTRATE_HEARTRATEDETECTOR_HPP
 
 #include "HeartRate/HeartRateSource.hpp"
+#include "HeartRate/SensorHeartRateSource.hpp"
+#include "HeartRate/WatchHeartRateSource.hpp"
 
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <vector>
 
 enum class HeartRateSourceType : std::uint8_t
@@ -19,8 +22,11 @@ class HeartRateSensorDetector
 public:
 
     explicit HeartRateSensorDetector(
-        HeartRateSourceType source = HeartRateSourceType::Auto, std::uint16_t watchPort = 9999
+        HeartRateSourceType source = HeartRateSourceType::Auto,
+        std::uint16_t watchPort = WatchHeartRateSource::kDefaultPort,
+        const std::string& sensorUrl = SensorHeartRateSource::kDefaultUrl
     );
+    explicit HeartRateSensorDetector(std::vector<std::unique_ptr<HeartRateSource>> sources);
 
     ~HeartRateSensorDetector() = default;
 

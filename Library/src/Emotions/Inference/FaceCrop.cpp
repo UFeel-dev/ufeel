@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <optional>
 #include <utility>
 
 namespace
@@ -38,12 +39,12 @@ FaceCrop::FaceCrop(
 
 auto FaceCrop::operator()(
     const cv::Mat& image
-) -> cv::Mat
+) -> std::optional<cv::Mat>
 {
     const auto detection = detector_.detect(image);
     if (!detection)
     {
-        return resizeTo(image, cv::Size(size_, size_));
+        return std::nullopt;
     }
 
     const auto& box = detection->box;
@@ -57,7 +58,7 @@ auto FaceCrop::operator()(
 
     if (x2 <= x1 || y2 <= y1)
     {
-        return resizeTo(image, cv::Size(size_, size_));
+        return std::nullopt;
     }
 
     const cv::Mat face = image(cv::Rect(x1, y1, x2 - x1, y2 - y1));

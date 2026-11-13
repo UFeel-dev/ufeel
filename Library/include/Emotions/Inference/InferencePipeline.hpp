@@ -8,17 +8,19 @@
 #include "opencv2/core/mat.hpp"
 #include "torch/optim/optimizer.h"
 
+#include <optional>
+
 class InferencePipeline
 {
 public:
 
     InferencePipeline(EmotionModel model, torch::Device device, FaceCrop faceCrop);
 
-    [[nodiscard]] auto predict(const cv::Mat& image) -> EmotionScores;
+    [[nodiscard]] auto predict(const cv::Mat& image) -> std::optional<EmotionScores>;
 
 private:
 
-    [[nodiscard]] auto preprocess(const cv::Mat& image) -> torch::Tensor;
+    [[nodiscard]] static auto preprocess(const cv::Mat& face) -> torch::Tensor;
 
     EmotionModel model_;
     torch::Device device_;

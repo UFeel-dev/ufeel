@@ -54,6 +54,12 @@ WatchHeartRateSource::WatchHeartRateSource(
         return;
     }
 
+    socklen_t addressLength = sizeof(addr);
+    if (::getsockname(socket_, reinterpret_cast<sockaddr*>(&addr), &addressLength) == 0)
+    {
+        port_ = ntohs(addr.sin_port);
+    }
+
     worker_ = std::jthread([this](const std::stop_token& stop) -> void { run(stop); });
 }
 
@@ -74,6 +80,11 @@ WatchHeartRateSource::~WatchHeartRateSource()
 auto WatchHeartRateSource::read() const -> HeartRateResult
 {
     return latest_.get();
+}
+
+auto WatchHeartRateSource::port() const -> std::uint16_t
+{
+    return port_;
 }
 
 void WatchHeartRateSource::run(

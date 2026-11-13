@@ -13,6 +13,7 @@
 #include "torch/optim/optimizer.h"
 
 #include <algorithm>
+#include <optional>
 #include <torch/types.h>
 #include <torch/utils.h>
 #include <utility>
@@ -29,11 +30,11 @@ InferencePipeline::InferencePipeline(
 }
 
 auto InferencePipeline::preprocess(
-    const cv::Mat& image
+    const cv::Mat& face
 ) -> torch::Tensor
 {
     cv::Mat rgb;
-    cv::cvtColor(faceCrop_(image), rgb, cv::COLOR_BGR2RGB);
+    cv::cvtColor(face, rgb, cv::COLOR_BGR2RGB);
     rgb.convertTo(rgb, CV_32FC3, 1.0 / 255.0);
 
     const auto mean = torch::tensor({0.485F, 0.456F, 0.406F}).view({1, 3, 1, 1});
@@ -47,12 +48,18 @@ auto InferencePipeline::preprocess(
 
 auto InferencePipeline::predict(
     const cv::Mat& image
-) -> EmotionScores
+) -> std::optional<EmotionScores>
 {
+    const auto face = faceCrop_(image);
+    if (!face)
+    {
+        return std::nullopt;
+    }
+
     const torch::NoGradGuard noGrad;
 
     const auto probabilities =
-        torch::sigmoid(model_->forward(preprocess(image).to(device_))).to(torch::kCPU).contiguous();
+        torch::sigmoid(model_->forward(preprocess(*face).to(device_))).to(torch::kCPU).contiguous();
 
     EmotionScores scores{};
     std::copy_n(probabilities.data_ptr<float>(), scores.size(), scores.begin());

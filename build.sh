@@ -5,9 +5,9 @@ set -euo pipefail
 readonly ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly BUILD_ROOT="${ROOT_DIR}/build"
 readonly PACKAGE_ROOT="${ROOT_DIR}/package"
-readonly CSHARP_INTEGRATION_PROJECT="${ROOT_DIR}/tests/integration/csharp/UFeel.FeatureTests"
 readonly TEST_HARNESS_PROJECT="${ROOT_DIR}/tests/test-harnesses/csharp/UFeel.TestHarness"
 readonly GENERATOR="Ninja"
+readonly C_COMPILER="clang-22"
 readonly CXX_COMPILER="clang++-22"
 readonly FEATURES=(emotions eye-tracking speech-to-text heart-rate)
 
@@ -38,16 +38,17 @@ Commands:
   configure               Configure a build directory
   build                   Build a configured directory
   package                 Install a built package
-  test                    Run all automated tests
+  test                    Run all tests that need no camera, microphone or fixed port
   test-unit               Run C++ unit tests
-  test-integration        Run C++ and C# integration tests
-  test-e2e                Run C++ end-to-end tests
+  test-integration        Run C++ integration tests
+  test-e2e                Run C++ end-to-end tests (hardware: camera, microphone, ports)
   test-harness            Build the interactive C# test harness
-  test-feature-matrix     Test all feature configurations through C# integration tests
+  test-feature-matrix     Build, package and test every feature configuration
   coverage                Run all native tests and generate coverage
   format                  Format C++ files
-  lint                    Run clang-tidy
-  fix                     Run clang-tidy with fixes
+  check-format            Report unformatted C++ files without changing them
+  lint                    Run clang-tidy and check-format (lint --fix applies both fixes)
+  fix                     Same as lint --fix
   include-fix             Run include-what-you-use fixes
   clean                   Remove build and package directories
 
@@ -175,7 +176,7 @@ parse_args()
                 cmake_extra+=("$@")
                 break
                 ;;
-            configure|build|package|all|test|clean|format|lint|fix|include-fix|\
+            configure|build|package|all|test|clean|format|check-format|lint|fix|include-fix|\
             test-unit|test-integration|test-e2e|test-harness|\
             test-feature-matrix|coverage)
                 [[ -z "$command" ]] || error "only one command may be specified"
@@ -290,6 +291,7 @@ configure()
     mapfile -t options < <(feature_options)
     run cmake -S "$ROOT_DIR" -B "$directory" -G "$GENERATOR" \
         "-DCMAKE_BUILD_TYPE=$configuration" \
+        "-DCMAKE_C_COMPILER=$C_COMPILER" \
         "-DCMAKE_CXX_COMPILER=$CXX_COMPILER" \
         -DUFEEL_BUILD_TESTS=OFF \
         -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
@@ -310,33 +312,6 @@ package()
     require_built "$directory"
     "$clean" && remove_generated "$destination"
     run cmake --install "$directory" --prefix "$destination"
-}
-
-test_csharp_integration()
-{
-    local package_directory
-    local build_directory
-
-    package_directory="$(package_dir "$configuration")"
-    build_directory="$(build_dir "$configuration")"
-
-    require_commands dotnet
-
-    if [[ ! -f "$package_directory/libufeel_wrapper.so" ]]; then
-        configure
-        build
-        package
-    fi
-
-    run dotnet build "$CSHARP_INTEGRATION_PROJECT" \
-        --configuration "$configuration"
-
-    run_with_environment UFEEL_PACKAGE_PATH "$package_directory/libufeel_wrapper.so" \
-        env LD_LIBRARY_PATH="$(runtime_path "$build_directory" "$package_directory")" \
-        dotnet run \
-            --project "$CSHARP_INTEGRATION_PROJECT" \
-            --configuration "$configuration" \
-            --no-build -- --feature-test all
 }
 
 test_harness()
@@ -374,6 +349,7 @@ configure_test_build()
     mapfile -t options < <(feature_options)
     run cmake -S "$ROOT_DIR" -B "$directory" -G "$GENERATOR" \
         "-DCMAKE_BUILD_TYPE=$configuration" \
+        "-DCMAKE_C_COMPILER=$C_COMPILER" \
         "-DCMAKE_CXX_COMPILER=$CXX_COMPILER" \
         -DUFEEL_BUILD_TESTS=ON \
         -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
@@ -382,28 +358,32 @@ configure_test_build()
 
 run_native_tests()
 {
-    local label="$1"
     local directory="$BUILD_ROOT/tests"
     [[ -f "$directory/build.ninja" ]] || configure_test_build "$directory"
     build "$directory"
     run_with_environment LD_LIBRARY_PATH "$(runtime_path "$directory")" \
-        ctest --test-dir "$directory" --label-regex "^${label}$" --output-on-failure
+        ctest --test-dir "$directory" --output-on-failure "$@" \
+        --parallel "$(nproc - 1)"
+}
+
+test_all()
+{
+    run_native_tests --label-exclude '^hardware$'
 }
 
 test_unit()
 {
-    run_native_tests unit
+    run_native_tests --label-regex '^unit$'
 }
 
 test_integration()
 {
-    run_native_tests integration
-    test_csharp_integration
+    run_native_tests --label-regex '^integration$'
 }
 
 test_e2e()
 {
-    run_native_tests e2e
+    run_native_tests --label-regex '^e2e$'
 }
 
 run_native_tests_with_coverage()
@@ -413,14 +393,16 @@ run_native_tests_with_coverage()
     local old_configuration="$configuration"
     configuration=Debug
     run cmake -S "$ROOT_DIR" -B "$directory" -G "$GENERATOR" \
-        -DCMAKE_BUILD_TYPE=Debug "-DCMAKE_CXX_COMPILER=$CXX_COMPILER" \
+        -DCMAKE_BUILD_TYPE=Debug "-DCMAKE_C_COMPILER=$C_COMPILER" \
+        "-DCMAKE_CXX_COMPILER=$CXX_COMPILER" \
         -DUFEEL_BUILD_TESTS=ON -DUFEEL_ENABLE_COVERAGE=ON \
         -DCMAKE_POLICY_VERSION_MINIMUM=3.5
     build "$directory"
     rm -f "$directory"/coverage-*.profraw
     run_with_environment LLVM_PROFILE_FILE "$directory/coverage-%p.profraw" \
         env LD_LIBRARY_PATH="$(runtime_path "$directory")" \
-        ctest --test-dir "$directory" --output-on-failure
+        ctest --test-dir "$directory" --output-on-failure \
+        --parallel "$(nproc - 1)"
     local profdata
     local cov
     profdata="$(command -v llvm-profdata-22 || command -v llvm-profdata)" ||
@@ -431,6 +413,7 @@ run_native_tests_with_coverage()
     run "$profdata" merge -sparse "${profiles[@]}" -o "$directory/coverage.profdata"
     run "$cov" report "$directory/tests/unit/cpp/Library/run_library_unit_tests" \
         -object="$directory/tests/unit/cpp/Wrapper/run_wrapper_unit_tests" \
+        -object="$directory/tests/integration/cpp/run_library_integration_tests" \
         -object="$directory/tests/integration/cpp/run_wrapper_integration_tests" \
         -object="$directory/tests/e2e/cpp/run_wrapper_e2e_tests" \
         -object="$directory/libufeel_detection_library.a" \
@@ -456,38 +439,48 @@ test_feature_matrix()
                 options+=("-DUFEEL_ENABLE_$(feature_option_name "$feature")=OFF")
         done
         run cmake -S "$ROOT_DIR" -B "$directory" -G "$GENERATOR" \
-            -DCMAKE_BUILD_TYPE=Release "-DCMAKE_CXX_COMPILER=$CXX_COMPILER" \
+            -DCMAKE_BUILD_TYPE=Release "-DCMAKE_C_COMPILER=$C_COMPILER" \
+            "-DCMAKE_CXX_COMPILER=$CXX_COMPILER" \
             -DUFEEL_BUILD_TESTS=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             "${options[@]}"
         run cmake --build "$directory" --parallel
         run cmake --install "$directory" --prefix "$destination"
         run_with_environment LD_LIBRARY_PATH "$(runtime_path "$directory" "$destination")" \
-            ctest --test-dir "$directory" --output-on-failure
-        run_with_environment UFEEL_PACKAGE_PATH "$destination/libufeel_wrapper.so" \
-            env LD_LIBRARY_PATH="$(runtime_path "$directory" "$destination")" \
-            dotnet run --project "$CSHARP_INTEGRATION_PROJECT" \
-                -p:OutputPath="$directory/dotnet-output/" \
-                -p:IntermediateOutputPath="$directory/dotnet-intermediate/" \
-                -- --feature-test "$name"
+            ctest --test-dir "$directory" --label-exclude '^hardware$' --output-on-failure \
+            --parallel "$(nproc - 1)"
     done
+}
+
+collect_format_sources()
+{
+    local -n collected="$1"
+    shift
+    if (("$#")); then
+        collected=("$@")
+        return
+    fi
+    local file
+    while IFS= read -r -d '' file; do collected+=("$file"); done < <(
+        find "$ROOT_DIR/Library" "$ROOT_DIR/Wrapper" "$ROOT_DIR/tests" -type f \
+            \( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \) -print0
+    )
 }
 
 format_sources()
 {
-    require_commands clang-format
-    if (("$#")); then
-        run clang-format -i "$@"
-        return
-    fi
     local -a sources=()
-    while IFS= read -r -d '' file; do sources+=("$file"); done < <(
-        find "$ROOT_DIR/Library" "$ROOT_DIR/Wrapper" "$ROOT_DIR/tests" -type f \
-            \( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \) -print0
-    )
+    collect_format_sources sources "$@"
     run clang-format -i "${sources[@]}"
 }
 
-lint()
+check_format()
+{
+    local -a sources=()
+    collect_format_sources sources "$@"
+    run clang-format --dry-run --Werror "${sources[@]}"
+}
+
+static_analysis()
 {
     local include_tests=false
     local apply_fixes=false
@@ -495,8 +488,11 @@ lint()
     local target
 
     for target in "$@"; do
-        [[ "$target" == --tests ]] && include_tests=true || targets+=("$target")
-        [[ "$target" == --fix ]] && apply_fixes=true
+        case "$target" in
+            --tests) include_tests=true ;;
+            --fix) apply_fixes=true ;;
+            *) targets+=("$target") ;;
+        esac
     done
 
     if "$apply_fixes"; then
@@ -523,13 +519,43 @@ lint()
     fi
 
     local -a options=(
-        run-clang-tidy
+        run-clang-tidy -quiet
         -p "$directory"
         -header-filter='.*(Library|Wrapper|tests/(unit|integration|e2e))/.*'
     )
+    "$apply_fixes" && options+=(-fix '-warnings-as-errors=-*')
+    [[ -t 1 ]] && options+=(-use-color=1)
+    [[ -n "${UFEEL_CLANG_TIDY:-}" ]] && options+=(-clang-tidy-binary "$UFEEL_CLANG_TIDY")
 
-    "$apply_fixes" && options+=(-fix)
     run "${options[@]}" "${targets[@]}"
+}
+
+lint()
+{
+    local apply_fixes=false
+    local has_targets=false
+    local -a format_targets=()
+    local argument
+    for argument in "$@"; do
+        case "$argument" in
+            --fix) apply_fixes=true ;;
+            --tests) ;;
+            *)
+                has_targets=true
+                [[ -f "$argument" ]] && format_targets+=("$argument")
+                ;;
+        esac
+    done
+    local status=0
+    static_analysis "$@" || status=1
+    if ! "$has_targets" || ((${#format_targets[@]})); then
+        if "$apply_fixes"; then
+            format_sources "${format_targets[@]}" || status=1
+        else
+            check_format "${format_targets[@]}" || status=1
+        fi
+    fi
+    return "$status"
 }
 
 include_fix()
@@ -554,14 +580,10 @@ dispatch()
         build) build ;;
         package) package ;;
         all) configure; build; package ;;
-        test)
-            test_unit
-            test_integration
-            test_e2e
-            test_csharp_integration
-            ;;
+        test) test_all ;;
         clean) remove_generated "$BUILD_ROOT" "$PACKAGE_ROOT" ;;
         format) format_sources "${cmake_extra[@]}" ;;
+        check-format) check_format "${cmake_extra[@]}" ;;
         lint) lint "${cmake_extra[@]}" ;;
         fix) lint --fix "${cmake_extra[@]}" ;;
         include-fix) include_fix "${cmake_extra[@]}" ;;
@@ -578,13 +600,13 @@ dispatch()
 parse_args "$@"
 case "$command" in
     clean) ;;
-    format) require_commands clang-format ;;
-    lint|fix) require_commands cmake run-clang-tidy ;;
+    format|check-format) require_commands clang-format ;;
+    lint|fix) require_commands cmake run-clang-tidy clang-format ;;
     include-fix) require_commands cmake iwyu_tool.py fix_includes.py ;;
     test-unit|test-integration|test-e2e|coverage) require_commands cmake ctest ;;
-    test) require_commands cmake ctest dotnet ;;
+    test) require_commands cmake ctest ;;
     test-harness) require_commands cmake dotnet ;;
-    test-feature-matrix) require_commands cmake ctest dotnet ;;
+    test-feature-matrix) require_commands cmake ctest ;;
     *) require_commands cmake ;;
 esac
 dispatch

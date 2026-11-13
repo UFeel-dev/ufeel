@@ -54,25 +54,6 @@ inline auto waitForHeartRate(
     return detector.process();
 }
 
-inline auto waitForValidHeartRate(
-    const HeartRateSensorDetector& detector
-) -> HeartRateResult
-{
-    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(3);
-
-    while (std::chrono::steady_clock::now() < deadline)
-    {
-        const auto result = detector.process();
-        if (result.status == HeartRateStatus::Valid)
-        {
-            return result;
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
-
-    return detector.process();
-}
-
 inline auto reserveUdpPort() -> std::uint16_t
 {
     const int socket = ::socket(AF_INET, SOCK_DGRAM, 0);

@@ -7,20 +7,30 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
 HeartRateSensorDetector::HeartRateSensorDetector(
-    HeartRateSourceType source, std::uint16_t watchPort
+    HeartRateSourceType source, std::uint16_t watchPort, const std::string& sensorUrl
 )
 {
     if (source == HeartRateSourceType::Auto || source == HeartRateSourceType::Sensor)
     {
-        sources_.push_back(std::make_unique<SensorHeartRateSource>());
+        sources_.push_back(std::make_unique<SensorHeartRateSource>(sensorUrl));
     }
 
     if (source == HeartRateSourceType::Auto || source == HeartRateSourceType::Watch)
     {
         sources_.push_back(std::make_unique<WatchHeartRateSource>(watchPort));
     }
+}
+
+HeartRateSensorDetector::HeartRateSensorDetector(
+    std::vector<std::unique_ptr<HeartRateSource>> sources
+)
+    : sources_(std::move(sources))
+{
 }
 
 auto HeartRateSensorDetector::process() const -> HeartRateResult

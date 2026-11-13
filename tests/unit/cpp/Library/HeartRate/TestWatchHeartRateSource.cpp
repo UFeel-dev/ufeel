@@ -75,9 +75,9 @@ TEST(
     WatchHeartRateSourceTest, ReturnsNoDataUntilAValidPacketArrives
 )
 {
-    const std::uint16_t port = reserveUdpPort();
+    const WatchHeartRateSource source(0);
+    const std::uint16_t port = source.port();
     ASSERT_NE(port, 0U);
-    const WatchHeartRateSource source(port);
 
     EXPECT_EQ(source.read().status, HeartRateStatus::NoData);
     ASSERT_TRUE(sendHeartRatePacket(port, "72", 2));
@@ -92,9 +92,9 @@ TEST(
     WatchHeartRateSourceTest, AcceptsMinimumAndMaximumBpm
 )
 {
-    const std::uint16_t port = reserveUdpPort();
+    const WatchHeartRateSource source(0);
+    const std::uint16_t port = source.port();
     ASSERT_NE(port, 0U);
-    const WatchHeartRateSource source(port);
 
     ASSERT_TRUE(sendHeartRatePacket(port, "20", 2));
     EXPECT_EQ(waitForHeartRate(source, HeartRateStatus::Valid, 20).bpm, 20U);
@@ -107,9 +107,9 @@ TEST(
     WatchHeartRateSourceTest, IgnoresMalformedAndOutOfRangePackets
 )
 {
-    const std::uint16_t port = reserveUdpPort();
+    const WatchHeartRateSource source(0);
+    const std::uint16_t port = source.port();
     ASSERT_NE(port, 0U);
-    const WatchHeartRateSource source(port);
 
     ASSERT_TRUE(sendHeartRatePacket(port, "", 0));
     ASSERT_TRUE(sendHeartRatePacket(port, "not-a-number", 12));
@@ -136,18 +136,20 @@ TEST(
     WatchHeartRateSourceTest, RemainsAvailableWhenPortCannotBeBound
 )
 {
-    const std::uint16_t port = reserveUdpPort();
-    ASSERT_NE(port, 0U);
     const int reservedSocket = ::socket(AF_INET, SOCK_DGRAM, 0);
     ASSERT_GE(reservedSocket, 0);
 
     sockaddr_in address{};
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = htonl(INADDR_ANY);
-    address.sin_port = htons(port);
+    address.sin_port = 0;
+    socklen_t addressLength = sizeof(address);
     ASSERT_EQ(::bind(reservedSocket, reinterpret_cast<sockaddr*>(&address), sizeof(address)), 0);
+    ASSERT_EQ(
+        ::getsockname(reservedSocket, reinterpret_cast<sockaddr*>(&address), &addressLength), 0
+    );
 
-    const WatchHeartRateSource source(port);
+    const WatchHeartRateSource source(ntohs(address.sin_port));
 
     EXPECT_EQ(source.read().bpm, 0U);
     EXPECT_EQ(source.read().status, HeartRateStatus::NoData);
@@ -161,7 +163,7 @@ TEST(
     ScopedNoFileLimit fileLimit;
     ASSERT_TRUE(fileLimit.active());
 
-    const WatchHeartRateSource source;
+    const WatchHeartRateSource source(0);
 
     ASSERT_TRUE(fileLimit.restore());
     EXPECT_EQ(source.read().bpm, 0U);

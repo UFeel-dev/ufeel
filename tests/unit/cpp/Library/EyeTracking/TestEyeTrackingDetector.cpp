@@ -6,12 +6,14 @@
 #include "opencv2/imgcodecs.hpp"
 
 #include <array>
+#include <chrono>
 #include <cstddef>
 #include <filesystem>
 #include <gtest/gtest.h>
 #include <limits>
 #include <memory>
 #include <stdexcept>
+#include <string>
 #include <system_error>
 #include <utility>
 #include <vector>
@@ -201,9 +203,7 @@ TEST(
         cv::imread(std::string(RESOURCES_DIR_PATH) + "/astronaut.png", cv::IMREAD_COLOR);
     ASSERT_FALSE(frame.empty());
 
-    const auto result = detector.process(frame);
-    EXPECT_NE(result.status, EyeTrackingStatus::FrameUnavailable);
-    EXPECT_NE(result.status, EyeTrackingStatus::Disabled);
+    EXPECT_EQ(detector.process(frame).status, EyeTrackingStatus::NotCalibrated);
 }
 
 TEST(
@@ -279,6 +279,34 @@ TEST(
     {
         EXPECT_EQ(detector.process(makeTestFrame(index)).status, EyeTrackingStatus::Calibrating);
     }
+}
+
+TEST(
+    EyeTrackingDetectorTest, CollectsCalibrationSamplesAfterSettleTime
+)
+{
+    auto detector = EyeTrackingDetector(std::make_unique<LandmarkProviderFake>());
+    const auto start = EyeTrackingDetector::Clock::now();
+    detector.beginCalibration();
+    ASSERT_TRUE(detector.setCalibrationTarget(0.5F, 0.5F, start));
+
+    EXPECT_EQ(
+        detector.process(makeTestFrame(), start + std::chrono::milliseconds(999)).status,
+        EyeTrackingStatus::Calibrating
+    );
+    EXPECT_EQ(detector.calibrationProgress().samplesForCurrentTarget, 0U);
+
+    for (std::size_t sample = 0; sample <= GAZE_MAXIMUM_SAMPLES_PER_TARGET; ++sample)
+    {
+        static_cast<void>(detector.process(makeTestFrame(), start + std::chrono::seconds(1)));
+    }
+    EXPECT_EQ(
+        detector.calibrationProgress().samplesForCurrentTarget, GAZE_MAXIMUM_SAMPLES_PER_TARGET
+    );
+
+    ASSERT_TRUE(detector.setCalibrationTarget(0.2F, 0.2F, start + std::chrono::seconds(2)));
+    static_cast<void>(detector.process(makeTestFrame(), start + std::chrono::seconds(2)));
+    EXPECT_EQ(detector.calibrationProgress().samplesForCurrentTarget, 0U);
 }
 
 TEST(

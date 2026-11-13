@@ -94,6 +94,8 @@ class EyeTrackingDetector
 {
 public:
 
+    using Clock = std::chrono::steady_clock;
+
     explicit EyeTrackingDetector(const std::string& modelDirectory);
     explicit EyeTrackingDetector(
         std::unique_ptr<ufeel::internal::EyeTrackingLandmarkProvider> landmarkProvider
@@ -105,11 +107,12 @@ public:
     EyeTrackingDetector(EyeTrackingDetector&&) = delete;
     auto operator=(EyeTrackingDetector&&) -> EyeTrackingDetector& = delete;
 
-    auto process(const cv::Mat& frame) -> EyeTrackingResult;
+    auto process(const cv::Mat& frame, Clock::time_point now = Clock::now()) -> EyeTrackingResult;
     void toggleEyeTrackingDetection(bool state);
     void close();
     void beginCalibration();
-    [[nodiscard]] auto setCalibrationTarget(float x, float y) -> bool;
+    [[nodiscard]] auto setCalibrationTarget(float x, float y, Clock::time_point now = Clock::now())
+        -> bool;
     [[nodiscard]] auto finishCalibration() -> bool;
     void cancelCalibration();
     [[nodiscard]] auto calibrationProgress() const -> CalibrationProgress;
@@ -126,7 +129,7 @@ private:
     bool processEnable_ = true;
     bool calibrationActive_ = false;
     std::optional<std::size_t> calibrationTargetIndex_;
-    std::optional<std::chrono::steady_clock::time_point> calibrationTargetSetAt_;
+    std::optional<Clock::time_point> calibrationTargetSetAt_;
     std::vector<EyeTrackingCalibrationTarget> calibrationTargets_;
     std::deque<double> eyeAspectHistory_;
     EyeTrackingCalibrationModel calibrationModel_;
