@@ -44,18 +44,20 @@ constexpr auto kSupportedDetectionMask = 0U
 #endif
     ;
 
+constexpr auto kVideoDetectionMask = 0U
+#if UFEEL_ENABLE_EMOTIONS
+                                     | static_cast<std::uint32_t>(Emotions)
+#endif
+#if UFEEL_ENABLE_EYE_TRACKING
+                                     | static_cast<std::uint32_t>(EyeTracking)
+#endif
+    ;
+
 constexpr auto needsVideoFrame(
     std::uint32_t detectionType
 ) noexcept -> bool
 {
-    return
-#if UFEEL_ENABLE_EMOTIONS
-        hasDetection(detectionType, Emotions) ||
-#endif
-#if UFEEL_ENABLE_EYE_TRACKING
-        hasDetection(detectionType, EyeTracking) ||
-#endif
-        false;
+    return (detectionType & kVideoDetectionMask) != 0U;
 }
 
 auto makeEmotionResult(

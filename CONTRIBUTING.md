@@ -52,7 +52,7 @@ All contributions must:
 
 Contributors are responsible for maintaining backward compatibility where applicable.
 
-Before submitting, run `./build.sh test` to test, and use `./build.sh format` to format C++ sources and tests.
+Before submitting, run `./build.sh test` to test and `./build.sh lint` to check C++ sources: it runs clang-tidy and then checks formatting, and fails on any warning or unformatted file. `./build.sh lint --fix` applies clang-tidy fixes and formats the sources. CI rejects pull requests to `main` when `./build.sh lint` fails. To run the CI locally, use `Tools/test-ci-with-act.sh`.
 
 ## Commit Message Format
 
