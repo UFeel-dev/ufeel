@@ -1,0 +1,96 @@
+name: Release
+
+on:
+  push:
+    branches: [release]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          lfs: false
+          submodules: recursive
+
+      - name: Read version
+        id: version
+        run: |
+          version="$(tr -d '[:space:]' < VERSION)"
+          if [[ ! "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error file=VERSION::'$version' is not a MAJOR.MINOR.PATCH[-PRERELEASE] version"
+            exit 1
+          fi
+          tag="v$version"
+          status=0
+          git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null || status=$?
+          case "$status" in
+            0)
+              echo "::error file=VERSION::tag $tag already exists, bump VERSION"
+              exit 1
+              ;;
+            2) ;;
+            *)
+              echo "::error::cannot list the remote tags (git ls-remote exit code $status)"
+              exit 1
+              ;;
+          esac
+          prerelease=false
+          [[ "$version" == *-* ]] && prerelease=true
+          {
+            echo "tag=$tag"
+            echo "prerelease=$prerelease"
+            echo "archive=ufeel-$tag-linux-x86_64.tar.gz"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Fetch third-party Git LFS files
+        uses: ./.github/actions/lfs-3rdparty
+
+      - name: Build CI Docker image
+        uses: ./.github/actions/ci-image
+
+      - name: Build and package in Docker
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/mnt" \
+            -w /mnt \
+            ufeeldocker:ci \
+            bash -lc './build.sh all'
+
+      - name: Archive package
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          ARCHIVE: ${{ steps.version.outputs.archive }}
+        run: |
+          tar -czf "$ARCHIVE" -C package \
+            --transform "s|^release|ufeel-$TAG-linux-x86_64|" release
+
+      - name: Publish release
+        if: ${{ !env.ACT }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ steps.version.outputs.tag }}
+          ARCHIVE: ${{ steps.version.outputs.archive }}
+          PRERELEASE: ${{ steps.version.outputs.prerelease }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag --annotate "$TAG" --message "UFeel $TAG"
+          git push origin "refs/tags/$TAG"
+          options=(--verify-tag --title "$TAG" --generate-notes)
+          [[ "$PRERELEASE" == true ]] && options+=(--prerelease)
+          if ! gh release create "$TAG" "$ARCHIVE" "${options[@]}"; then
+            git push --delete origin "refs/tags/$TAG"
+            exit 1
+          fi

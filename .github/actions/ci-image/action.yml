@@ -1,0 +1,24 @@
+name: CI Docker image
+description: Builds the ci target of docker/Dockerfile with the GitHub Actions layer cache and loads it as ufeeldocker:ci.
+
+inputs:
+  write-cache:
+    description: Export the layer cache in addition to reading it.
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v4
+
+    - name: Build CI Docker image
+      uses: docker/build-push-action@v7
+      with:
+        context: ./docker
+        target: ci
+        load: true
+        tags: ufeeldocker:ci
+        cache-from: type=gha,scope=ufeeldocker-ci
+        cache-to: ${{ inputs.write-cache == 'true' && 'type=gha,scope=ufeeldocker-ci,mode=max' || '' }}

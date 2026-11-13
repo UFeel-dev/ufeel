@@ -21,7 +21,7 @@ UFeel: native C++ library (emotion recognition, eye tracking, speech to text, he
 
 - Tests: [Testing](docs/testing.md)
 - Format: `./build.sh format` ([.clang-format](.clang-format)), lint: `./build.sh lint` ([.clang-tidy](.clang-tidy))
-- CI: [.github/workflows/ci.yml](.github/workflows/ci.yml)
+- CI: [lint](.github/workflows/lint.yml), [build and unit tests](.github/workflows/build.yml), [release](.github/workflows/release.yml) (shared steps in [.github/actions](.github/actions))
 
 ## Contributing
 
