@@ -118,10 +118,10 @@ git lfs pull
 ./build.sh all                   # Configure, build, and package (Release)
 ./build.sh test                  # Run all automated tests
 ./build.sh test-unit             # Run C++ unit tests
-./build.sh test-integration      # Run C++ and C# integration tests
+./build.sh test-integration      # Run C++ integration tests
 ./build.sh test-e2e              # Run C++ end-to-end tests
 ./build.sh test-harness          # Build the interactive C# test harness
-./build.sh test-feature-matrix   # Test every feature configuration through C# integration tests
+./build.sh test-feature-matrix   # Test every feature configuration
 ./build.sh coverage              # Run native tests and generate coverage
 ```
 
@@ -147,13 +147,17 @@ The default build includes every detection domain. To produce a smaller library 
 
 The available options are `UFEEL_ENABLE_EMOTIONS`, `UFEEL_ENABLE_EYE_TRACKING`, `UFEEL_ENABLE_SPEECH_TO_TEXT`, and `UFEEL_ENABLE_HEART_RATE`. All default to `ON`. The package contains only the selected domain's models and native runtime dependencies. The C ABI remains available for disabled domains and returns `UFEEL_STATUS_UNSUPPORTED_FEATURE` when a disabled domain is requested.
 
+### Adapters
+
+Language adapters are packaged only on request: `./build.sh all --adapter csharp` adds `package/release/adapters/csharp/UFeel.Core` ([C# adapter](Adapters/csharp/UFeel.Core/README.md)).
+
 ## Documentation
 
 | Document | Description |
 | --- | --- |
 | [Contributing](CONTRIBUTING.md) | Contribution guidelines |
 | [Disclaimer](DISCLAIMER.md) | Limitations and prohibited use |
-| [Architecture](docs/architecture.md) | Layers, feature flags, packaging |
+| [Architecture](docs/architecture.md) | Layers, feature flags, adapters, packaging |
 | [Docker](docker/README.md) | Docker setup instructions |
 | [Heart rate](docs/heart-rate.md) | Heart-rate sources: sensor and smartwatch |
 | [Testing](docs/testing.md) | Test levels, layout and rules |

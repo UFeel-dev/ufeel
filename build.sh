@@ -15,6 +15,7 @@ configuration="Release"
 clean=false
 command=""
 declare -a cmake_extra=()
+declare -a adapters=()
 declare -A feature_state=(
     [emotions]=ON
     [eye-tracking]=ON
@@ -58,11 +59,13 @@ Options:
   --feature FEATURE       Build only this feature (repeatable)
   --without FEATURE       Disable this feature (repeatable)
   --all-features          Enable every feature
+  --adapter ADAPTER       Also package this language adapter (repeatable)
   -h, --help              Show this help
 
 Features:
   emotions, eye-tracking, speech-to-text, heart-rate
 EOF
+    printf '\nAdapters:\n  %s\n' "$(available_adapters | paste -sd ' ')"
 }
 
 error()
@@ -118,6 +121,22 @@ set_feature()
     feature_state["$feature"]="$2"
 }
 
+available_adapters()
+{
+    local list
+    for list in "$ROOT_DIR"/Adapters/*/CMakeLists.txt; do
+        [[ -f "$list" ]] && basename "$(dirname "$list")"
+    done
+}
+
+add_adapter()
+{
+    local adapter="$1"
+    available_adapters | grep -qxF -- "$adapter" ||
+        error "unknown adapter '$adapter' (choose: $(available_adapters | paste -sd ' '))"
+    adapters+=("$adapter")
+}
+
 parse_args()
 {
     while (($#)); do
@@ -170,6 +189,14 @@ parse_args()
                 ;;
             --without=*)
                 set_feature "${1#*=}" OFF
+                ;;
+            --adapter)
+                (($# >= 2)) || error "--adapter requires an adapter name"
+                add_adapter "$2"
+                shift
+                ;;
+            --adapter=*)
+                add_adapter "${1#*=}"
                 ;;
             --)
                 shift
@@ -295,6 +322,7 @@ configure()
         "-DCMAKE_CXX_COMPILER=$CXX_COMPILER" \
         -DUFEEL_BUILD_TESTS=OFF \
         -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+        "-DUFEEL_ADAPTERS=$(IFS=';'; printf '%s' "${adapters[*]}")" \
         "${options[@]}" "${cmake_extra[@]}"
 }
 

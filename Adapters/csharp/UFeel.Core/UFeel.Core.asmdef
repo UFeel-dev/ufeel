@@ -1,0 +1,6 @@
+{
+    "name": "UFeel.Core",
+    "rootNamespace": "UFeel",
+    "autoReferenced": false,
+    "noEngineReferences": true
+}

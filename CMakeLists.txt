@@ -493,6 +493,8 @@ if(UFEEL_ENABLE_SPEECH_TO_TEXT)
     install(DIRECTORY "${MODELS_DIR}/SpeechToText/" DESTINATION models/SpeechToText)
 endif()
 
+add_subdirectory(Adapters)
+
 option(UFEEL_BUILD_TESTS "Build unit tests" ON)
 
 if(UFEEL_BUILD_TESTS)
