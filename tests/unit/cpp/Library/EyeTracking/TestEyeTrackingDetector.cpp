@@ -9,6 +9,7 @@
 #include <chrono>
 #include <cstddef>
 #include <filesystem>
+#include <fstream>
 #include <gtest/gtest.h>
 #include <limits>
 #include <memory>
@@ -74,7 +75,7 @@ public:
 
     [[nodiscard]] auto getAllEyeLandmarks(
         bool leftEye, bool iris
-    ) const -> std::vector<cv::Point> override
+    ) const -> std::vector<cv::Point2f> override
     {
         static_cast<void>(iris);
         auto const& landmarks = leftEye ? leftIris : rightIris;
@@ -96,7 +97,7 @@ public:
 
     [[nodiscard]] auto getFaceLandmarkAt(
         int index
-    ) const -> cv::Point override
+    ) const -> cv::Point2f override
     {
         return faceLandmarks.at(static_cast<std::size_t>(index));
     }
@@ -113,11 +114,25 @@ public:
     bool rightEyeAvailable = true;
     std::size_t leftIrisCount = 5;
     std::size_t rightIrisCount = 5;
-    std::array<cv::Point, 5> leftIris{};
-    std::array<cv::Point, 5> rightIris{};
-    std::array<cv::Point, 468> faceLandmarks{};
+    std::array<cv::Point2f, 5> leftIris{};
+    std::array<cv::Point2f, 5> rightIris{};
+    std::array<cv::Point2f, 468> faceLandmarks{};
     std::array<cv::Point3f, 468> faceLandmarks3d{};
 };
+
+void setEyelids(
+    LandmarkProviderFake& provider, float upper, float lower
+)
+{
+    for (auto const index : {159UZ, 158UZ, 386UZ, 387UZ})
+    {
+        provider.faceLandmarks.at(index).y = upper;
+    }
+    for (auto const index : {145UZ, 153UZ, 374UZ, 373UZ})
+    {
+        provider.faceLandmarks.at(index).y = lower;
+    }
+}
 
 auto makeTestFrame(
     int value = 0
@@ -282,6 +297,27 @@ TEST(
 }
 
 TEST(
+    EyeTrackingDetectorTest, AcceptsEyelidsLoweredByDownwardGazeButDetectsBlinks
+)
+{
+    auto provider = std::make_unique<LandmarkProviderFake>();
+    auto* providerState = provider.get();
+    auto detector = EyeTrackingDetector(std::move(provider));
+    detector.beginCalibration();
+
+    for (int index = 0; index < 20; ++index)
+    {
+        ASSERT_EQ(detector.process(makeTestFrame(index)).status, EyeTrackingStatus::Calibrating);
+    }
+
+    setEyelids(*providerState, 105.0F, 111.0F);
+    EXPECT_EQ(detector.process(makeTestFrame(20)).status, EyeTrackingStatus::Calibrating);
+
+    setEyelids(*providerState, 107.0F, 109.0F);
+    EXPECT_EQ(detector.process(makeTestFrame(21)).status, EyeTrackingStatus::Blinking);
+}
+
+TEST(
     EyeTrackingDetectorTest, CollectsCalibrationSamplesAfterSettleTime
 )
 {
@@ -426,4 +462,47 @@ TEST(
     EXPECT_EQ(leftUp.status, EyeTrackingStatus::Valid);
     EXPECT_NE(leftUp.directions & EyeTrackingLeft, 0U);
     EXPECT_NE(leftUp.directions & EyeTrackingUp, 0U);
+}
+
+TEST(
+    EyeTrackingDetectorTest, KeepsHeadPitchContinuousAroundFrontalPose
+)
+{
+    constexpr std::size_t pitchFeature = 57;
+    const TemporaryProfile profile;
+    {
+        std::ofstream output(profile.path);
+        output << "UFEEL_GAZE_PROFILE 4 " << GAZE_FEATURE_COUNT << " 0.1\n";
+        for (char const* value : {"0 ", "1 "})
+        {
+            for (std::size_t feature = 0; feature < GAZE_FEATURE_COUNT; ++feature)
+            {
+                output << value;
+            }
+            output << '\n';
+        }
+        for (std::size_t coordinate = 0; coordinate < 2; ++coordinate)
+        {
+            output << "0.5 ";
+            for (std::size_t feature = 0; feature < GAZE_FEATURE_COUNT; ++feature)
+            {
+                output << (coordinate == 0 && feature == pitchFeature ? "0.1 " : "0 ");
+            }
+            output << '\n';
+        }
+    }
+
+    auto provider = std::make_unique<LandmarkProviderFake>();
+    auto* providerState = provider.get();
+    auto detector = EyeTrackingDetector(std::move(provider));
+    ASSERT_TRUE(detector.loadCalibrationProfile(profile.path.string()));
+
+    providerState->faceLandmarks3d.at(10).z = 0.1F;
+    const auto tiltedUp = detector.process(makeTestFrame(1));
+    providerState->faceLandmarks3d.at(10).z = -0.1F;
+    const auto tiltedDown = detector.process(makeTestFrame(2));
+
+    ASSERT_EQ(tiltedUp.status, EyeTrackingStatus::Valid);
+    ASSERT_EQ(tiltedDown.status, EyeTrackingStatus::Valid);
+    EXPECT_NEAR(tiltedUp.recordedX, tiltedDown.recordedX, 0.01F);
 }

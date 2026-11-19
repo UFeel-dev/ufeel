@@ -14,7 +14,7 @@ namespace UFeel
 
     public sealed class CalibrationProfileStore
     {
-        public const string FileName = "eyeTracking-profile-v3.txt";
+        public const string FileName = "eyeTracking-profile-v4.txt";
 
         public CalibrationProfileStore(string path)
         {

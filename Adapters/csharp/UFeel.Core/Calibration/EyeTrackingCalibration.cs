@@ -24,9 +24,7 @@ namespace UFeel
 
         private static readonly TimeSpan SteadyFaceDuration = TimeSpan.FromSeconds(2);
         private static readonly TimeSpan ReadinessPoll = TimeSpan.FromMilliseconds(100);
-        private static readonly TimeSpan TargetSettle = TimeSpan.FromSeconds(1);
-        private static readonly TimeSpan MinTargetDuration = TimeSpan.FromSeconds(1);
-        private static readonly TimeSpan MaxTargetDuration = TimeSpan.FromSeconds(3);
+        private static readonly TimeSpan MaxTargetDuration = TimeSpan.FromSeconds(4);
         private static readonly TimeSpan ProgressPoll = TimeSpan.FromMilliseconds(200);
 
         private readonly UFeelSession session;
@@ -124,10 +122,9 @@ namespace UFeel
             (float x, float y) = Targets[index];
             string position = $"{index + 1}/{Targets.Length}";
 
+            // * the native target must change with the displayed one, its settle time skips the eye movement
             presenter.ShowTarget(x, y);
             presenter.ShowInstruction($"Look at the target and keep your head still ({position})");
-
-            await Task.Delay(TargetSettle, token);
             await session.ExecuteAsync(p => p.SetEyeTrackingCalibrationTarget(x, y));
 
             long start = Clock.Now;
@@ -140,7 +137,7 @@ namespace UFeel
                 presenter.ShowInstruction($"Keep looking at the target ({samples})");
 
                 TimeSpan elapsed = Clock.Since(start);
-                if ((progress.CurrentTargetComplete && elapsed >= MinTargetDuration) || elapsed >= MaxTargetDuration)
+                if (progress.CurrentTargetComplete || elapsed >= MaxTargetDuration)
                     return;
 
                 await Task.Delay(ProgressPoll, token);

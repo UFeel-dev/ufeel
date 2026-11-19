@@ -28,8 +28,8 @@ namespace
 
 constexpr std::size_t BLINK_EAR_HISTORY_LENGTH = 50;
 constexpr std::size_t BLINK_EAR_MINIMUM_HISTORY = 15;
-constexpr double BLINK_EAR_THRESHOLD_RATIO = 0.8;
-constexpr double INITIAL_BLINK_EAR_THRESHOLD = 0.2;
+constexpr double BLINK_EAR_THRESHOLD_RATIO = 0.5;
+constexpr double INITIAL_BLINK_EAR_THRESHOLD = 0.12;
 constexpr auto CALIBRATION_SETTLE_TIME = std::chrono::milliseconds(1000);
 constexpr double DIRECTION_DEAD_ZONE = 0.12;
 constexpr std::size_t IRIS_LANDMARK_COUNT = 5;
@@ -79,7 +79,7 @@ public:
 
     [[nodiscard]] auto getAllEyeLandmarks(
         bool leftEye, bool iris
-    ) const -> std::vector<cv::Point> override
+    ) const -> std::vector<cv::Point2f> override
     {
         return landmarker_.getAllEyeLandmarks(leftEye, iris);
     }
@@ -93,9 +93,10 @@ public:
 
     [[nodiscard]] auto getFaceLandmarkAt(
         int index
-    ) const -> cv::Point override
+    ) const -> cv::Point2f override
     {
-        return landmarker_.getFaceLandmarkAt(index);
+        auto const landmark = landmarker_.getFaceLandmark3DAt(index);
+        return {landmark.x, landmark.y};
     }
 
     [[nodiscard]] auto getFaceLandmark3DAt(
@@ -111,11 +112,11 @@ private:
 };
 
 [[nodiscard]] auto normalizedEyePosition(
-    cv::Point corner1,
-    cv::Point corner2,
-    cv::Point upperLid,
-    cv::Point lowerLid,
-    const std::vector<cv::Point>& irisLandmarks
+    cv::Point2f corner1,
+    cv::Point2f corner2,
+    cv::Point2f upperLid,
+    cv::Point2f lowerLid,
+    const std::vector<cv::Point2f>& irisLandmarks
 ) -> std::optional<cv::Point2d>
 {
     if (irisLandmarks.empty())
@@ -174,12 +175,12 @@ private:
 }
 
 [[nodiscard]] auto eyeAspectRatio(
-    cv::Point corner1,
-    cv::Point corner2,
-    cv::Point upper1,
-    cv::Point lower1,
-    cv::Point upper2,
-    cv::Point lower2
+    cv::Point2f corner1,
+    cv::Point2f corner2,
+    cv::Point2f upper1,
+    cv::Point2f lower1,
+    cv::Point2f upper2,
+    cv::Point2f lower2
 ) -> double
 {
     double const width = cv::norm(corner2 - corner1);
@@ -690,7 +691,7 @@ auto EyeTrackingDetector::extractFeatures(
 
     if (!appendFeature(std::atan2((*xAxis).at(1), (*xAxis).at(0))) ||
         !appendFeature(std::atan2(-(*xAxis).at(2), std::hypot((*yAxis).at(2), (*zAxis).at(2)))) ||
-        !appendFeature(std::atan2((*yAxis).at(2), (*zAxis).at(2))) || !appendFeature(leftEar) ||
+        !appendFeature(std::atan2((*yAxis).at(2), -(*zAxis).at(2))) || !appendFeature(leftEar) ||
         !appendFeature(rightEar))
     {
         status = EyeTrackingStatus::LowQuality;
