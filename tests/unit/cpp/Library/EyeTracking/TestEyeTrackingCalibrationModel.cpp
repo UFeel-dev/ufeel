@@ -86,7 +86,9 @@ protected:
 
     static auto profilePath() -> std::filesystem::path
     {
-        return std::filesystem::temp_directory_path() / "ufeel-eye-tracking-profile-test.dat";
+        const auto* info = ::testing::UnitTest::GetInstance()->current_test_info();
+        return std::filesystem::temp_directory_path() /
+               (std::string("ufeel-eye-tracking-profile-") + info->name() + ".dat");
     }
 
     void TearDown() override
