@@ -8,9 +8,9 @@ This file lists the third-party components distributed with or linked by the lib
 
 | Component | Version | License | License file |
 | --- | --- | --- | --- |
-| yaml-cpp | 0.7.0 | MIT | `3rdparty/yaml-cpp/LICENSE` and googletest 1.10.0 (test only, not built): `3rdparty/yaml-cpp/test/gtest-1.10.0/LICENSE` |
+| yaml-cpp | 0.7.0 | MIT | `3rdparty/yaml-cpp/LICENSE` |
 | nlohmann/json | 3.12.0 | MIT | `3rdparty/json/share/licenses/json/LICENSE.MIT` |
-| cpr | 1.15.1 | MIT | `3rdparty/cpr/share/licenses/cpr/LICENSE` |
+| cpr | 1.15.1 | MIT | `3rdparty/cpr/LICENSE` |
 | OpenCV | 4.8.1 | Apache-2.0 | `3rdparty/opencv/share/licenses/opencv4/LICENSE` |
 | OpenCV bundled libs | 4.8.1 | See `3rdparty/opencv/share/licenses/opencv4/` (zlib, libpng, libjpeg-turbo, libtiff, OpenEXR, protobuf, flatbuffers, ittnotify, quirc, and others) | `3rdparty/opencv/share/licenses/opencv4/` |
 | LibTorch | 2.10.0 | BSD-3-Clause | `3rdparty/libtorch/share/licenses/libtorch/LICENSE`, `3rdparty/libtorch/share/licenses/libtorch/NOTICE` |

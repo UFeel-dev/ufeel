@@ -87,7 +87,7 @@ If some dependencies are missing for your system, please open an issue. The [Doc
 
 ## Third-Party Libraries
 
-This project uses Git LFS to store large third-party libraries in `3rdparty/`, including prebuilt `.so` and `.a` files.
+This project uses Git LFS to store large third-party libraries in `3rdparty/`, including prebuilt `.so` and `.a` files. yaml-cpp and cpr are Git submodules built from source. cpr downloads curl during the CMake configuration and links it statically, so configuring the heart rate feature needs network access.
 
 After cloning, initialize all submodules and download the Git LFS files:
 

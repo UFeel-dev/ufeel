@@ -64,8 +64,3 @@ if(@UFEEL_ENABLE_SPEECH_TO_TEXT@ AND
    NOT EXISTS "${DEPENDENCIES_DIR}/libportaudio.so.2")
     message(FATAL_ERROR "Bundled PortAudio SONAME file is missing")
 endif()
-
-if(@UFEEL_ENABLE_HEART_RATE@ AND
-   NOT EXISTS "${DEPENDENCIES_DIR}/libcurl.so.4")
-    message(FATAL_ERROR "Bundled curl SONAME file is missing")
-endif()

@@ -55,6 +55,7 @@ set(VOSK_DIR "${THIRDPARTY_DIR}/vosk")
 set(PORTAUDIO_DIR "${THIRDPARTY_DIR}/portaudio")
 set(JSON_DIR "${THIRDPARTY_DIR}/json")
 set(YAML_CPP_DIR "${THIRDPARTY_DIR}/yaml-cpp")
+set(CPR_DIR "${THIRDPARTY_DIR}/cpr")
 
 set(CMAKE_BUILD_RPATH "${OPENCV_DIR}/lib")
 if(UFEEL_ENABLE_EMOTIONS)
@@ -84,6 +85,9 @@ endif()
 if(UFEEL_ENABLE_EMOTIONS)
     list(APPEND UFEEL_REQUIRED_DIRS "${YAML_CPP_DIR}")
 endif()
+if(UFEEL_ENABLE_HEART_RATE)
+    list(APPEND UFEEL_REQUIRED_DIRS "${CPR_DIR}")
+endif()
 
 foreach(DIR IN LISTS UFEEL_REQUIRED_DIRS)
     if(NOT IS_DIRECTORY "${DIR}")
@@ -96,27 +100,37 @@ if(UFEEL_ENABLE_EMOTIONS AND
     message(FATAL_ERROR "yaml-cpp submodule is not initialized. Run git submodule update --init --recursive")
 endif()
 
+if(UFEEL_ENABLE_HEART_RATE AND
+   NOT EXISTS "${CPR_DIR}/CMakeLists.txt")
+    message(FATAL_ERROR "cpr submodule is not initialized. Run git submodule update --init --recursive")
+endif()
+
 if(UFEEL_ENABLE_EMOTIONS)
     set(Torch_DIR "${LIBTORCH_DIR}/share/cmake/Torch")
     find_package(Torch REQUIRED)
 endif()
 
 if(UFEEL_ENABLE_HEART_RATE)
-    find_package(CURL REQUIRED)
-    include(FetchContent)
-
+    set(BUILD_SHARED_LIBS OFF)
+    set(BUILD_STATIC_LIBS ON)
     set(CPR_BUILD_TESTS OFF CACHE BOOL "" FORCE)
     set(CPR_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
     set(CPR_ENABLE_SSL OFF CACHE BOOL "" FORCE)
-    set(CPR_USE_EXISTING_CURL_TARGET ON CACHE BOOL "" FORCE)
+    set(CPR_USE_SYSTEM_CURL OFF CACHE BOOL "" FORCE)
+    set(CPR_USE_EXISTING_CURL_TARGET OFF CACHE BOOL "" FORCE)
+    set(CPR_ENABLE_CURL_HTTP_ONLY ON CACHE BOOL "" FORCE)
+    set(CPR_CURL_USE_LIBPSL OFF CACHE BOOL "" FORCE)
+    set(CURL_ZLIB OFF CACHE STRING "" FORCE)
+    set(CURL_BROTLI OFF CACHE STRING "" FORCE)
+    set(CURL_ZSTD OFF CACHE STRING "" FORCE)
+    set(USE_NGHTTP2 OFF CACHE BOOL "" FORCE)
+    set(USE_LIBIDN2 OFF CACHE BOOL "" FORCE)
+    set(CURL_USE_LIBSSH2 OFF CACHE BOOL "" FORCE)
+    set(CURL_USE_LIBSSH OFF CACHE BOOL "" FORCE)
+    set(CURL_USE_GSSAPI OFF CACHE BOOL "" FORCE)
+    set(CURL_DISABLE_INSTALL ON CACHE BOOL "" FORCE)
 
-    FetchContent_Declare(
-        cpr
-        URL https://github.com/libcpr/cpr/archive/refs/tags/1.15.1.tar.gz
-        URL_HASH SHA256=c2fc62a030c4ca5d7c3517e8068531297f938bf4ab52bf951d4fc9bbc9222716
-        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-    )
-    FetchContent_MakeAvailable(cpr)
+    add_subdirectory("${CPR_DIR}" "${CMAKE_BINARY_DIR}/cpr" EXCLUDE_FROM_ALL)
 endif()
 
 find_program(PATCHELF_EXECUTABLE NAMES patchelf REQUIRED)
@@ -452,15 +466,6 @@ if(UFEEL_ENABLE_SPEECH_TO_TEXT)
     install(
         FILES "${PORTAUDIO_DIR}/lib/libportaudio.so.2.0.0"
         RENAME libportaudio.so.2
-        DESTINATION dependencies
-    )
-endif()
-
-if(UFEEL_ENABLE_HEART_RATE)
-    get_filename_component(CURL_LIBRARY_REALPATH "${CURL_LIBRARY}" REALPATH)
-    install(
-        FILES "${CURL_LIBRARY_REALPATH}"
-        RENAME libcurl.so.4
         DESTINATION dependencies
     )
 endif()
