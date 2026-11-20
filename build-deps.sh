@@ -20,9 +20,7 @@ usage()
     cat <<'EOF'
 Usage: ./build-deps.sh [--print-prefix]
 
-Builds the 3rdparty submodules (yaml-cpp, cpr with its built-in curl) once into
-.cache/deps/<key> and prints that prefix. The key covers the submodule sources,
-the compilers and this script, so nothing is rebuilt while they are unchanged.
+Builds the 3rdparty submodules (yaml-cpp, cpr with its built-in curl) once into .cache/deps/<key> and prints that prefix. The key covers the submodule sources, the compilers and this script, so nothing is rebuilt while they are unchanged.
 
 Options:
   --print-prefix   Print the prefix without building
@@ -131,7 +129,8 @@ build_yaml_cpp()
         -DYAML_BUILD_SHARED_LIBS=ON \
         -DYAML_CPP_BUILD_TESTS=OFF \
         -DYAML_CPP_BUILD_TOOLS=OFF \
-        -DYAML_CPP_BUILD_CONTRIB=OFF
+        -DYAML_CPP_BUILD_CONTRIB=OFF \
+        -DYAML_CPP_FORMAT_SOURCE=OFF
     run cmake --build "$build_directory/yaml-cpp" --parallel
     run cmake --install "$build_directory/yaml-cpp" --prefix "$prefix"
 }

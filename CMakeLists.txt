@@ -111,8 +111,7 @@ endif()
 find_program(PATCHELF_EXECUTABLE NAMES patchelf REQUIRED)
 
 if(UFEEL_ENABLE_EMOTIONS)
-    find_package(yaml-cpp 0.7 CONFIG REQUIRED PATHS "${UFEEL_DEPS_PREFIX}" NO_DEFAULT_PATH)
-    add_library(yaml-cpp::yaml-cpp ALIAS yaml-cpp)
+    find_package(yaml-cpp 0.9 CONFIG REQUIRED PATHS "${UFEEL_DEPS_PREFIX}" NO_DEFAULT_PATH)
 endif()
 
 set(OPENCV_LIBRARIES

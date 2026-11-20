@@ -8,7 +8,7 @@ This file lists the third-party components distributed with or linked by the lib
 
 | Component | Version | License | License file |
 | --- | --- | --- | --- |
-| yaml-cpp (submodule) | 0.7.0 | MIT | `3rdparty/yaml-cpp/LICENSE` |
+| yaml-cpp (submodule) | 0.9.0 | MIT | `3rdparty/yaml-cpp/LICENSE` |
 | nlohmann/json | 3.12.0 | MIT | `3rdparty/json/share/licenses/json/LICENSE.MIT` |
 | cpr (submodule) | 1.15.1 | MIT | `3rdparty/cpr/LICENSE` |
 | OpenCV | 4.8.1 | Apache-2.0 | `3rdparty/opencv/share/licenses/opencv4/LICENSE` |
