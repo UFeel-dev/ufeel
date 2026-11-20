@@ -33,7 +33,7 @@ flowchart TD
 | Wrapper | [Wrapper/](../Wrapper) | C ABI over `DataProcessor`. Public header: [ufeel.h](../Wrapper/include/ufeel.h). Exports are restricted by [ufeel.map](../Wrapper/ufeel.map). Internals in `Wrapper/src/include/internal`. |
 | Adapters | [Adapters/](../Adapters) | Language adapters over the C ABI (e.g. [C#](../Adapters/csharp/UFeel.Core/README.md)). |
 | Models | [models/](../models) | Model files per domain, each with its license. Installed into the package. |
-| 3rdparty | [3rdparty/](../3rdparty) | Prebuilt dependencies (Git LFS) and the `yaml-cpp` submodule. See [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md). |
+| 3rdparty | [3rdparty/](../3rdparty) | Prebuilt dependencies and submodules. See [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md). |
 
 ## Feature flags
 

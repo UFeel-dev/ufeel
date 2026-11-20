@@ -22,7 +22,6 @@ RUN apt-get update && \
         ninja-build \
         patchelf \
         libasound2 \
-        libcurl4-openssl-dev \
         && \
     rm -rf /var/lib/apt/lists/*
 
