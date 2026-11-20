@@ -106,7 +106,7 @@ void my::IrisLandmark::runInference()
 
 auto my::IrisLandmark::getEyeLandmarkAt(
     int index, bool isLeftEye, bool isIris
-) const -> cv::Point
+) const -> cv::Point2f
 {
     int const landmarkCount = isIris ? IRIS_LANDMARKS : EYE_LANDMARKS;
     if (!isLandmarkIndexValid(index, landmarkCount))
@@ -151,23 +151,16 @@ auto my::IrisLandmark::getEyeLandmarkAt(
         return {};
     }
 
-    int const imageX =
-        static_cast<int>(
-            x / static_cast<float>(inputShape.at(2)) * static_cast<float>(eyeRoi.width)
-        ) +
-        eyeRoi.x;
-    int const imageY =
-        static_cast<int>(
-            y / static_cast<float>(inputShape.at(1)) * static_cast<float>(eyeRoi.height)
-        ) +
-        eyeRoi.y;
-
-    return {imageX, imageY};
+    return {
+        static_cast<float>(eyeRoi.x) +
+            (x / static_cast<float>(inputShape.at(2)) * static_cast<float>(eyeRoi.width)),
+        static_cast<float>(eyeRoi.y) +
+            (y / static_cast<float>(inputShape.at(1)) * static_cast<float>(eyeRoi.height))};
 }
 
 auto my::IrisLandmark::getAllEyeLandmarks(
     bool isLeftEye, bool isIris
-) const -> std::vector<cv::Point>
+) const -> std::vector<cv::Point2f>
 {
     auto const eyeRoi = isLeftEye ? leftEyeRoi_ : rightEyeRoi_;
     if (eyeRoi.empty())
@@ -176,7 +169,7 @@ auto my::IrisLandmark::getAllEyeLandmarks(
     }
 
     int const count = isIris ? IRIS_LANDMARKS : EYE_LANDMARKS;
-    std::vector<cv::Point> landmarks;
+    std::vector<cv::Point2f> landmarks;
     landmarks.reserve(count);
 
     for (int index = 0; index < count; ++index)

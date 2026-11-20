@@ -41,9 +41,9 @@ public:
     virtual void runInference() = 0;
     [[nodiscard]] virtual auto getFaceRoi() const -> cv::Rect = 0;
     [[nodiscard]] virtual auto getAllEyeLandmarks(bool leftEye, bool iris) const
-        -> std::vector<cv::Point> = 0;
+        -> std::vector<cv::Point2f> = 0;
     [[nodiscard]] virtual auto getEyeRoi(bool leftEye) const -> cv::Rect = 0;
-    [[nodiscard]] virtual auto getFaceLandmarkAt(int index) const -> cv::Point = 0;
+    [[nodiscard]] virtual auto getFaceLandmarkAt(int index) const -> cv::Point2f = 0;
     [[nodiscard]] virtual auto getFaceLandmark3DAt(int index) const -> cv::Point3f = 0;
 };
 

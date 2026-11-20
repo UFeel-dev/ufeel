@@ -28,6 +28,7 @@ jobs:
           sparse-checkout: |
             .github
             3rdparty
+            Adapters
             Library
             Wrapper
             cmake
