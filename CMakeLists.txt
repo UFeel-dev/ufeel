@@ -130,7 +130,11 @@ if(UFEEL_ENABLE_HEART_RATE)
     set(CURL_USE_GSSAPI OFF CACHE BOOL "" FORCE)
     set(CURL_DISABLE_INSTALL ON CACHE BOOL "" FORCE)
 
-    add_subdirectory("${CPR_DIR}" "${CMAKE_BINARY_DIR}/cpr" EXCLUDE_FROM_ALL)
+    add_subdirectory(
+        "${CPR_DIR}"
+        "${CMAKE_BINARY_DIR}/cpr"
+        EXCLUDE_FROM_ALL
+    )
 endif()
 
 find_program(PATCHELF_EXECUTABLE NAMES patchelf REQUIRED)
