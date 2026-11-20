@@ -54,14 +54,18 @@ set(TFLITE_DIR "${THIRDPARTY_DIR}/tensorflowlite")
 set(VOSK_DIR "${THIRDPARTY_DIR}/vosk")
 set(PORTAUDIO_DIR "${THIRDPARTY_DIR}/portaudio")
 set(JSON_DIR "${THIRDPARTY_DIR}/json")
-set(YAML_CPP_DIR "${THIRDPARTY_DIR}/yaml-cpp")
-set(CPR_DIR "${THIRDPARTY_DIR}/cpr")
+
+set(UFEEL_DEPS_PREFIX "" CACHE PATH "Install prefix of the dependencies built from the 3rdparty submodules by ./build.sh deps")
+set(UFEEL_NEEDS_DEPS_PREFIX OFF)
+if(UFEEL_ENABLE_EMOTIONS OR UFEEL_ENABLE_HEART_RATE)
+    set(UFEEL_NEEDS_DEPS_PREFIX ON)
+endif()
 
 set(CMAKE_BUILD_RPATH "${OPENCV_DIR}/lib")
 if(UFEEL_ENABLE_EMOTIONS)
     list(APPEND CMAKE_BUILD_RPATH
         "${LIBTORCH_DIR}/lib"
-        "${CMAKE_BINARY_DIR}/yaml-cpp"
+        "${UFEEL_DEPS_PREFIX}/lib"
     )
 endif()
 if(UFEEL_ENABLE_SPEECH_TO_TEXT)
@@ -82,12 +86,6 @@ endif()
 if(UFEEL_ENABLE_SPEECH_TO_TEXT)
     list(APPEND UFEEL_REQUIRED_DIRS "${VOSK_DIR}" "${PORTAUDIO_DIR}")
 endif()
-if(UFEEL_ENABLE_EMOTIONS)
-    list(APPEND UFEEL_REQUIRED_DIRS "${YAML_CPP_DIR}")
-endif()
-if(UFEEL_ENABLE_HEART_RATE)
-    list(APPEND UFEEL_REQUIRED_DIRS "${CPR_DIR}")
-endif()
 
 foreach(DIR IN LISTS UFEEL_REQUIRED_DIRS)
     if(NOT IS_DIRECTORY "${DIR}")
@@ -95,14 +93,8 @@ foreach(DIR IN LISTS UFEEL_REQUIRED_DIRS)
     endif()
 endforeach()
 
-if(UFEEL_ENABLE_EMOTIONS AND
-   NOT EXISTS "${YAML_CPP_DIR}/CMakeLists.txt")
-    message(FATAL_ERROR "yaml-cpp submodule is not initialized. Run git submodule update --init --recursive")
-endif()
-
-if(UFEEL_ENABLE_HEART_RATE AND
-   NOT EXISTS "${CPR_DIR}/CMakeLists.txt")
-    message(FATAL_ERROR "cpr submodule is not initialized. Run git submodule update --init --recursive")
+if(UFEEL_NEEDS_DEPS_PREFIX AND NOT EXISTS "${UFEEL_DEPS_PREFIX}/.complete")
+    message(FATAL_ERROR "UFEEL_DEPS_PREFIX ('${UFEEL_DEPS_PREFIX}') does not point to built dependencies. Run ./build.sh deps, or configure through ./build.sh")
 endif()
 
 if(UFEEL_ENABLE_EMOTIONS)
@@ -111,48 +103,16 @@ if(UFEEL_ENABLE_EMOTIONS)
 endif()
 
 if(UFEEL_ENABLE_HEART_RATE)
-    set(BUILD_SHARED_LIBS OFF)
-    set(BUILD_STATIC_LIBS ON)
-    set(CPR_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-    set(CPR_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
-    set(CPR_ENABLE_SSL OFF CACHE BOOL "" FORCE)
-    set(CPR_USE_SYSTEM_CURL OFF CACHE BOOL "" FORCE)
-    set(CPR_USE_EXISTING_CURL_TARGET OFF CACHE BOOL "" FORCE)
-    set(CPR_ENABLE_CURL_HTTP_ONLY ON CACHE BOOL "" FORCE)
-    set(CPR_CURL_USE_LIBPSL OFF CACHE BOOL "" FORCE)
-    set(CURL_ZLIB OFF CACHE STRING "" FORCE)
-    set(CURL_BROTLI OFF CACHE STRING "" FORCE)
-    set(CURL_ZSTD OFF CACHE STRING "" FORCE)
-    set(USE_NGHTTP2 OFF CACHE BOOL "" FORCE)
-    set(USE_LIBIDN2 OFF CACHE BOOL "" FORCE)
-    set(CURL_USE_LIBSSH2 OFF CACHE BOOL "" FORCE)
-    set(CURL_USE_LIBSSH OFF CACHE BOOL "" FORCE)
-    set(CURL_USE_GSSAPI OFF CACHE BOOL "" FORCE)
-    set(CURL_DISABLE_INSTALL ON CACHE BOOL "" FORCE)
-
-    add_subdirectory(
-        "${CPR_DIR}"
-        "${CMAKE_BINARY_DIR}/cpr"
-        EXCLUDE_FROM_ALL
-    )
+    find_package(Threads REQUIRED)
+    find_package(CURL CONFIG REQUIRED PATHS "${UFEEL_DEPS_PREFIX}" NO_DEFAULT_PATH)
+    include("${UFEEL_DEPS_PREFIX}/lib/cmake/cpr/cprTargets.cmake")
 endif()
 
 find_program(PATCHELF_EXECUTABLE NAMES patchelf REQUIRED)
 
 if(UFEEL_ENABLE_EMOTIONS)
-    set(YAML_BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE)
-    set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-    set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
-    set(YAML_CPP_BUILD_CONTRIB OFF CACHE BOOL "" FORCE)
-
-    add_subdirectory(
-        "${YAML_CPP_DIR}"
-        "${CMAKE_BINARY_DIR}/yaml-cpp"
-    )
-
-    if(NOT TARGET yaml-cpp::yaml-cpp)
-        message(FATAL_ERROR "yaml-cpp::yaml-cpp target was not created")
-    endif()
+    find_package(yaml-cpp 0.7 CONFIG REQUIRED PATHS "${UFEEL_DEPS_PREFIX}" NO_DEFAULT_PATH)
+    add_library(yaml-cpp::yaml-cpp ALIAS yaml-cpp)
 endif()
 
 set(OPENCV_LIBRARIES
@@ -475,10 +435,10 @@ if(UFEEL_ENABLE_SPEECH_TO_TEXT)
 endif()
 
 if(UFEEL_ENABLE_EMOTIONS)
+    file(GLOB YAML_CPP_SHARED_LIBRARIES "${UFEEL_DEPS_PREFIX}/lib/libyaml-cpp.so*")
     install(
-        TARGETS yaml-cpp
-        LIBRARY DESTINATION dependencies
-        RUNTIME DESTINATION dependencies
+        FILES ${YAML_CPP_SHARED_LIBRARIES}
+        DESTINATION dependencies
     )
 endif()
 

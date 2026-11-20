@@ -32,6 +32,9 @@ jobs:
       - name: Build CI Docker image
         uses: ./.github/actions/ci-image
 
+      - name: Restore submodule dependencies
+        uses: ./.github/actions/deps-cache
+
       - name: Restore ccache
         uses: actions/cache@v6
         with:
@@ -47,7 +50,7 @@ jobs:
             -e CCACHE_MAXSIZE=500M \
             -w /mnt \
             ufeeldocker:ci \
-            bash -lc './build.sh configure -- -DCMAKE_CXX_COMPILER_LAUNCHER=ccache && ./build.sh build'
+            bash -lc './build.sh configure && ./build.sh build'
 
       - name: Run unit tests in Docker
         run: |

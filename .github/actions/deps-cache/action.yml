@@ -1,0 +1,20 @@
+name: Submodule dependencies cache
+description: Restores and saves .cache/deps and .cache/downloads, where ./build.sh builds the 3rdparty submodules once.
+
+runs:
+  using: composite
+  steps:
+    - name: Compute dependencies cache key
+      id: key
+      shell: bash
+      run: |
+        hash="$(git submodule status | sha256sum | cut -c1-16)"
+        echo "key=deps-$hash-${{ hashFiles('build-deps.sh', 'docker/Dockerfile') }}" >> "$GITHUB_OUTPUT"
+
+    - name: Restore dependencies cache
+      uses: actions/cache@v6
+      with:
+        path: |
+          .cache/deps
+          .cache/downloads
+        key: ${{ steps.key.outputs.key }}

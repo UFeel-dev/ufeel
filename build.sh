@@ -5,6 +5,8 @@ set -euo pipefail
 readonly ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly BUILD_ROOT="${ROOT_DIR}/build"
 readonly PACKAGE_ROOT="${ROOT_DIR}/package"
+readonly CACHE_ROOT="${ROOT_DIR}/.cache"
+readonly DEPS_SCRIPT="${ROOT_DIR}/build-deps.sh"
 readonly TEST_HARNESS_PROJECT="${ROOT_DIR}/tests/test-harnesses/csharp/UFeel.TestHarness"
 readonly GENERATOR="Ninja"
 readonly C_COMPILER="clang-22"
@@ -51,7 +53,8 @@ Commands:
   lint                    Run clang-tidy and check-format (lint --fix applies both fixes)
   fix                     Same as lint --fix
   include-fix             Run include-what-you-use fixes
-  clean                   Remove build and package directories
+  deps                    Run build-deps.sh: build the 3rdparty submodules into .cache/deps (done automatically)
+  clean                   Remove build and package directories (keeps .cache)
 
 Options:
   --config CONFIG         Debug or Release (default: Release)
@@ -203,7 +206,7 @@ parse_args()
                 cmake_extra+=("$@")
                 break
                 ;;
-            configure|build|package|all|test|clean|format|check-format|lint|fix|include-fix|\
+            configure|build|package|all|test|clean|deps|format|check-format|lint|fix|include-fix|\
             test-unit|test-integration|test-e2e|test-harness|\
             test-feature-matrix|coverage)
                 [[ -z "$command" ]] || error "only one command may be specified"
@@ -279,7 +282,7 @@ runtime_path()
             "$ROOT_DIR/3rdparty/opencv/lib"
             "$ROOT_DIR/3rdparty/libtorch/lib"
             "$ROOT_DIR/3rdparty/portaudio/lib"
-            "$build_directory/yaml-cpp"
+            "$(dependencies_prefix)/lib"
         )
     fi
     local path
@@ -310,18 +313,50 @@ run_with_environment()
     env "$name=$value" "$@"
 }
 
+compiler_launcher_options()
+{
+    command -v ccache >/dev/null 2>&1 || return 0
+    printf '%s\n' -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+}
+
+deps_script()
+{
+    UFEEL_GENERATOR="$GENERATOR" \
+        UFEEL_C_COMPILER="$C_COMPILER" \
+        UFEEL_CXX_COMPILER="$CXX_COMPILER" \
+        "$DEPS_SCRIPT" "$@"
+}
+
+dependencies_prefix()
+{
+    deps_script --print-prefix
+}
+
+configure_project()
+{
+    local directory="$1"
+    shift
+    local prefix
+    prefix="$(deps_script)"
+    local -a launcher=()
+    mapfile -t launcher < <(compiler_launcher_options)
+    run cmake -S "$ROOT_DIR" -B "$directory" -G "$GENERATOR" \
+        "-DCMAKE_C_COMPILER=$C_COMPILER" \
+        "-DCMAKE_CXX_COMPILER=$CXX_COMPILER" \
+        -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+        "-DUFEEL_DEPS_PREFIX=$prefix" \
+        "${launcher[@]}" "$@"
+}
+
 configure()
 {
     local directory="${1:-$(build_dir "$configuration")}"
     "$clean" && remove_generated "$directory"
     local -a options=()
     mapfile -t options < <(feature_options)
-    run cmake -S "$ROOT_DIR" -B "$directory" -G "$GENERATOR" \
+    configure_project "$directory" \
         "-DCMAKE_BUILD_TYPE=$configuration" \
-        "-DCMAKE_C_COMPILER=$C_COMPILER" \
-        "-DCMAKE_CXX_COMPILER=$CXX_COMPILER" \
         -DUFEEL_BUILD_TESTS=OFF \
-        -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
         "-DUFEEL_ADAPTERS=$(IFS=';'; printf '%s' "${adapters[*]}")" \
         "${options[@]}" "${cmake_extra[@]}"
 }
@@ -375,12 +410,9 @@ configure_test_build()
     "$clean" && remove_generated "$directory"
     local -a options=()
     mapfile -t options < <(feature_options)
-    run cmake -S "$ROOT_DIR" -B "$directory" -G "$GENERATOR" \
+    configure_project "$directory" \
         "-DCMAKE_BUILD_TYPE=$configuration" \
-        "-DCMAKE_C_COMPILER=$C_COMPILER" \
-        "-DCMAKE_CXX_COMPILER=$CXX_COMPILER" \
         -DUFEEL_BUILD_TESTS=ON \
-        -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
         "${options[@]}"
 }
 
@@ -420,11 +452,9 @@ run_native_tests_with_coverage()
     local directory="$BUILD_ROOT/coverage"
     local old_configuration="$configuration"
     configuration=Debug
-    run cmake -S "$ROOT_DIR" -B "$directory" -G "$GENERATOR" \
-        -DCMAKE_BUILD_TYPE=Debug "-DCMAKE_C_COMPILER=$C_COMPILER" \
-        "-DCMAKE_CXX_COMPILER=$CXX_COMPILER" \
-        -DUFEEL_BUILD_TESTS=ON -DUFEEL_ENABLE_COVERAGE=ON \
-        -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+    configure_project "$directory" \
+        -DCMAKE_BUILD_TYPE=Debug \
+        -DUFEEL_BUILD_TESTS=ON -DUFEEL_ENABLE_COVERAGE=ON
     build "$directory"
     rm -f "$directory"/coverage-*.profraw
     run_with_environment LLVM_PROFILE_FILE "$directory/coverage-%p.profraw" \
@@ -447,7 +477,7 @@ run_native_tests_with_coverage()
         -object="$directory/libufeel_detection_library.a" \
         -object="$directory/Wrapper/libufeel_wrapper.so" \
         -instr-profile="$directory/coverage.profdata" \
-        -ignore-filename-regex='(/tests/|googletest|/usr/|3rdparty/|_deps/)'
+        -ignore-filename-regex='(/tests/|googletest|/usr/|3rdparty/|_deps/|/\.cache/)'
     configuration="$old_configuration"
 }
 
@@ -466,10 +496,9 @@ test_feature_matrix()
                 options+=("-DUFEEL_ENABLE_$(feature_option_name "$feature")=ON") ||
                 options+=("-DUFEEL_ENABLE_$(feature_option_name "$feature")=OFF")
         done
-        run cmake -S "$ROOT_DIR" -B "$directory" -G "$GENERATOR" \
-            -DCMAKE_BUILD_TYPE=Release "-DCMAKE_C_COMPILER=$C_COMPILER" \
-            "-DCMAKE_CXX_COMPILER=$CXX_COMPILER" \
-            -DUFEEL_BUILD_TESTS=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+        configure_project "$directory" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DUFEEL_BUILD_TESTS=ON \
             "${options[@]}"
         run cmake --build "$directory" --parallel
         run cmake --install "$directory" --prefix "$destination"
@@ -610,6 +639,7 @@ dispatch()
         all) configure; build; package ;;
         test) test_all ;;
         clean) remove_generated "$BUILD_ROOT" "$PACKAGE_ROOT" ;;
+        deps) deps_script ;;
         format) format_sources "${cmake_extra[@]}" ;;
         check-format) check_format "${cmake_extra[@]}" ;;
         lint) lint "${cmake_extra[@]}" ;;
@@ -626,6 +656,7 @@ dispatch()
 }
 
 parse_args "$@"
+export CCACHE_DIR="${CCACHE_DIR:-$CACHE_ROOT/ccache}"
 case "$command" in
     clean) ;;
     format|check-format) require_commands clang-format ;;

@@ -41,6 +41,9 @@ jobs:
         with:
           write-cache: "true"
 
+      - name: Restore submodule dependencies
+        uses: ./.github/actions/deps-cache
+
       - name: Compute clang-tidy cache key
         id: ctcache
         run: |
