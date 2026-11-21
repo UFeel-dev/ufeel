@@ -20,9 +20,6 @@
 namespace
 {
 
-constexpr float INPUT_NORM_MEAN = 127.5f;
-constexpr float INPUT_NORM_STD = 127.5f;
-
 } // namespace
 
 my::ModelLoader::ModelLoader(
@@ -346,9 +343,19 @@ auto my::ModelLoader::preprocessImage(
 
     cv::resize(output, output, cv::Size(inputShape.at(2), inputShape.at(1)));
 
-    output.convertTo(output, CV_32FC3, 1.0 / INPUT_NORM_STD, -INPUT_NORM_MEAN / INPUT_NORM_STD);
+    output.convertTo(
+        output, CV_32FC3, (imageInputMaximum_ - imageInputMinimum_) / 255.0F, imageInputMinimum_
+    );
 
     return output;
+}
+
+void my::ModelLoader::setImageInputRange(
+    float minimum, float maximum
+)
+{
+    imageInputMinimum_ = minimum;
+    imageInputMaximum_ = maximum;
 }
 
 auto my::ModelLoader::convertToRGB(

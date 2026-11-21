@@ -3,6 +3,7 @@
 
 #include "EyeTracking/IrisDetection/ModelLoader.hpp"
 #include "FaceLandmark.hpp"
+#include "opencv2/core/mat.hpp"
 #include "opencv2/core/types.hpp"
 
 #include <memory>
@@ -94,10 +95,9 @@ protected:
 
 private:
 
-    /*
-    Calculate Eye Roi from the first and last EyeLower2 landmark
-    */
-    static auto calculateEyeRoi(cv::Point leftMost, cv::Point rightMost) -> cv::Rect;
+    [[nodiscard]] static auto
+    calculateEyeTransform(cv::Point2f corner1, cv::Point2f corner2, cv::Size cropSize, bool mirror)
+        -> cv::Mat;
 
     /*
     Run inference on each eye (for multithread)
@@ -109,6 +109,8 @@ private:
 
     cv::Rect leftEyeRoi_;
     cv::Rect rightEyeRoi_;
+    cv::Mat leftCropToImage_;
+    cv::Mat rightCropToImage_;
 };
 
 } // namespace my
