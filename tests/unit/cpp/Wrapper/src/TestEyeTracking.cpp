@@ -37,6 +37,7 @@ TEST(
     );
     EXPECT_EQ(ufeel_finish_eye_tracking_calibration(nullptr), UFEEL_STATUS_INVALID_PROCESSOR);
     EXPECT_EQ(ufeel_cancel_eye_tracking_calibration(nullptr), UFEEL_STATUS_INVALID_PROCESSOR);
+    EXPECT_EQ(ufeel_set_eye_tracking_head_weight(nullptr, 0.0F), UFEEL_STATUS_INVALID_PROCESSOR);
     EXPECT_EQ(ufeel_get_eye_tracking_result(nullptr, nullptr), UFEEL_STATUS_INVALID_PROCESSOR);
     EXPECT_EQ(
         ufeel_get_eye_tracking_calibration_progress(nullptr, nullptr),
@@ -105,6 +106,11 @@ TEST(
     EXPECT_EQ(
         ufeel_load_eye_tracking_calibration_profile(processor, ""), UFEEL_STATUS_INVALID_ARGUMENT
     );
+    EXPECT_EQ(
+        ufeel_set_eye_tracking_head_weight(processor, std::numeric_limits<float>::quiet_NaN()),
+        UFEEL_STATUS_INVALID_ARGUMENT
+    );
+    EXPECT_EQ(ufeel_set_eye_tracking_head_weight(processor, -0.1F), UFEEL_STATUS_INVALID_ARGUMENT);
 }
 
 TEST(

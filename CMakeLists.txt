@@ -182,6 +182,8 @@ if(UFEEL_ENABLE_EYE_TRACKING)
         ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/FaceLandmark.cpp
         ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/IrisLandmark.cpp
         ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/ModelLoader.cpp
+        ${LIBRARY_DIR}/src/EyeTracking/EyeBlinkTracker.cpp
+        ${LIBRARY_DIR}/src/EyeTracking/EyeGazeDirection.cpp
         ${LIBRARY_DIR}/src/EyeTracking/EyeTrackingCalibrationModel.cpp
         ${LIBRARY_DIR}/src/EyeTracking/EyeTrackingDetector.cpp
         ${LIBRARY_DIR}/src/EyeTracking/EyeTrackingKalmanFilter.cpp

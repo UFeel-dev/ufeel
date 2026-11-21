@@ -80,6 +80,7 @@ public:
     bool throwOnSpeech = false;
     bool throwOnHeartRate = false;
     bool throwOnCalibration = false;
+    float headWeight = -1.0F;
     bool throwUnknownOnCalibration = false;
 
     auto update(
@@ -248,6 +249,14 @@ public:
             throw 1;
         }
         throwIfEnabled(throwOnCalibration);
+    }
+
+    void setEyeTrackingHeadWeight(
+        float weight
+    ) override
+    {
+        throwIfEnabled(throwOnCalibration);
+        headWeight = weight;
     }
 
     [[nodiscard]] auto getEyeTrackingCalibrationProgress() const -> CalibrationProgress override

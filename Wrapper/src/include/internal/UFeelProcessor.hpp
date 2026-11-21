@@ -58,6 +58,7 @@ public:
     [[nodiscard]] virtual auto setEyeTrackingCalibrationTarget(float x, float y) -> bool = 0;
     [[nodiscard]] virtual auto finishEyeTrackingCalibration() -> bool = 0;
     virtual void cancelEyeTrackingCalibration() = 0;
+    virtual void setEyeTrackingHeadWeight(float weight) = 0;
     [[nodiscard]] virtual auto getEyeTrackingCalibrationProgress() const -> CalibrationProgress = 0;
     [[nodiscard]] virtual auto getEyeTrackingCalibrationDiagnostics() const
         -> CalibrationDiagnostics = 0;

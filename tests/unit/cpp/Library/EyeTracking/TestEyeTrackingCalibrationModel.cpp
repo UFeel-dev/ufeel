@@ -7,6 +7,7 @@
 #include <gtest/gtest.h>
 #include <ios>
 #include <limits>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <system_error>
@@ -402,11 +403,13 @@ TEST_F(
     EyeTrackingCalibrationModelTest, RejectsMalformedProfileFields
 )
 {
-    const auto header = "UFEEL_GAZE_PROFILE 4 " + std::to_string(GAZE_FEATURE_COUNT) + " 0.1";
+    const auto header = "UFEEL_GAZE_PROFILE 6 " + std::to_string(GAZE_FEATURE_COUNT) + " 0.1";
     const auto means = repeatedValues(GAZE_FEATURE_COUNT, "0");
     const auto scales = repeatedValues(GAZE_FEATURE_COUNT, "1");
     const auto coefficients = repeatedValues((GAZE_FEATURE_COUNT + 1) * 2, "0");
-    const auto validProfile = makeProfileContent(header, means, scales, coefficients);
+    const auto validProfile = makeProfileContent(header, means, scales, coefficients, "0");
+    const auto previousVersion =
+        "UFEEL_GAZE_PROFILE 5 " + std::to_string(GAZE_FEATURE_COUNT) + " 0.1";
 
     const std::vector<std::string> malformedProfiles{
         "truncated header",
@@ -420,7 +423,8 @@ TEST_F(
         makeProfileContent(header, means, "0 " + scales, coefficients),
         makeProfileContent(header, means, "1e7 " + scales, coefficients),
         makeProfileContent(header, means, scales, "1e7 " + coefficients),
-        makeProfileContent(header, means, scales, coefficients, "extra"),
+        makeProfileContent(header, means, scales, coefficients, "0 extra"),
+        makeProfileContent(previousVersion, means, scales, coefficients, "0"),
     };
 
     for (const auto& contents : malformedProfiles)
@@ -444,6 +448,45 @@ TEST_F(
 
     EyeTrackingCalibrationModel loaded;
     EXPECT_TRUE(loaded.load(profilePath().string()));
+    EXPECT_FALSE(loaded.gazeRange().has_value());
+}
+
+TEST_F(
+    EyeTrackingCalibrationModelTest, PersistsGazeRange
+)
+{
+    auto model = EyeTrackingCalibrationModel::fit(makeGridTargets());
+    ASSERT_TRUE(model.has_value());
+    model->setGazeRange(
+        EyeGazeRange{.neutralX = 0.01, .neutralY = -0.02, .rangeX = 0.1, .rangeY = 0.06}
+    );
+    ASSERT_TRUE(model->save(profilePath().string()));
+
+    EyeTrackingCalibrationModel loaded;
+    ASSERT_TRUE(loaded.load(profilePath().string()));
+    ASSERT_TRUE(loaded.gazeRange().has_value());
+    EXPECT_DOUBLE_EQ(loaded.gazeRange()->neutralY, -0.02);
+    EXPECT_DOUBLE_EQ(loaded.gazeRange()->rangeX, 0.1);
+
+    model->setGazeRange(std::nullopt);
+    ASSERT_TRUE(model->save(profilePath().string()));
+    ASSERT_TRUE(loaded.load(profilePath().string()));
+    EXPECT_FALSE(loaded.gazeRange().has_value());
+
+    const auto header = "UFEEL_GAZE_PROFILE 6 " + std::to_string(GAZE_FEATURE_COUNT) + " 0.1";
+    const auto means = repeatedValues(GAZE_FEATURE_COUNT, "0");
+    const auto scales = repeatedValues(GAZE_FEATURE_COUNT, "1");
+    const auto coefficients = repeatedValues((GAZE_FEATURE_COUNT + 1) * 2, "0");
+    for (const auto* gazeLine : {"", "2", "1 0 0 0", "1 0 0 0 -0.1", "1 0 0 nan 0.1"})
+    {
+        {
+            std::ofstream profile(profilePath(), std::ios::trunc);
+            ASSERT_TRUE(profile);
+            profile << makeProfileContent(header, means, scales, coefficients, gazeLine);
+        }
+        EyeTrackingCalibrationModel malformed;
+        EXPECT_FALSE(malformed.load(profilePath().string())) << gazeLine;
+    }
 }
 
 TEST_F(

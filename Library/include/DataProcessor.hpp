@@ -147,6 +147,7 @@ public:
     [[nodiscard]] auto setEyeTrackingCalibrationTarget(float x, float y) -> bool;
     [[nodiscard]] auto finishEyeTrackingCalibration() -> bool;
     void cancelEyeTrackingCalibration();
+    void setEyeTrackingHeadWeight(float weight);
     [[nodiscard]] auto getEyeTrackingCalibrationProgress() const -> CalibrationProgress;
     [[nodiscard]] auto getEyeTrackingCalibrationDiagnostics() const -> CalibrationDiagnostics;
     [[nodiscard]] auto saveEyeTrackingCalibrationProfile(const std::string& path) const -> bool;

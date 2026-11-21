@@ -321,6 +321,9 @@ TEST(
     );
     EXPECT_EQ(ufeel_finish_eye_tracking_calibration(&test.processor), UFEEL_STATUS_INTERNAL_ERROR);
     EXPECT_EQ(ufeel_cancel_eye_tracking_calibration(&test.processor), UFEEL_STATUS_INTERNAL_ERROR);
+    EXPECT_EQ(
+        ufeel_set_eye_tracking_head_weight(&test.processor, 0.0F), UFEEL_STATUS_INTERNAL_ERROR
+    );
     UFeelEyeTrackingCalibrationProgress progress{};
     EXPECT_EQ(
         ufeel_get_eye_tracking_calibration_progress(&test.processor, &progress),
@@ -540,11 +543,31 @@ TEST(
         .confidence = 0.9F,
         .directions = EyeTrackingLeft | EyeTrackingUp,
         .status = EyeTrackingStatus::Valid,
+        .gazeX = -0.5F,
+        .gazeY = 0.25F,
+        .leftOpenness = 0.8F,
+        .rightOpenness = 0.1F,
+        .eyeState = EyeStateTracked | EyeStateRightClosed,
+        .blinkCount = 3,
+        .eyesClosedSeconds = 0.0F,
     };
     EXPECT_EQ(ufeel_get_eye_tracking_result(&test.processor, &result), UFEEL_STATUS_OK);
     EXPECT_FLOAT_EQ(result.x, 0.2F);
     EXPECT_FLOAT_EQ(result.recordedY, 0.6F);
     EXPECT_EQ(result.directions, EyeTrackingLeft | EyeTrackingUp);
+    EXPECT_FLOAT_EQ(result.gazeX, -0.5F);
+    EXPECT_FLOAT_EQ(result.gazeY, 0.25F);
+    EXPECT_FLOAT_EQ(result.leftOpenness, 0.8F);
+    EXPECT_FLOAT_EQ(result.rightOpenness, 0.1F);
+    EXPECT_EQ(result.eyeState, UFEEL_EYE_STATE_TRACKED | UFEEL_EYE_STATE_RIGHT_CLOSED);
+    EXPECT_EQ(result.blinkCount, 3U);
+
+    EXPECT_EQ(ufeel_set_eye_tracking_head_weight(&test.processor, 0.5F), UFEEL_STATUS_OK);
+    EXPECT_FLOAT_EQ(test.backend->headWeight, 0.5F);
+    EXPECT_EQ(
+        ufeel_set_eye_tracking_head_weight(&test.processor, 1.5F), UFEEL_STATUS_INVALID_ARGUMENT
+    );
+    EXPECT_FLOAT_EQ(test.backend->headWeight, 0.5F);
 
     eyeTrackingCallbackValue() = {};
     ufeel_get_eye_tracking_result_from_frame(&test.processor, nullptr, recordEyeTrackingResult);

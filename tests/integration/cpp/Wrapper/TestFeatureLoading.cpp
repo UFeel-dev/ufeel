@@ -62,6 +62,7 @@ constexpr std::array kExportedFunctions{
     "ufeel_load_eye_tracking_calibration_profile",
     "ufeel_save_eye_tracking_calibration_profile",
     "ufeel_set_eye_tracking_calibration_target",
+    "ufeel_set_eye_tracking_head_weight",
     "ufeel_set_frame",
     "ufeel_set_speech_to_text_enabled",
     "ufeel_update",
