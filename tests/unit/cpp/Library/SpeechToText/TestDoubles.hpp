@@ -13,10 +13,9 @@ struct FakeInputDevice
 {
     std::string name = "Fake input device";
     int inputChannels = 2;
-    std::vector<double> sampleRates; // * empty: every rate is supported
+    std::vector<double> sampleRates;
 };
 
-/** Channel c of every captured frame holds 100 + 200 * c. */
 class PortAudioFake final
 {
 public:

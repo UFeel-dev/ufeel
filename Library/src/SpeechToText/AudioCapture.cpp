@@ -16,7 +16,6 @@
 namespace
 {
 
-// * 16 kHz needs no resampling, the recognizer downsamples the other rates
 constexpr std::array kSampleRates{
     AudioSource::defaultSampleRate, 48000.0, 44100.0, 32000.0, 22050.0};
 
