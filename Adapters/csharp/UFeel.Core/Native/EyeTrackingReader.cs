@@ -32,7 +32,14 @@ namespace UFeel.Native
                 result.RecordedX,
                 result.RecordedY,
                 result.Confidence,
-                (EyeTrackingDirection)result.Directions);
+                (EyeTrackingDirection)result.Directions,
+                result.GazeX,
+                result.GazeY,
+                result.LeftOpenness,
+                result.RightOpenness,
+                (EyeState)result.EyeState,
+                result.BlinkCount,
+                result.EyesClosedSeconds);
         }
 
         public void Dispose() => buffer.Dispose();

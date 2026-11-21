@@ -43,6 +43,13 @@ namespace UFeel.Interop
         public float RecordedY;
         public float Confidence;
         public int Directions;
+        public float GazeX;
+        public float GazeY;
+        public float LeftOpenness;
+        public float RightOpenness;
+        public int EyeState;
+        public uint BlinkCount;
+        public float EyesClosedSeconds;
     }
 
     [StructLayout(LayoutKind.Sequential)]

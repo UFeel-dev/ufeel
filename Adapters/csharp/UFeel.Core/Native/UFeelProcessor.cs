@@ -119,6 +119,13 @@ namespace UFeel
                 "change the speech-to-text state");
         }
 
+        public void SetEyeTrackingHeadWeight(float weight)
+        {
+            UFeelException.ThrowIfFailed(
+                (UFeelStatus)NativeMethods.ufeel_set_eye_tracking_head_weight(Handle, weight),
+                "set the eye-tracking head weight");
+        }
+
         public void BeginEyeTrackingCalibration()
         {
             UFeelException.ThrowIfFailed(
