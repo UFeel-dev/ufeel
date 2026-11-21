@@ -43,8 +43,12 @@ public:
     EyeTrackingResult frameEyeTracking = eyeTracking;
     SpeechToTextResult speech{.status = SpeechToTextStatus::Valid, .text = "recognized"};
     DataProcessorStatus microphonesStatus = DataProcessorStatus::Ok;
-    std::vector<Microphone> microphones{{.name = "default"}, {.name = "USB", .isDefault = true}};
+    std::vector<Microphone> microphones{
+        {.id = "alsa_input.dmic", .name = "Digital Microphone"},
+        {.id = "bluez_input.headset", .name = "Headset", .isDefault = true},
+    };
     std::string selectedMicrophone = "none";
+    bool microphonesChanged = false;
     HeartRateResult heartRate{.bpm = 73, .status = HeartRateStatus::Valid};
     CalibrationProgress calibrationProgress{
         .targetsWithEnoughSamples = 2,
@@ -226,7 +230,7 @@ public:
     }
 
     auto selectMicrophone(
-        const std::string& name
+        const std::string& id
     ) -> DataProcessorStatus override
     {
         throwIfEnabled(throwOnSpeech);
@@ -234,13 +238,23 @@ public:
         {
             return microphonesStatus;
         }
-        if (!name.empty() &&
-            std::ranges::find(microphones, name, &Microphone::name) == microphones.end())
+        if (!id.empty() && std::ranges::find(microphones, id, &Microphone::id) == microphones.end())
         {
             return DataProcessorStatus::InvalidArgument;
         }
-        selectedMicrophone = name;
+        selectedMicrophone = id;
         return DataProcessorStatus::Ok;
+    }
+
+    auto updateMicrophonesChanged() -> DataProcessorStatus override
+    {
+        throwIfEnabled(throwOnSpeech);
+        return microphonesStatus;
+    }
+
+    [[nodiscard]] auto getMicrophonesChanged() const -> bool override
+    {
+        return microphonesChanged;
     }
 
     auto updateHeartRate() -> DataProcessorStatus override

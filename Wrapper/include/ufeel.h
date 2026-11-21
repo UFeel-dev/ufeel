@@ -171,14 +171,15 @@ typedef struct
     char* speech;
 } UFeelSpeechToTextResult;
 
-/** A microphone usable for speech-to-text. isDefault marks the one used when none is selected. */
+/** A microphone usable for speech-to-text. id is stable across runs, name is for display.
+ * isDefault marks the system default one, used when none is selected. */
 typedef struct
 {
+    char* id;
     char* name;
     int32_t isDefault;
 } UFeelMicrophone;
 
-/** Microphones usable for speech-to-text. */
 typedef struct
 {
     int32_t count;
@@ -349,15 +350,18 @@ UFEEL_API UFeelSpeechToTextResult* ufeel_create_speech_to_text_result();
 /** Releases speech result returned by ufeel_get_speech_to_text_result(). Accepts NULL. */
 UFEEL_API void ufeel_free_speech_to_text_result(UFeelSpeechToTextResult* speech);
 
-/** Lists the microphones into a result created with ufeel_create_microphones_result(). The list
- * is refreshed only while speech-to-text is disabled. Reusing a result releases its previous list.
- */
+/** Lists the microphones into a result created with ufeel_create_microphones_result(). Rescanning
+ * restarts a running capture. Reusing a result releases its previous list. */
 UFEEL_API int32_t
 ufeel_get_microphones_result(UFeelProcessor* processor, UFeelMicrophonesResult* result);
 
-/** Selects the speech-to-text microphone by name, NULL or "" for the default one. A running capture
+/** Selects the speech-to-text microphone by id, NULL or "" for the default one. A running capture
  * restarts on it. Returns UFEEL_STATUS_INVALID_ARGUMENT when no such microphone is listed. */
-UFEEL_API int32_t ufeel_set_microphone(UFeelProcessor* processor, const char* utf8Name);
+UFEEL_API int32_t ufeel_set_microphone(UFeelProcessor* processor, const char* utf8Id);
+
+/** Sets changed to 1 once after a microphone was added or removed, or the system default changed,
+ * else 0. Always 0 without a PulseAudio or PipeWire server. */
+UFEEL_API int32_t ufeel_get_microphones_changed(UFeelProcessor* processor, int32_t* changed);
 
 /** Create microphones results. */
 UFEEL_API UFeelMicrophonesResult* ufeel_create_microphones_result();

@@ -1,10 +1,14 @@
 #include "SpeechToText/AudioCapture.hpp"
+#include "SpeechToText/PulseSources.hpp"
 #include "TestDoubles.hpp"
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <gtest/gtest.h>
+#include <optional>
 #include <portaudio.h>
+#include <utility>
 #include <vector>
 
 namespace
@@ -96,17 +100,11 @@ TEST_F(
     AudioCaptureTest, FailsToStartWhenNoInputDeviceIsAvailable
 )
 {
-    speech_to_text_test::PortAudioFake::setDeviceCount(-1);
-    {
-        AudioCapture capture;
-        EXPECT_FALSE(capture.start());
-    }
+    speech_to_text_test::PortAudioFake::setDevices({});
+    AudioCapture capture;
 
-    speech_to_text_test::PortAudioFake::setDeviceCount(0);
-    {
-        AudioCapture capture;
-        EXPECT_FALSE(capture.start());
-    }
+    EXPECT_FALSE(capture.start());
+    EXPECT_TRUE(capture.microphones().empty());
 }
 
 TEST_F(
@@ -259,7 +257,7 @@ TEST_F(
 }
 
 TEST_F(
-    AudioCaptureTest, KeepsListingTheMicrophoneBeingCaptured
+    AudioCaptureTest, ListsTheLastScannedMicrophonesWhileCapturing
 )
 {
     using speech_to_text_test::PortAudioFake;
@@ -269,12 +267,140 @@ TEST_F(
     ASSERT_TRUE(capture.selectMicrophone("USB"));
     ASSERT_TRUE(capture.start());
 
-    PortAudioFake::setDevices({{.name = "Built-in"}, {.name = "USB", .inputChannels = 0}});
+    PortAudioFake::setDevices(
+        {{.name = "Built-in"}, {.name = "USB", .inputChannels = 0}, {.name = "New"}}
+    );
+    EXPECT_EQ(capture.microphones().size(), 2U);
+    EXPECT_TRUE(capture.selectMicrophone("USB"));
+
+    capture.stop();
+    const auto microphones = capture.microphones();
+    ASSERT_EQ(microphones.size(), 2U);
+    EXPECT_EQ(microphones[1].name, "New");
+}
+
+TEST_F(
+    AudioCaptureTest, ListsSoundServerSourcesByDescriptionWithoutMonitors
+)
+{
+    using speech_to_text_test::PortAudioFake;
+
+    PortAudioFake::setHostApiType(paPulseAudio);
+    PortAudioFake::setDevices({
+        {.name = "Default Source", .inputChannels = 32},
+        {.name = "Default Sink", .inputChannels = 0},
+        {.name = "alsa_input.dmic"},
+        {.name = "alsa_output.speaker.monitor"},
+        {.name = "bluez_input.headset", .inputChannels = 1},
+    });
+    PortAudioFake::setDefaultInputDevice(0);
+    AudioCapture capture([] -> std::optional<PulseSources> {
+        return PulseSources{
+            .defaultSource = "bluez_input.headset",
+            .sources =
+                {
+                    {.name = "alsa_input.dmic", .description = "Digital Microphone"},
+                    {.name = "alsa_output.speaker.monitor",
+                     .description = "Monitor of Speaker",
+                     .isMonitor = true},
+                    {.name = "bluez_input.headset", .description = "Headset"},
+                },
+        };
+    });
+
     const auto microphones = capture.microphones();
 
     ASSERT_EQ(microphones.size(), 2U);
-    EXPECT_EQ(microphones[1].name, "USB");
-    EXPECT_TRUE(capture.selectMicrophone("USB"));
+    EXPECT_EQ(microphones[0].id, "alsa_input.dmic");
+    EXPECT_EQ(microphones[0].name, "Digital Microphone");
+    EXPECT_FALSE(microphones[0].isDefault);
+    EXPECT_EQ(microphones[1].id, "bluez_input.headset");
+    EXPECT_EQ(microphones[1].name, "Headset");
+    EXPECT_TRUE(microphones[1].isDefault);
+
+    ASSERT_TRUE(capture.start());
+    EXPECT_EQ(PortAudioFake::openedDevice(), 0);
+    EXPECT_EQ(PortAudioFake::openedChannelCount(), 2);
+    EXPECT_DOUBLE_EQ(PortAudioFake::openedSampleRate(), 16000.0);
+    capture.stop();
+
+    EXPECT_FALSE(capture.selectMicrophone("Digital Microphone"));
+    EXPECT_FALSE(capture.selectMicrophone("alsa_output.speaker.monitor"));
+    ASSERT_TRUE(capture.selectMicrophone("alsa_input.dmic"));
+    ASSERT_TRUE(capture.start());
+    EXPECT_EQ(PortAudioFake::openedDevice(), 2);
+}
+
+TEST_F(
+    AudioCaptureTest, WatchesSoundServerChangesOnceItsSourcesAreListed
+)
+{
+    using speech_to_text_test::PortAudioFake;
+
+    PortAudioFake::setHostApiType(paPulseAudio);
+    PortAudioFake::setDevices({{.name = "Default Source"}, {.name = "alsa_input.dmic"}});
+    int watchers = 0;
+    bool changed = false;
+    AudioCapture capture(
+        [] -> std::optional<PulseSources> {
+            return PulseSources{
+                .sources = {{.name = "alsa_input.dmic", .description = "Microphone"}}};
+        },
+        [&watchers, &changed] -> std::function<bool()> {
+            ++watchers;
+            return [&changed] -> bool { return std::exchange(changed, false); };
+        }
+    );
+
+    changed = true;
+    EXPECT_FALSE(capture.microphonesChanged());
+
+    static_cast<void>(capture.microphones());
+    static_cast<void>(capture.microphones());
+    EXPECT_EQ(watchers, 1);
+    EXPECT_TRUE(capture.microphonesChanged());
+    EXPECT_FALSE(capture.microphonesChanged());
+}
+
+TEST_F(
+    AudioCaptureTest, ListsDeviceNamesWithoutSoundServer
+)
+{
+    using speech_to_text_test::PortAudioFake;
+
+    PortAudioFake::setHostApiType(paPulseAudio);
+    PortAudioFake::setDevices({{.name = "hw:0,0"}});
+    AudioCapture capture([] -> std::optional<PulseSources> { return std::nullopt; });
+
+    const auto microphones = capture.microphones();
+
+    ASSERT_EQ(microphones.size(), 1U);
+    EXPECT_EQ(microphones[0].id, "hw:0,0");
+    EXPECT_EQ(microphones[0].name, "hw:0,0");
+    EXPECT_TRUE(microphones[0].isDefault);
+}
+
+TEST_F(
+    AudioCaptureTest, QueriesTheSoundServerOnlyThroughItsHostApi
+)
+{
+    int queries = 0;
+    int watchers = 0;
+    AudioCapture capture(
+        [&queries] -> std::optional<PulseSources> {
+            ++queries;
+            return std::nullopt;
+        },
+        [&watchers] -> std::function<bool()> {
+            ++watchers;
+            return [] -> bool { return true; };
+        }
+    );
+
+    EXPECT_EQ(capture.microphones().size(), 1U);
+    EXPECT_EQ(queries, 0);
+    EXPECT_EQ(watchers, 0);
+    EXPECT_FALSE(capture.microphonesChanged());
 }
 
 TEST_F(
@@ -284,15 +410,17 @@ TEST_F(
     using speech_to_text_test::PortAudioFake;
 
     AudioCapture capture;
-    const int initialized = PortAudioFake::initializeCount();
+    int initialized = PortAudioFake::initializeCount();
 
     static_cast<void>(capture.microphones());
     EXPECT_EQ(PortAudioFake::initializeCount(), initialized + 1);
 
     ASSERT_TRUE(capture.start());
+    initialized = PortAudioFake::initializeCount();
     static_cast<void>(capture.microphones());
     EXPECT_TRUE(capture.selectMicrophone("Fake input device"));
-    EXPECT_EQ(PortAudioFake::initializeCount(), initialized + 1);
+    EXPECT_FALSE(capture.selectMicrophone("Unplugged"));
+    EXPECT_EQ(PortAudioFake::initializeCount(), initialized);
 }
 
 TEST_F(

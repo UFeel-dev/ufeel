@@ -29,9 +29,9 @@ struct FakePaStream
 struct FakePortAudioState
 {
     PaError initializeResult = paNoError;
-    PaError deviceCountError = paNoError;
     std::vector<speech_to_text_test::FakeInputDevice> devices{{}};
     PaDeviceIndex defaultInputDevice = 0;
+    PaHostApiTypeId hostApiType = paALSA;
     bool deviceInfoAvailable = true;
     PaError formatResult = paFormatIsSupported;
     PaError openResult = paNoError;
@@ -46,6 +46,7 @@ struct FakePortAudioState
     int openedChannelCount = 0;
     double openedSampleRate = 0.0;
     PaDeviceInfo info{};
+    PaHostApiInfo hostApi{};
 };
 
 auto fakePortAudioState() -> FakePortAudioState&
@@ -101,15 +102,6 @@ void PortAudioFake::setInitializeResult(
     fakePortAudioState().initializeResult = error;
 }
 
-void PortAudioFake::setDeviceCount(
-    PaDeviceIndex count
-)
-{
-    FakePortAudioState& state = fakePortAudioState();
-    state.deviceCountError = count < 0 ? count : paNoError;
-    state.devices.resize(count < 0 ? 0 : static_cast<std::size_t>(count));
-}
-
 void PortAudioFake::setDevices(
     std::vector<FakeInputDevice> devices
 )
@@ -122,6 +114,13 @@ void PortAudioFake::setDefaultInputDevice(
 )
 {
     fakePortAudioState().defaultInputDevice = device;
+}
+
+void PortAudioFake::setHostApiType(
+    PaHostApiTypeId type
+)
+{
+    fakePortAudioState().hostApiType = type;
 }
 
 void PortAudioFake::setDeviceInfoAvailable(
@@ -213,20 +212,50 @@ auto Pa_Terminate() -> PaError
     return paNoError;
 }
 
-auto Pa_GetDeviceCount() -> PaDeviceIndex
-{
-    const FakePortAudioState& state = fakePortAudioState();
-    if (state.deviceCountError != paNoError)
-    {
-        return state.deviceCountError;
-    }
-
-    return static_cast<PaDeviceIndex>(state.devices.size());
-}
-
 auto Pa_GetDefaultInputDevice() -> PaDeviceIndex
 {
     return fakePortAudioState().defaultInputDevice;
+}
+
+auto Pa_GetDefaultHostApi() -> PaHostApiIndex
+{
+    return 0;
+}
+
+auto Pa_HostApiTypeIdToHostApiIndex(
+    PaHostApiTypeId type
+) -> PaHostApiIndex
+{
+    return type == fakePortAudioState().hostApiType ? 0 : paHostApiNotFound;
+}
+
+auto Pa_GetHostApiInfo(
+    PaHostApiIndex hostApi
+) -> const PaHostApiInfo*
+{
+    FakePortAudioState& state = fakePortAudioState();
+    if (hostApi != 0)
+    {
+        return nullptr;
+    }
+
+    state.hostApi = {
+        .structVersion = 1,
+        .type = state.hostApiType,
+        .name = "Fake host API",
+        .deviceCount = static_cast<int>(state.devices.size()),
+        .defaultInputDevice = state.defaultInputDevice,
+        .defaultOutputDevice = paNoDevice,
+    };
+
+    return &state.hostApi;
+}
+
+auto Pa_HostApiDeviceIndexToDeviceIndex(
+    PaHostApiIndex hostApi, int hostApiDeviceIndex
+) -> PaDeviceIndex
+{
+    return hostApi == 0 ? hostApiDeviceIndex : paInvalidHostApi;
 }
 
 auto Pa_GetDeviceInfo(
@@ -607,6 +636,23 @@ TEST_F(
     EXPECT_EQ(speech_to_text_test::PortAudioFake::openedDevice(), 1);
 
     EXPECT_FALSE(detector.selectMicrophone("Unplugged"));
+    EXPECT_EQ(speech_to_text_test::PortAudioFake::openedDevice(), 1);
+
+    detector.toggle(false);
+    EXPECT_EQ(detector.process(), "final sentence");
+}
+
+TEST_F(
+    TestSpeechToTextDetector, ListingMicrophonesRestartsARunningCaptureToRescan
+)
+{
+    speech_to_text_test::PortAudioFake::setDevices({{.name = "Built-in"}});
+    SpeechToTextDetector detector(modelPath_);
+    detector.toggle(true);
+
+    speech_to_text_test::PortAudioFake::setDevices({{.name = "Built-in"}, {.name = "USB"}});
+    EXPECT_EQ(detector.microphones().size(), 2U);
+    EXPECT_TRUE(detector.selectMicrophone("USB"));
     EXPECT_EQ(speech_to_text_test::PortAudioFake::openedDevice(), 1);
 
     detector.toggle(false);

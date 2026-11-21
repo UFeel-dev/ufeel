@@ -322,4 +322,6 @@ TEST(
     EXPECT_TRUE(processor.getMicrophones().empty());
     EXPECT_EQ(processor.selectMicrophone(""), DataProcessorStatus::Ok);
     EXPECT_EQ(processor.selectMicrophone("USB"), DataProcessorStatus::InvalidArgument);
+    EXPECT_EQ(processor.updateMicrophonesChanged(), DataProcessorStatus::Ok);
+    EXPECT_FALSE(processor.getMicrophonesChanged());
 }

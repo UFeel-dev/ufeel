@@ -1,16 +1,19 @@
 #include "SpeechToText/AudioCapture.hpp"
 
 #include "SpeechToText/AudioSource.hpp"
+#include "SpeechToText/PulseSources.hpp"
 
 #include <algorithm>
 #include <array>
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <iostream>
 #include <optional>
 #include <portaudio.h>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace
@@ -34,7 +37,11 @@ auto isFormatSupported(
 
 } // namespace
 
-AudioCapture::AudioCapture()
+AudioCapture::AudioCapture(
+    SourceReader readSources, ChangeWatcher watchChanges
+)
+    : readSources_(std::move(readSources))
+    , watchChanges_(std::move(watchChanges))
 {
     initialize();
 }
@@ -75,30 +82,47 @@ void AudioCapture::rescan()
 
     terminate();
     initialize();
+    devices_ = scanDevices();
+
+    if (devices_.fromSoundServer && !changed_ && watchChanges_)
+    {
+        changed_ = watchChanges_();
+    }
+}
+
+auto AudioCapture::isListed(
+    const std::string& id
+) const -> bool
+{
+    return std::ranges::any_of(devices_.listed, [&id](const Device& device) -> bool {
+        return device.microphone.id == id;
+    });
 }
 
 auto AudioCapture::findFormat(
-    PaDeviceIndex index, const PaDeviceInfo& info
+    PaDeviceIndex index
 ) -> std::optional<CaptureFormat>
 {
-    if (info.maxInputChannels <= 0)
+    const PaDeviceInfo* info = Pa_GetDeviceInfo(index);
+
+    if (info == nullptr || info->maxInputChannels <= 0)
     {
         return std::nullopt;
     }
 
     const int preferredChannelCount =
-        std::min(info.maxInputChannels, static_cast<int>(maxChannelCount));
+        std::min(info->maxInputChannels, static_cast<int>(maxChannelCount));
 
     for (const double sampleRate : kSampleRates)
     {
         for (int channelCount = preferredChannelCount; channelCount > 0; --channelCount)
         {
-            if (isFormatSupported(index, info, channelCount, sampleRate))
+            if (isFormatSupported(index, *info, channelCount, sampleRate))
             {
                 return CaptureFormat{
                     .channelCount = channelCount,
                     .sampleRate = sampleRate,
-                    .latency = info.defaultLowInputLatency,
+                    .latency = info->defaultLowInputLatency,
                 };
             }
         }
@@ -107,16 +131,47 @@ auto AudioCapture::findFormat(
     return std::nullopt;
 }
 
-auto AudioCapture::usableDevices() -> std::vector<Device>
+auto AudioCapture::scanDevices() const -> Devices
 {
-    const int deviceCount = Pa_GetDeviceCount();
-
-    std::vector<Device> devices;
-
-    for (int i = 0; i < deviceCount; ++i)
+    if (!initialized_)
     {
-        const auto index = static_cast<PaDeviceIndex>(i);
+        return {};
+    }
 
+    const PaHostApiIndex pulse = Pa_HostApiTypeIdToHostApiIndex(paPulseAudio);
+
+    if (pulse >= 0 && readSources_)
+    {
+        if (const auto sources = readSources_(); sources.has_value())
+        {
+            return pulseDevices(pulse, *sources);
+        }
+    }
+
+    const PaHostApiIndex alsa = Pa_HostApiTypeIdToHostApiIndex(paALSA);
+
+    return hostApiDevices(alsa >= 0 ? alsa : Pa_GetDefaultHostApi());
+}
+
+auto AudioCapture::pulseDevices(
+    PaHostApiIndex hostApi, const PulseSources& sources
+) -> Devices
+{
+    const PaHostApiInfo* api = Pa_GetHostApiInfo(hostApi);
+
+    if (api == nullptr)
+    {
+        return {};
+    }
+
+    const auto defaultSource =
+        std::ranges::find(sources.sources, sources.defaultSource, &PulseSource::name);
+
+    Devices devices{.fromSoundServer = true};
+
+    for (int i = 0; i < api->deviceCount; ++i)
+    {
+        const PaDeviceIndex index = Pa_HostApiDeviceIndexToDeviceIndex(hostApi, i);
         const PaDeviceInfo* info = Pa_GetDeviceInfo(index);
 
         if (info == nullptr)
@@ -124,106 +179,162 @@ auto AudioCapture::usableDevices() -> std::vector<Device>
             continue;
         }
 
-        const auto format = findFormat(index, *info);
+        const auto source =
+            std::ranges::find(sources.sources, std::string(info->name), &PulseSource::name);
+        const bool isDefault = index == api->defaultInputDevice;
 
-        if (format.has_value())
+        if (!isDefault && (source == sources.sources.end() || source->isMonitor))
         {
-            devices.push_back({.index = index, .name = info->name, .format = *format});
+            continue;
+        }
+
+        const auto format = findFormat(index);
+
+        if (!format.has_value())
+        {
+            continue;
+        }
+
+        if (isDefault)
+        {
+            devices.fallback = Device{
+                .index = index,
+                .microphone =
+                    {
+                        .name = defaultSource != sources.sources.end() ? defaultSource->description
+                                                                       : info->name,
+                    },
+                .format = *format,
+            };
+            continue;
+        }
+
+        devices.listed.push_back({
+            .index = index,
+            .microphone =
+                {
+                    .id = source->name,
+                    .name = source->description,
+                    .isDefault = source->name == sources.defaultSource,
+                },
+            .format = *format,
+        });
+    }
+
+    if (!devices.fallback.has_value() && !devices.listed.empty())
+    {
+        const auto marked = std::ranges::find_if(devices.listed, [](const Device& device) -> bool {
+            return device.microphone.isDefault;
+        });
+        devices.fallback = marked != devices.listed.end() ? *marked : devices.listed.front();
+    }
+
+    return devices;
+}
+
+auto AudioCapture::hostApiDevices(
+    PaHostApiIndex hostApi
+) -> Devices
+{
+    const PaHostApiInfo* api = Pa_GetHostApiInfo(hostApi);
+
+    if (api == nullptr)
+    {
+        return {};
+    }
+
+    Devices devices;
+
+    for (int i = 0; i < api->deviceCount; ++i)
+    {
+        const PaDeviceIndex index = Pa_HostApiDeviceIndexToDeviceIndex(hostApi, i);
+        const PaDeviceInfo* info = Pa_GetDeviceInfo(index);
+        const auto format = findFormat(index);
+
+        if (info != nullptr && format.has_value())
+        {
+            devices.listed.push_back(
+                {.index = index,
+                 .microphone = {.id = info->name, .name = info->name},
+                 .format = *format}
+            );
         }
     }
 
-    return devices;
-}
-
-auto AudioCapture::availableDevices() const -> std::vector<Device>
-{
-    auto devices = usableDevices();
-
-    // * a busy device fails the format probe, so the one being captured is kept explicitly
-    if (stream_ != nullptr && openDevice_.has_value() &&
-        std::ranges::find(devices, openDevice_->index, &Device::index) == devices.end())
+    if (devices.listed.empty())
     {
-        devices.insert(
-            std::ranges::upper_bound(devices, openDevice_->index, {}, &Device::index), *openDevice_
-        );
+        return devices;
     }
 
-    return devices;
-}
+    auto fallback = std::ranges::find(devices.listed, api->defaultInputDevice, &Device::index);
 
-auto AudioCapture::defaultDevice(
-    const std::vector<Device>& devices
-) -> const Device*
-{
-    const PaDeviceIndex systemDefault = Pa_GetDefaultInputDevice();
-
-    const auto found = std::ranges::find(devices, systemDefault, &Device::index);
-
-    if (found != devices.end())
+    if (fallback == devices.listed.end())
     {
-        return &*found;
+        fallback = devices.listed.begin();
     }
 
-    return devices.empty() ? nullptr : &devices.front();
+    fallback->microphone.isDefault = true;
+    devices.fallback = *fallback;
+
+    return devices;
 }
 
 auto AudioCapture::findInputDevice() const -> std::optional<Device>
 {
-    const auto devices = usableDevices();
-
-    if (!selectedName_.empty())
+    if (!selectedId_.empty())
     {
-        const auto selected = std::ranges::find(devices, selectedName_, &Device::name);
+        const auto selected =
+            std::ranges::find_if(devices_.listed, [this](const Device& device) -> bool {
+                return device.microphone.id == selectedId_;
+            });
 
-        if (selected != devices.end())
+        if (selected != devices_.listed.end())
         {
             return *selected;
         }
 
-        std::cerr << "[AudioCapture] Microphone \"" << selectedName_
+        std::cerr << "[AudioCapture] Microphone \"" << selectedId_
                   << "\" not found, using the default one\n";
     }
 
-    const Device* device = defaultDevice(devices);
-
-    return device == nullptr ? std::nullopt : std::optional<Device>(*device);
+    return devices_.fallback;
 }
 
 auto AudioCapture::microphones() -> std::vector<Microphone>
 {
     rescan();
 
-    const auto devices = availableDevices();
-    const Device* fallback = defaultDevice(devices);
-
     std::vector<Microphone> result;
-    result.reserve(devices.size());
+    result.reserve(devices_.listed.size());
 
-    for (const auto& device : devices)
+    for (const auto& device : devices_.listed)
     {
-        result.push_back({.name = device.name, .isDefault = &device == fallback});
+        result.push_back(device.microphone);
     }
 
     return result;
 }
 
+auto AudioCapture::microphonesChanged() -> bool
+{
+    return changed_ && changed_();
+}
+
 auto AudioCapture::selectMicrophone(
-    const std::string& name
+    const std::string& id
 ) -> bool
 {
-    if (!name.empty())
+    if (!id.empty() && !isListed(id))
     {
         rescan();
 
-        const auto devices = availableDevices();
-
-        if (std::ranges::find(devices, name, &Device::name) == devices.end())
+        if (!isListed(id))
         {
             return false;
         }
     }
 
-    selectedName_ = name;
+    selectedId_ = id;
 
     return true;
 }
@@ -235,6 +346,8 @@ auto AudioCapture::sampleRate() const -> double
 
 auto AudioCapture::openStream() -> bool
 {
+    rescan();
+
     const auto device = findInputDevice();
 
     if (!device.has_value())
@@ -244,7 +357,7 @@ auto AudioCapture::openStream() -> bool
         return false;
     }
 
-    std::clog << "[AudioCapture] Selected input: " << device->name << " ("
+    std::clog << "[AudioCapture] Capturing from " << device->microphone.name << " ("
               << device->format.channelCount << " ch, " << device->format.sampleRate << " Hz)\n";
 
     PaStreamParameters inputParameters{};
@@ -273,7 +386,6 @@ auto AudioCapture::openStream() -> bool
     }
 
     format_ = device->format;
-    openDevice_ = device;
 
     return true;
 }

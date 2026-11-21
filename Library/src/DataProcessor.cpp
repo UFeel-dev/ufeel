@@ -478,16 +478,31 @@ auto DataProcessor::getMicrophones() const -> const std::vector<Microphone>&
 }
 
 auto DataProcessor::selectMicrophone(
-    const std::string& name
+    const std::string& id
 ) -> DataProcessorStatus
 {
 #if !UFEEL_ENABLE_SPEECH_TO_TEXT
-    static_cast<void>(name);
+    static_cast<void>(id);
     return DataProcessorStatus::UnsupportedFeature;
 #else
-    return speechToTextDetector_->selectMicrophone(name) ? DataProcessorStatus::Ok
-                                                         : DataProcessorStatus::InvalidArgument;
+    return speechToTextDetector_->selectMicrophone(id) ? DataProcessorStatus::Ok
+                                                       : DataProcessorStatus::InvalidArgument;
 #endif
+}
+
+auto DataProcessor::updateMicrophonesChanged() -> DataProcessorStatus
+{
+#if !UFEEL_ENABLE_SPEECH_TO_TEXT
+    return DataProcessorStatus::UnsupportedFeature;
+#else
+    microphonesChanged_ = speechToTextDetector_->microphonesChanged();
+    return DataProcessorStatus::Ok;
+#endif
+}
+
+auto DataProcessor::getMicrophonesChanged() const -> bool
+{
+    return microphonesChanged_;
 }
 
 void DataProcessor::beginEyeTrackingCalibration()

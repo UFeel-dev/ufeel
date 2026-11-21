@@ -34,10 +34,10 @@ public:
 
     void toggle(bool state);
 
+    /** Both restart a running capture, so the devices can be rescanned. */
     [[nodiscard]] auto microphones() -> std::vector<Microphone>;
-
-    /** Restarts a running capture on the new microphone. An empty name selects the default. */
-    auto selectMicrophone(const std::string& name) -> bool;
+    auto selectMicrophone(const std::string& id) -> bool;
+    [[nodiscard]] auto microphonesChanged() -> bool;
 
     [[nodiscard]]
     auto process(Clock::time_point now = Clock::now()) const -> std::string;
@@ -59,6 +59,28 @@ private:
     void run();
 
     void processAudio(const std::vector<int16_t>& buffer);
+
+    template <typename Function>
+    auto whileStopped(
+        Function function
+    ) -> decltype(function())
+    {
+        const bool restart = running_;
+
+        if (restart)
+        {
+            stop();
+        }
+
+        auto result = function();
+
+        if (restart)
+        {
+            start();
+        }
+
+        return result;
+    }
 
     void setText(std::string text);
 

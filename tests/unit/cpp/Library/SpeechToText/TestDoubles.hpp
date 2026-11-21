@@ -22,9 +22,9 @@ public:
 
     static void reset();
     static void setInitializeResult(PaError error);
-    static void setDeviceCount(PaDeviceIndex count);
     static void setDevices(std::vector<FakeInputDevice> devices);
     static void setDefaultInputDevice(PaDeviceIndex device);
+    static void setHostApiType(PaHostApiTypeId type);
     static void setDeviceInfoAvailable(bool available);
     static void setFormatResult(PaError error);
     static void setOpenResult(PaError error);

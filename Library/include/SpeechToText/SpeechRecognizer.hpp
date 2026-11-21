@@ -27,7 +27,7 @@ public:
     auto finalize() -> std::string;
     void reset();
 
-    /** Recreates the recognizer for audio at sampleRate. Keeps the current one on failure. */
+    /** Keeps the current recognizer on failure. */
     [[nodiscard]] auto setSampleRate(double sampleRate) -> bool;
 
 private:

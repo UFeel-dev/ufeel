@@ -1,5 +1,6 @@
 #include "ufeel.h"
 
+#include <cstdint>
 #include <cstdlib>
 #include <gtest/gtest.h>
 #include <memory>
@@ -13,6 +14,10 @@ TEST(
     EXPECT_EQ(ufeel_get_speech_to_text_result(nullptr, nullptr), UFEEL_STATUS_INVALID_ARGUMENT);
     EXPECT_EQ(ufeel_get_microphones_result(nullptr, nullptr), UFEEL_STATUS_INVALID_ARGUMENT);
     EXPECT_EQ(ufeel_set_microphone(nullptr, "microphone"), UFEEL_STATUS_INVALID_PROCESSOR);
+    int32_t changed = 1;
+    EXPECT_EQ(ufeel_get_microphones_changed(nullptr, nullptr), UFEEL_STATUS_INVALID_ARGUMENT);
+    EXPECT_EQ(ufeel_get_microphones_changed(nullptr, &changed), UFEEL_STATUS_INVALID_PROCESSOR);
+    EXPECT_EQ(changed, 0);
 }
 
 TEST(

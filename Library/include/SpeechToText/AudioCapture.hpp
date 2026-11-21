@@ -2,12 +2,14 @@
 #define SPEECHTOTEXT_AUDIOCAPTURE_HPP
 
 #include "SpeechToText/AudioSource.hpp"
+#include "SpeechToText/PulseSources.hpp"
 #include "portaudio.h"
 
 #include <array>
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <string>
 #include <vector>
@@ -16,11 +18,16 @@ class AudioCapture final : public AudioSource
 {
 public:
 
+    using SourceReader = std::function<std::optional<PulseSources>()>;
+    using ChangeWatcher = std::function<std::function<bool()>()>;
+
     static constexpr std::uint64_t framesPerBuffer = 1600;
     static constexpr std::size_t bufferCount = 32;
     static constexpr std::size_t maxChannelCount = 2;
 
-    AudioCapture();
+    explicit AudioCapture(
+        SourceReader readSources = readPulseSources, ChangeWatcher watchChanges = watchPulseSources
+    );
     ~AudioCapture() override;
 
     AudioCapture(const AudioCapture&) = delete;
@@ -36,9 +43,10 @@ public:
 
     [[nodiscard]] auto sampleRate() const -> double override;
 
-    /** Rescans the devices while no stream is open. */
+    /** Rescans the devices only while no stream is open. */
     [[nodiscard]] auto microphones() -> std::vector<Microphone> override;
-    auto selectMicrophone(const std::string& name) -> bool override;
+    [[nodiscard]] auto microphonesChanged() -> bool override;
+    auto selectMicrophone(const std::string& id) -> bool override;
 
 private:
 
@@ -54,16 +62,27 @@ private:
     struct Device
     {
         PaDeviceIndex index = paNoDevice;
-        std::string name;
+        Microphone microphone;
         CaptureFormat format;
+    };
+
+    struct Devices
+    {
+        std::vector<Device> listed;
+        std::optional<Device> fallback;
+        bool fromSoundServer = false;
     };
 
     static_assert(std::atomic<std::uint64_t>::is_always_lock_free);
 
+    SourceReader readSources_;
+    ChangeWatcher watchChanges_;
+    std::function<bool()> changed_;
+    Devices devices_;
+    std::string selectedId_;
+
     PaStream* stream_ = nullptr;
     bool initialized_ = false;
-    std::string selectedName_;
-    std::optional<Device> openDevice_;
     CaptureFormat format_;
 
     std::atomic<bool> running_{false};
@@ -80,12 +99,13 @@ private:
     auto initialize() -> bool;
     auto openStream() -> bool;
     void rescan();
+    [[nodiscard]] auto isListed(const std::string& id) const -> bool;
 
-    [[nodiscard]] static auto findFormat(PaDeviceIndex index, const PaDeviceInfo& info)
-        -> std::optional<CaptureFormat>;
-    [[nodiscard]] static auto usableDevices() -> std::vector<Device>;
-    [[nodiscard]] auto availableDevices() const -> std::vector<Device>;
-    [[nodiscard]] static auto defaultDevice(const std::vector<Device>& devices) -> const Device*;
+    [[nodiscard]] auto scanDevices() const -> Devices;
+    [[nodiscard]] static auto findFormat(PaDeviceIndex index) -> std::optional<CaptureFormat>;
+    [[nodiscard]] static auto pulseDevices(PaHostApiIndex hostApi, const PulseSources& sources)
+        -> Devices;
+    [[nodiscard]] static auto hostApiDevices(PaHostApiIndex hostApi) -> Devices;
     [[nodiscard]] auto findInputDevice() const -> std::optional<Device>;
 
     void closeStream();

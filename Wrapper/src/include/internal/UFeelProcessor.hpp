@@ -54,7 +54,9 @@ public:
     virtual void toggleSpeechToText(bool enabled) = 0;
     virtual auto updateMicrophones() -> DataProcessorStatus = 0;
     [[nodiscard]] virtual auto getMicrophones() const -> const std::vector<Microphone>& = 0;
-    virtual auto selectMicrophone(const std::string& name) -> DataProcessorStatus = 0;
+    virtual auto selectMicrophone(const std::string& id) -> DataProcessorStatus = 0;
+    virtual auto updateMicrophonesChanged() -> DataProcessorStatus = 0;
+    [[nodiscard]] virtual auto getMicrophonesChanged() const -> bool = 0;
 
     virtual auto updateHeartRate() -> DataProcessorStatus = 0;
     [[nodiscard]] virtual auto getHeartRate() const -> HeartRateResult = 0;

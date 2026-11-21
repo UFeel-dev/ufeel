@@ -353,9 +353,11 @@ TEST(
     ASSERT_EQ(ufeel_get_microphones_result(processor.get(), microphones.get()), UFEEL_STATUS_OK);
     ASSERT_GT(microphones->count, 0);
     EXPECT_EQ(
-        ufeel_set_microphone(processor.get(), microphones->microphones[0].name), UFEEL_STATUS_OK
+        ufeel_set_microphone(processor.get(), microphones->microphones[0].id), UFEEL_STATUS_OK
     );
     EXPECT_EQ(ufeel_set_microphone(processor.get(), nullptr), UFEEL_STATUS_OK);
+    int32_t changed = 0;
+    EXPECT_EQ(ufeel_get_microphones_changed(processor.get(), &changed), UFEEL_STATUS_OK);
 
     const auto cameraUpdateStatus = ufeel_update_frame(processor.get());
     EXPECT_TRUE(

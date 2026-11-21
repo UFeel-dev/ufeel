@@ -148,10 +148,20 @@ public:
     }
 
     auto selectMicrophone(
-        const std::string& name
+        const std::string& id
     ) -> DataProcessorStatus override
     {
-        return processor_.selectMicrophone(name);
+        return processor_.selectMicrophone(id);
+    }
+
+    auto updateMicrophonesChanged() -> DataProcessorStatus override
+    {
+        return processor_.updateMicrophonesChanged();
+    }
+
+    [[nodiscard]] auto getMicrophonesChanged() const -> bool override
+    {
+        return processor_.getMicrophonesChanged();
     }
 
     auto updateHeartRate() -> DataProcessorStatus override

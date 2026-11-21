@@ -60,6 +60,7 @@ constexpr std::array kExportedFunctions{
     "ufeel_get_frame",
     "ufeel_get_frame_info",
     "ufeel_get_heart_rate_result",
+    "ufeel_get_microphones_changed",
     "ufeel_get_microphones_result",
     "ufeel_get_speech_to_text_result",
     "ufeel_load_eye_tracking_calibration_profile",
@@ -188,7 +189,10 @@ TEST(
         resolve<decltype(&ufeel_get_microphones_result)>(library, "ufeel_get_microphones_result");
     const auto setMicrophone =
         resolve<decltype(&ufeel_set_microphone)>(library, "ufeel_set_microphone");
+    const auto getMicrophonesChanged =
+        resolve<decltype(&ufeel_get_microphones_changed)>(library, "ufeel_get_microphones_changed");
     ASSERT_NE(createMicrophones, nullptr);
+    ASSERT_NE(getMicrophonesChanged, nullptr);
     ASSERT_NE(freeMicrophones, nullptr);
     ASSERT_NE(getMicrophones, nullptr);
     ASSERT_NE(setMicrophone, nullptr);
@@ -201,4 +205,6 @@ TEST(
     ASSERT_NE(microphones, nullptr);
     EXPECT_EQ(getMicrophones(processor.get(), microphones.get()), expected);
     EXPECT_EQ(setMicrophone(processor.get(), nullptr), expected);
+    int32_t changed = 0;
+    EXPECT_EQ(getMicrophonesChanged(processor.get(), &changed), expected);
 }

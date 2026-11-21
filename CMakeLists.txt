@@ -115,6 +115,8 @@ if(UFEEL_ENABLE_EMOTIONS)
 endif()
 
 if(UFEEL_ENABLE_SPEECH_TO_TEXT)
+    find_path(PULSEAUDIO_INCLUDE_DIR pulse/pulseaudio.h REQUIRED)
+    find_library(PULSEAUDIO_LIBRARY pulse REQUIRED)
     file(REAL_PATH "${PORTAUDIO_DIR}/lib/libportaudio.so.2" PORTAUDIO_LIBRARY_FILE)
 endif()
 
@@ -195,6 +197,7 @@ endif()
 if(UFEEL_ENABLE_SPEECH_TO_TEXT)
     add_library(ufeel_feature_speech_to_text STATIC
         ${LIBRARY_DIR}/src/SpeechToText/AudioCapture.cpp
+        ${LIBRARY_DIR}/src/SpeechToText/PulseSources.cpp
         ${LIBRARY_DIR}/src/SpeechToText/SpeechRecognizer.cpp
         ${LIBRARY_DIR}/src/SpeechToText/SpeechToTextDetector.cpp
     )
@@ -304,7 +307,10 @@ if(UFEEL_ENABLE_SPEECH_TO_TEXT)
             ${VOSK_KALDI_LIBRARIES}
             "-Wl,--end-group"
             "${PORTAUDIO_DIR}/lib/libportaudio.so"
+        PRIVATE
+            "${PULSEAUDIO_LIBRARY}"
     )
+    target_include_directories(ufeel_feature_speech_to_text SYSTEM PRIVATE "${PULSEAUDIO_INCLUDE_DIR}")
 endif()
 
 if(UFEEL_ENABLE_HEART_RATE)

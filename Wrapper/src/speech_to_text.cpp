@@ -33,6 +33,7 @@ void clearMicrophonesPayload(
         for (auto& microphone :
              std::span(result.microphones, static_cast<std::size_t>(result.count)))
         {
+            std::free(microphone.id);
             std::free(microphone.name);
         }
         delete[] result.microphones;
@@ -192,8 +193,9 @@ auto ufeel_get_microphones_result(
             auto microphone = microphones.begin();
             for (auto& output : std::span(result->microphones, microphones.size()))
             {
+                output.id = processor->allocator->duplicateString(microphone->id);
                 output.name = processor->allocator->duplicateString(microphone->name);
-                if (output.name == nullptr)
+                if (output.id == nullptr || output.name == nullptr)
                 {
                     clearMicrophonesPayload(*result);
                     return UFEEL_STATUS_INTERNAL_ERROR;
@@ -208,21 +210,51 @@ auto ufeel_get_microphones_result(
 }
 
 auto ufeel_set_microphone(
-    UFeelProcessor* processor, const char* utf8Name
+    UFeelProcessor* processor, const char* utf8Id
 ) -> int32_t
 {
     return guarded(
         "ufeel_set_microphone",
         int32_t{UFEEL_STATUS_INTERNAL_ERROR},
-        [processor, utf8Name] -> int32_t {
+        [processor, utf8Id] -> int32_t {
             if (processor == nullptr)
             {
                 return UFEEL_STATUS_INVALID_PROCESSOR;
             }
 
             return toUFeelStatus(
-                processor->processor->selectMicrophone(utf8Name == nullptr ? "" : utf8Name)
+                processor->processor->selectMicrophone(utf8Id == nullptr ? "" : utf8Id)
             );
+        }
+    );
+}
+
+auto ufeel_get_microphones_changed(
+    UFeelProcessor* processor, int32_t* changed
+) -> int32_t
+{
+    return guarded(
+        "ufeel_get_microphones_changed",
+        int32_t{UFEEL_STATUS_INTERNAL_ERROR},
+        [processor, changed] -> int32_t {
+            if (changed == nullptr)
+            {
+                return UFEEL_STATUS_INVALID_ARGUMENT;
+            }
+            *changed = 0;
+            if (processor == nullptr)
+            {
+                return UFEEL_STATUS_INVALID_PROCESSOR;
+            }
+
+            const auto status = processor->processor->updateMicrophonesChanged();
+            if (status != DataProcessorStatus::Ok)
+            {
+                return toUFeelStatus(status);
+            }
+
+            *changed = processor->processor->getMicrophonesChanged() ? 1 : 0;
+            return UFEEL_STATUS_OK;
         }
     );
 }

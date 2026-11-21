@@ -52,28 +52,19 @@ void SpeechToTextDetector::toggle(
 
 auto SpeechToTextDetector::microphones() -> std::vector<Microphone>
 {
-    return audioSource_->microphones();
+    return whileStopped([this] -> std::vector<Microphone> { return audioSource_->microphones(); });
+}
+
+auto SpeechToTextDetector::microphonesChanged() -> bool
+{
+    return audioSource_->microphonesChanged();
 }
 
 auto SpeechToTextDetector::selectMicrophone(
-    const std::string& name
+    const std::string& id
 ) -> bool
 {
-    const bool restart = running_;
-
-    if (restart)
-    {
-        stop();
-    }
-
-    const bool selected = audioSource_->selectMicrophone(name);
-
-    if (restart)
-    {
-        start();
-    }
-
-    return selected;
+    return whileStopped([this, &id] -> bool { return audioSource_->selectMicrophone(id); });
 }
 
 auto SpeechToTextDetector::process(

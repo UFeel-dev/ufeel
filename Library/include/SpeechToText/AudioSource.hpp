@@ -7,6 +7,7 @@
 
 struct Microphone
 {
+    std::string id;
     std::string name;
     bool isDefault = false;
 };
@@ -42,12 +43,18 @@ public:
         return {};
     }
 
-    /** Applies from the next start(). An empty name selects the default microphone. */
+    /** True once after a microphone was added or removed, or the system default changed. */
+    [[nodiscard]] virtual auto microphonesChanged() -> bool
+    {
+        return false;
+    }
+
+    /** Applies from the next start(). An empty id selects the default microphone. */
     virtual auto selectMicrophone(
-        const std::string& name
+        const std::string& id
     ) -> bool
     {
-        return name.empty();
+        return id.empty();
     }
 };
 

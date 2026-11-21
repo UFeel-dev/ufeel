@@ -317,6 +317,11 @@ TEST(
     );
     EXPECT_EQ(microphones.microphones, nullptr);
     EXPECT_EQ(ufeel_set_microphone(&test.processor, "USB"), UFEEL_STATUS_INTERNAL_ERROR);
+    int32_t changed = 1;
+    EXPECT_EQ(
+        ufeel_get_microphones_changed(&test.processor, &changed), UFEEL_STATUS_INTERNAL_ERROR
+    );
+    EXPECT_EQ(changed, 0);
     test.backend->throwOnSpeech = false;
 
     test.backend->throwOnHeartRate = true;
@@ -686,9 +691,11 @@ TEST(
 
     ASSERT_EQ(ufeel_get_microphones_result(&test.processor, microphones), UFEEL_STATUS_OK);
     ASSERT_EQ(microphones->count, 2);
-    EXPECT_STREQ(microphones->microphones[0].name, "default");
+    EXPECT_STREQ(microphones->microphones[0].id, "alsa_input.dmic");
+    EXPECT_STREQ(microphones->microphones[0].name, "Digital Microphone");
     EXPECT_EQ(microphones->microphones[0].isDefault, 0);
-    EXPECT_STREQ(microphones->microphones[1].name, "USB");
+    EXPECT_STREQ(microphones->microphones[1].id, "bluez_input.headset");
+    EXPECT_STREQ(microphones->microphones[1].name, "Headset");
     EXPECT_EQ(microphones->microphones[1].isDefault, 1);
 
     test.backend->microphones.clear();
@@ -701,16 +708,27 @@ TEST(
         ufeel_get_microphones_result(&test.processor, microphones), UFEEL_STATUS_UNSUPPORTED_FEATURE
     );
     EXPECT_EQ(ufeel_set_microphone(&test.processor, nullptr), UFEEL_STATUS_UNSUPPORTED_FEATURE);
+    int32_t changed = 1;
+    EXPECT_EQ(
+        ufeel_get_microphones_changed(&test.processor, &changed), UFEEL_STATUS_UNSUPPORTED_FEATURE
+    );
+    EXPECT_EQ(changed, 0);
     ufeel_free_microphones_result(microphones);
 
     test.backend->microphonesStatus = DataProcessorStatus::Ok;
-    test.backend->microphones = {{.name = "USB"}};
-    EXPECT_EQ(ufeel_set_microphone(&test.processor, "USB"), UFEEL_STATUS_OK);
-    EXPECT_EQ(test.backend->selectedMicrophone, "USB");
-    EXPECT_EQ(ufeel_set_microphone(&test.processor, "missing"), UFEEL_STATUS_INVALID_ARGUMENT);
-    EXPECT_EQ(test.backend->selectedMicrophone, "USB");
+    test.backend->microphones = {{.id = "usb", .name = "USB"}};
+    EXPECT_EQ(ufeel_set_microphone(&test.processor, "usb"), UFEEL_STATUS_OK);
+    EXPECT_EQ(test.backend->selectedMicrophone, "usb");
+    EXPECT_EQ(ufeel_set_microphone(&test.processor, "USB"), UFEEL_STATUS_INVALID_ARGUMENT);
+    EXPECT_EQ(test.backend->selectedMicrophone, "usb");
     EXPECT_EQ(ufeel_set_microphone(&test.processor, nullptr), UFEEL_STATUS_OK);
     EXPECT_EQ(test.backend->selectedMicrophone, "");
+
+    EXPECT_EQ(ufeel_get_microphones_changed(&test.processor, &changed), UFEEL_STATUS_OK);
+    EXPECT_EQ(changed, 0);
+    test.backend->microphonesChanged = true;
+    EXPECT_EQ(ufeel_get_microphones_changed(&test.processor, &changed), UFEEL_STATUS_OK);
+    EXPECT_EQ(changed, 1);
 }
 
 TEST(
