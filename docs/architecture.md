@@ -12,7 +12,7 @@ flowchart TD
     Library["Library/ · ufeel_detection_library<br/>(static library)"]
     Emotions["ufeel_feature_emotions<br/>(LibTorch, OpenCV)"]
     EyeTracking["ufeel_feature_eye_tracking<br/>(TFLite)"]
-    SpeechToText["ufeel_feature_speech_to_text<br/>(Vosk, PortAudio)"]
+    SpeechToText["ufeel_feature_speech_to_text<br/>(Vosk, PortAudio, PulseAudio)"]
     HeartRate["ufeel_feature_heart_rate<br/>(libcurl, UDP/HTTP sources)"]
 
     Host -->|"ufeel.h (C ABI)"| Wrapper

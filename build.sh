@@ -281,7 +281,6 @@ runtime_path()
         paths+=(
             "$ROOT_DIR/3rdparty/opencv/lib"
             "$ROOT_DIR/3rdparty/libtorch/lib"
-            "$ROOT_DIR/3rdparty/portaudio/lib"
             "$(dependencies_prefix)/lib"
         )
     fi

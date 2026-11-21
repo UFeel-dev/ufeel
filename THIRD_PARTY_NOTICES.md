@@ -2,7 +2,7 @@
 
 UFEEL native library is licensed under the Apache License 2.0 (see [LICENSE](LICENSE), Copyright 2026 augustin-grosnon).
 
-This file lists the third-party components distributed with or linked by the library, with their licenses. 
+This file lists the third-party components distributed with or linked by the library, with their licenses.
 
 ## Libraries
 
@@ -22,7 +22,7 @@ This file lists the third-party components distributed with or linked by the lib
 | libf2c (in CLAPACK, in Vosk) | 3.2.1 (via CLAPACK) | HPND (AT&T / Lucent / Bellcore) | `3rdparty/vosk/share/licenses/clapack/libf2c-Notice` |
 | TensorFlow Lite | 2.15.0 | Apache-2.0 | `3rdparty/tensorflowlite/share/licenses/tensorflowlite/LICENSE` |
 | FlatBuffers (in TFLite) | 23.5.26 (TFLite headers) | Apache-2.0 | `3rdparty/opencv/share/licenses/opencv4/flatbuffers-LICENSE.txt` and TFLite headers |
-| PortAudio | 2.0.0 | MIT-style | `3rdparty/portaudio/share/licenses/portaudio/LICENSE.txt` |
+| PortAudio | 19.8 dev, unreleased (master `e813847`) | MIT-style | `3rdparty/portaudio/LICENSE.txt` |
 
 ## Models
 

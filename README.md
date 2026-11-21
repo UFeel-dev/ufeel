@@ -69,7 +69,7 @@ Manual builds are supported but require compatible versions of all third-party d
 - Linux x86-64
 - GLIBC >= 2.35
 - libstdc++ providing GLIBCXX_3.4.30
-- ALSA runtime libraries
+- ALSA and PulseAudio development libraries (`libasound2-dev`, `libpulse-dev`)
 - .NET SDK 10.0
 - Clang >= 22.0
 - CMake >= 3.20
@@ -81,13 +81,13 @@ Manual builds are supported but require compatible versions of all third-party d
 - IWYU >= 0.26
 - act  => 0.2.97
 
-The native package still relies on some operating-system libraries, including glibc, libstdc++, audio libraries and other system dependencies.
+The native package still relies on some operating-system libraries, including glibc, libstdc++, the ALSA and PulseAudio client libraries (`libasound.so.2`, `libpulse.so.0`, PipeWire provides the PulseAudio server) and other system dependencies.
 
 If some dependencies are missing for your system, please open an issue. The [Dockerfile](docker/Dockerfile) documents the build environment.
 
 ## Third-Party Libraries
 
-This project uses Git LFS to store large third-party libraries in `3rdparty/`, including prebuilt `.so` and `.a` files. yaml-cpp and cpr are Git submodules built from source.
+This project uses Git LFS to store large third-party libraries in `3rdparty/`, including prebuilt `.so` and `.a` files. yaml-cpp, cpr and PortAudio are Git submodules built from source.
 After cloning, initialize all submodules and download the Git LFS files:
 
 ```bash
