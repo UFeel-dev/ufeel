@@ -21,7 +21,8 @@ RUN apt-get update && \
         git-lfs \
         ninja-build \
         patchelf \
-        libasound2 \
+        libasound2-dev \
+        libpulse-dev \
         && \
     rm -rf /var/lib/apt/lists/*
 

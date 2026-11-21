@@ -213,7 +213,11 @@ class TemporaryProfile
 public:
 
     TemporaryProfile()
-        : path(std::filesystem::temp_directory_path() / "ufeel-eye-tracking-detector-test.dat")
+        : path(
+              std::filesystem::temp_directory_path() /
+              (std::string("ufeel-eye-tracking-detector-") +
+               ::testing::UnitTest::GetInstance()->current_test_info()->name() + ".dat")
+          )
     {
     }
 

@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -18,6 +19,7 @@ namespace UFeel
         private static readonly TimeSpan IdleWait = TimeSpan.FromMilliseconds(20);
         private static readonly TimeSpan FrameRetryWait = TimeSpan.FromMilliseconds(50);
         private static readonly TimeSpan ErrorRetryWait = TimeSpan.FromMilliseconds(500);
+        private static readonly TimeSpan MicrophoneCheckInterval = TimeSpan.FromSeconds(1);
 
         private readonly UFeelProcessor processor;
         private readonly IFrameObserver? frameObserver;
@@ -30,6 +32,7 @@ namespace UFeel
         private UFeelSnapshot latest = UFeelSnapshot.Initial;
         private int supported = (int)DetectionTypes.All;
         private volatile bool speechEnabled;
+        private volatile string? selectedMicrophoneId;
         private volatile bool stopping;
         private bool disposed;
 
@@ -40,6 +43,7 @@ namespace UFeel
         private DetectionType lastActive;
         private bool frameAvailable;
         private long sequence;
+        private long lastMicrophoneCheck;
 
         public UFeelSession(
             UFeelProcessor processor,
@@ -57,6 +61,9 @@ namespace UFeel
         /// <summary>Raised on the session thread after each published snapshot.</summary>
         public event Action<UFeelSnapshot>? SnapshotPublished;
 
+        /// <summary>Raised on the session thread when a microphone was added or removed, or the system default changed.</summary>
+        public event Action? MicrophonesChanged;
+
         public FeatureScheduler Scheduler { get; }
         public FeatureDemand Demand { get; }
 
@@ -66,6 +73,9 @@ namespace UFeel
         public DetectionType SupportedFeatures => (DetectionType)Volatile.Read(ref supported);
 
         public bool IsSpeechToTextEnabled => speechEnabled;
+
+        /// <summary>Null while the default microphone is used.</summary>
+        public string? SelectedMicrophoneId => selectedMicrophoneId;
 
         public void Start() => thread.Start();
 
@@ -126,6 +136,27 @@ namespace UFeel
             });
         }
 
+        public Task<IReadOnlyList<MicrophoneDevice>> GetMicrophonesAsync()
+        {
+            return ExecuteAsync(p => p.GetMicrophones());
+        }
+
+        /// <summary>Null selects the default microphone. False when no listed microphone has this id.</summary>
+        public Task<bool> SelectMicrophoneAsync(string? id)
+        {
+            if (string.IsNullOrEmpty(id))
+                id = null;
+
+            return ExecuteAsync(p =>
+            {
+                if (!p.SelectMicrophone(id))
+                    return false;
+
+                selectedMicrophoneId = id;
+                return true;
+            });
+        }
+
         public void Dispose()
         {
             if (disposed)
@@ -159,6 +190,7 @@ namespace UFeel
                 try
                 {
                     RunCommands();
+                    CheckMicrophones();
                     Step();
                 }
                 catch (Exception exception)
@@ -173,6 +205,16 @@ namespace UFeel
         {
             while (!stopping && commands.TryDequeue(out IPendingCommand pending))
                 pending.Run(processor);
+        }
+
+        private void CheckMicrophones()
+        {
+            if (MicrophonesChanged is null || Clock.Since(lastMicrophoneCheck) < MicrophoneCheckInterval)
+                return;
+
+            lastMicrophoneCheck = Clock.Now;
+            if (processor.HaveMicrophonesChanged())
+                MicrophonesChanged?.Invoke();
         }
 
         private void CancelPendingCommands()

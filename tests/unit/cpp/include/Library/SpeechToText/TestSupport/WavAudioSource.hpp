@@ -52,10 +52,10 @@ inline auto readWav(
 
         if (tag == "fmt " && size >= 16)
         {
-            supportedFormat =
-                readUint(body, 2) == 1 && readUint(body + 2, 2) == 1 &&
-                readUint(body + 4, 4) == static_cast<std::uint32_t>(AudioCapture::sampleRate) &&
-                readUint(body + 14, 2) == 16;
+            supportedFormat = readUint(body, 2) == 1 && readUint(body + 2, 2) == 1 &&
+                              readUint(body + 4, 4) ==
+                                  static_cast<std::uint32_t>(AudioSource::defaultSampleRate) &&
+                              readUint(body + 14, 2) == 16;
         }
         else if (tag == "data" && supportedFormat)
         {
@@ -75,10 +75,16 @@ class WavAudioSource final : public AudioSource
 public:
 
     explicit WavAudioSource(
-        std::vector<int16_t> samples
+        std::vector<int16_t> samples, double sampleRate = defaultSampleRate
     )
         : samples_(std::move(samples))
+        , sampleRate_(sampleRate)
     {
+    }
+
+    [[nodiscard]] auto sampleRate() const -> double override
+    {
+        return sampleRate_;
     }
 
     auto start() -> bool override
@@ -131,6 +137,7 @@ public:
 private:
 
     std::vector<int16_t> samples_;
+    double sampleRate_;
     std::size_t position_ = 0;
     bool drained_ = false;
     bool stopped_ = false;

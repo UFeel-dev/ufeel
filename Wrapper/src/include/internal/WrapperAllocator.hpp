@@ -27,6 +27,8 @@ public:
     [[nodiscard]] virtual auto createFrame() noexcept -> UFeelFrame* = 0;
     [[nodiscard]] virtual auto allocateFrameData(std::size_t size) noexcept -> std::uint8_t* = 0;
     [[nodiscard]] virtual auto allocateEmotionPairs(std::size_t count) noexcept -> UFeelPair* = 0;
+    [[nodiscard]] virtual auto allocateMicrophones(std::size_t count) noexcept
+        -> UFeelMicrophone* = 0;
     [[nodiscard]] virtual auto duplicateString(const std::string& value) noexcept -> char* = 0;
 };
 
@@ -51,6 +53,13 @@ public:
     ) noexcept -> UFeelPair* override
     {
         return new (std::nothrow) UFeelPair[count]{};
+    }
+
+    [[nodiscard]] auto allocateMicrophones(
+        std::size_t count
+    ) noexcept -> UFeelMicrophone* override
+    {
+        return new (std::nothrow) UFeelMicrophone[count]{};
     }
 
     [[nodiscard]] auto duplicateString(

@@ -1,6 +1,7 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using UFeel.Interop;
 using UFeel.Native;
@@ -13,6 +14,7 @@ namespace UFeel
         private readonly EmotionsReader emotions;
         private readonly EyeTrackingReader eyeTracking;
         private readonly SpeechToTextReader speechToText;
+        private readonly MicrophonesReader microphones;
         private readonly HeartRateReader heartRate;
         private readonly FrameReader frames = new FrameReader();
 
@@ -39,6 +41,7 @@ namespace UFeel
                 emotions = new EmotionsReader();
                 eyeTracking = new EyeTrackingReader();
                 speechToText = new SpeechToTextReader();
+                microphones = new MicrophonesReader();
                 heartRate = new HeartRateReader();
             }
             catch
@@ -124,6 +127,31 @@ namespace UFeel
             UFeelException.ThrowIfFailed(
                 (UFeelStatus)NativeMethods.ufeel_set_eye_tracking_head_weight(Handle, weight),
                 "set the eye-tracking head weight");
+        }
+
+        /// <summary>Restarts a running capture to rescan the devices. Empty without speech-to-text support.</summary>
+        public IReadOnlyList<MicrophoneDevice> GetMicrophones() => microphones.Read(Handle);
+
+        /// <summary>Null selects the default microphone. False when no listed microphone has this id.</summary>
+        public bool SelectMicrophone(string? id)
+        {
+            var status = (UFeelStatus)NativeMethods.ufeel_set_microphone(Handle, id);
+            if (status == UFeelStatus.InvalidArgument)
+                return false;
+
+            UFeelException.ThrowIfFailed(status, "select the microphone");
+            return true;
+        }
+
+        /// <summary>True once after a microphone was added or removed, or the system default changed.</summary>
+        public bool HaveMicrophonesChanged()
+        {
+            var status = (UFeelStatus)NativeMethods.ufeel_get_microphones_changed(Handle, out int changed);
+            if (status == UFeelStatus.UnsupportedFeature)
+                return false;
+
+            UFeelException.ThrowIfFailed(status, "check the microphones");
+            return changed != 0;
         }
 
         public void BeginEyeTrackingCalibration()
@@ -224,6 +252,7 @@ namespace UFeel
         public void Dispose()
         {
             heartRate?.Dispose();
+            microphones?.Dispose();
             speechToText?.Dispose();
             eyeTracking?.Dispose();
             emotions?.Dispose();

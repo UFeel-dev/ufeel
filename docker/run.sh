@@ -4,7 +4,7 @@ set -Eeuo pipefail
 
 IMAGE="${UFEEL_DOCKER_IMAGE:-ufeeldocker:latest}"
 DISPLAY_MODE="${DISPLAY_MODE:-auto}"
-AUDIO_BACKEND="${AUDIO_BACKEND:-alsa}"
+AUDIO_BACKEND="${AUDIO_BACKEND:-auto}"
 
 DOCKER_ARGS=()
 RUN_ARGS=(-i)
@@ -199,6 +199,14 @@ case "$DISPLAY_MODE" in
         exit 1
         ;;
 esac
+
+if [[ "$AUDIO_BACKEND" == auto ]]; then
+    if [[ -S "${XDG_RUNTIME_DIR:-}/pulse/native" ]]; then
+        AUDIO_BACKEND=pulse
+    else
+        AUDIO_BACKEND=alsa
+    fi
+fi
 
 case "$AUDIO_BACKEND" in
     alsa)

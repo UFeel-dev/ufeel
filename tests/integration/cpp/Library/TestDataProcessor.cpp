@@ -68,10 +68,10 @@ auto createProcessor(
 }
 
 auto transcribe(
-    std::vector<int16_t> samples
+    std::vector<int16_t> samples, double sampleRate = AudioSource::defaultSampleRate
 ) -> SpeechToTextResult
 {
-    auto audioSource = std::make_unique<WavAudioSource>(std::move(samples));
+    auto audioSource = std::make_unique<WavAudioSource>(std::move(samples), sampleRate);
     auto* audio = audioSource.get();
     auto processor = createProcessor(frameSequence({}), std::move(audioSource), watchSources());
 
@@ -156,11 +156,33 @@ TEST(
 }
 
 TEST(
+    DataProcessorFixtureTest, TranscribesMicrophonesCapturingAboveSixteenKilohertz
+)
+{
+    constexpr std::size_t factor = 3;
+    const auto samples = readWav(resourcePath("turn_on_the_light.wav"));
+    std::vector<int16_t> upsampled;
+    upsampled.reserve(samples.size() * factor);
+    for (const auto sample : samples)
+    {
+        upsampled.insert(upsampled.end(), factor, sample);
+    }
+
+    const auto result = transcribe(
+        std::move(upsampled), AudioSource::defaultSampleRate * static_cast<double>(factor)
+    );
+
+    EXPECT_EQ(result.status, SpeechToTextStatus::Valid);
+    EXPECT_EQ(result.text, "turn on the light");
+}
+
+TEST(
     DataProcessorFixtureTest, ReportsNoSpeechForSilence
 )
 {
-    const auto result =
-        transcribe(std::vector<int16_t>(static_cast<std::size_t>(AudioCapture::sampleRate) * 2));
+    const auto result = transcribe(
+        std::vector<int16_t>(static_cast<std::size_t>(AudioSource::defaultSampleRate) * 2)
+    );
 
     EXPECT_EQ(result.status, SpeechToTextStatus::NoSpeech);
     EXPECT_TRUE(result.text.empty());
