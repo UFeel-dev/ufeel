@@ -122,21 +122,29 @@ namespace UFeel
                 "change the speech-to-text state");
         }
 
-        /// <summary>Refreshed only while speech-to-text is disabled. Empty without speech-to-text support.</summary>
+        /// <summary>Restarts a running capture to rescan the devices. Empty without speech-to-text support.</summary>
         public IReadOnlyList<MicrophoneDevice> GetMicrophones() => microphones.Read(Handle);
 
-        /// <summary>
-        /// Selects the speech-to-text microphone, null for the default one. A running capture restarts on it.
-        /// False when no listed microphone has this name.
-        /// </summary>
-        public bool SelectMicrophone(string? name)
+        /// <summary>Null selects the default microphone. False when no listed microphone has this id.</summary>
+        public bool SelectMicrophone(string? id)
         {
-            var status = (UFeelStatus)NativeMethods.ufeel_set_microphone(Handle, name);
+            var status = (UFeelStatus)NativeMethods.ufeel_set_microphone(Handle, id);
             if (status == UFeelStatus.InvalidArgument)
                 return false;
 
             UFeelException.ThrowIfFailed(status, "select the microphone");
             return true;
+        }
+
+        /// <summary>True once after a microphone was added or removed, or the system default changed.</summary>
+        public bool HaveMicrophonesChanged()
+        {
+            var status = (UFeelStatus)NativeMethods.ufeel_get_microphones_changed(Handle, out int changed);
+            if (status == UFeelStatus.UnsupportedFeature)
+                return false;
+
+            UFeelException.ThrowIfFailed(status, "check the microphones");
+            return changed != 0;
         }
 
         public void BeginEyeTrackingCalibration()

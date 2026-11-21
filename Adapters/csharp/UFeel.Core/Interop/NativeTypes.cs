@@ -87,6 +87,7 @@ namespace UFeel.Interop
     [StructLayout(LayoutKind.Sequential)]
     internal struct NativeMicrophone
     {
+        public IntPtr Id;
         public IntPtr Name;
         public int IsDefault;
     }

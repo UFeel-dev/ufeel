@@ -138,7 +138,10 @@ namespace UFeel.Interop
 
         [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
         internal static extern int ufeel_set_microphone(
-            IntPtr processor, [MarshalAs(UnmanagedType.LPUTF8Str)] string? utf8Name);
+            IntPtr processor, [MarshalAs(UnmanagedType.LPUTF8Str)] string? utf8Id);
+
+        [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int ufeel_get_microphones_changed(IntPtr processor, out int changed);
 
         [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
         internal static extern IntPtr ufeel_create_microphones_result();

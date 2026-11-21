@@ -157,17 +157,19 @@
                                     FontSize="20"
                                     FontWeight="SemiBold" />
                                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                                    <ComboBox
-                                        x:Name="MicrophoneSelector"
-                                        HorizontalAlignment="Stretch"
-                                        PlaceholderText="Loading microphones..."
-                                        SelectionChanged="MicrophoneSelector_OnSelectionChanged" />
+                                    <TextBlock
+                                        Text="Microphone"
+                                        VerticalAlignment="Center" />
                                     <Button
                                         Grid.Column="1"
                                         Content="Refresh"
-                                        ToolTip.Tip="The list refreshes while speech is disabled"
                                         Click="RefreshMicrophonesButton_OnClick" />
                                 </Grid>
+                                <ListBox
+                                    x:Name="MicrophoneList"
+                                    MaxHeight="180"
+                                    SelectionMode="Single"
+                                    SelectionChanged="MicrophoneList_OnSelectionChanged" />
                                 <TextBlock
                                     x:Name="SpeechToTextText"
                                     Text="Speech disabled"

@@ -30,30 +30,30 @@ public partial class MainWindow
 
     private void ShowMicrophones(IReadOnlyList<MicrophoneDevice> microphones)
     {
-        var items = new List<ComboBoxItem> { new() { Content = UFeelText.DefaultMicrophone(microphones) } };
-        items.AddRange(microphones.Select(microphone => new ComboBoxItem { Content = microphone.Name, Tag = microphone.Name }));
+        var items = new List<ListBoxItem> { new() { Content = UFeelText.DefaultMicrophone(microphones) } };
+        items.AddRange(microphones.Select(microphone => new ListBoxItem { Content = microphone.Name, Tag = microphone.Id }));
 
         showingMicrophones = true;
-        MicrophoneSelector.ItemsSource = items;
-        MicrophoneSelector.SelectedItem =
-            items.FirstOrDefault(item => item.Tag is string name && name == session.SelectedMicrophone) ?? items[0];
+        MicrophoneList.ItemsSource = items;
+        MicrophoneList.SelectedItem =
+            items.FirstOrDefault(item => item.Tag is string id && id == session.SelectedMicrophoneId) ?? items[0];
         showingMicrophones = false;
     }
 
-    private async void MicrophoneSelector_OnSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    private async void MicrophoneList_OnSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        if (showingMicrophones || MicrophoneSelector.SelectedItem is not ComboBoxItem item)
+        if (showingMicrophones || MicrophoneList.SelectedItem is not ListBoxItem item)
             return;
 
-        string? name = item.Tag as string;
-        if (name == session.SelectedMicrophone)
+        string? id = item.Tag as string;
+        if (id == session.SelectedMicrophoneId)
             return;
 
         try
         {
-            if (!await session.SelectMicrophoneAsync(name))
+            if (!await session.SelectMicrophoneAsync(id))
             {
-                ShowIdleStatus($"Microphone \"{name}\" is no longer available");
+                ShowIdleStatus($"Microphone \"{item.Content}\" is no longer available");
                 RefreshMicrophones();
             }
         }

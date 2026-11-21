@@ -36,6 +36,7 @@ public partial class MainWindow : Window
 
         session = new UFeelSession(processor, demand: demand, frameObserver: frameBitmaps);
         session.SnapshotPublished += snapshot => Dispatcher.UIThread.Post(() => ShowSnapshot(snapshot));
+        session.MicrophonesChanged += () => Dispatcher.UIThread.Post(RefreshMicrophones);
 
         CalibrationCanvas.SizeChanged += (_, _) => UpdateCalibrationMarker();
         EyeTrackingCanvas.SizeChanged += (_, _) => UpdateEyeTrackingMarker();

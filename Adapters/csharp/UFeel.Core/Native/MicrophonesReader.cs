@@ -16,7 +16,6 @@ namespace UFeel.Native
             NativeMethods.ufeel_free_microphones_result,
             "microphones");
 
-        /// <summary>Empty when the library is built without speech-to-text.</summary>
         public IReadOnlyList<MicrophoneDevice> Read(IntPtr processor)
         {
             var status = (UFeelStatus)NativeMethods.ufeel_get_microphones_result(processor, buffer.Pointer);
@@ -36,10 +35,12 @@ namespace UFeel.Native
                 NativeMicrophone item = Marshal.PtrToStructure<NativeMicrophone>(
                     IntPtr.Add(result.Microphones, checked(i * ItemSize)));
 
-                string name = Marshal.PtrToStringUTF8(item.Name) ??
-                    throw new InvalidOperationException("The native microphones result has a null name.");
+                string? id = Marshal.PtrToStringUTF8(item.Id);
+                string? name = Marshal.PtrToStringUTF8(item.Name);
+                if (id is null || name is null)
+                    throw new InvalidOperationException("The native microphones result has a null id or name.");
 
-                microphones[i] = new MicrophoneDevice(name, item.IsDefault != 0);
+                microphones[i] = new MicrophoneDevice(id, name, item.IsDefault != 0);
             }
 
             return microphones;
