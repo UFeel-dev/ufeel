@@ -9,6 +9,7 @@ readonly DEPS_ROOT="${CACHE_ROOT}/deps"
 readonly DOWNLOAD_ROOT="${CACHE_ROOT}/downloads"
 readonly YAML_CPP_SOURCE="${ROOT_DIR}/3rdparty/yaml-cpp"
 readonly CPR_SOURCE="${ROOT_DIR}/3rdparty/cpr"
+readonly PORTAUDIO_SOURCE="${ROOT_DIR}/3rdparty/portaudio"
 readonly GENERATOR="${UFEEL_GENERATOR:-Ninja}"
 readonly C_COMPILER="${UFEEL_C_COMPILER:-clang-22}"
 readonly CXX_COMPILER="${UFEEL_CXX_COMPILER:-clang++-22}"
@@ -20,7 +21,7 @@ usage()
     cat <<'EOF'
 Usage: ./build-deps.sh [--print-prefix]
 
-Builds the 3rdparty submodules (yaml-cpp, cpr with its built-in curl) once into .cache/deps/<key> and prints that prefix. The key covers the submodule sources, the compilers and this script, so nothing is rebuilt while they are unchanged.
+Builds the 3rdparty submodules (yaml-cpp, cpr with its built-in curl, PortAudio with ALSA and PulseAudio) once into .cache/deps/<key> and prints that prefix. The key covers the submodule sources, the compilers and this script, so nothing is rebuilt while they are unchanged.
 
 Options:
   --print-prefix   Print the prefix without building
@@ -111,6 +112,7 @@ dependencies_prefix()
         {
             source_state "$YAML_CPP_SOURCE"
             source_state "$CPR_SOURCE"
+            source_state "$PORTAUDIO_SOURCE"
             "$C_COMPILER" --version | head -n 1
             "$CXX_COMPILER" --version | head -n 1
             printf '%s\n' "$GENERATOR"
@@ -168,6 +170,25 @@ build_cpr()
     run cmake --install "$build_directory/cpr" --prefix "$prefix"
 }
 
+build_portaudio()
+{
+    local build_directory="$1"
+    local prefix="$2"
+    shift 2
+    run cmake -S "$PORTAUDIO_SOURCE" -B "$build_directory/portaudio" "$@" \
+        -DPA_BUILD_SHARED_LIBS=ON \
+        -DPA_USE_ALSA=ON \
+        -DPA_USE_PULSEAUDIO=ON \
+        -DPA_USE_JACK=OFF \
+        -DPA_USE_OSS=OFF \
+        -DPA_USE_SNDIO=OFF
+    grep -q '^PA_USE_PULSEAUDIO:BOOL=ON$' "$build_directory/portaudio/CMakeCache.txt" &&
+        grep -q '^PA_USE_ALSA:BOOL=ON$' "$build_directory/portaudio/CMakeCache.txt" ||
+        error "PortAudio needs the ALSA and PulseAudio development files (libasound2-dev, libpulse-dev)"
+    run cmake --build "$build_directory/portaudio" --parallel
+    run cmake --install "$build_directory/portaudio" --prefix "$prefix"
+}
+
 build_dependencies()
 {
     local prefix="$1"
@@ -189,6 +210,7 @@ build_dependencies()
     mapfile -t -O "${#options[@]}" options < <(compiler_launcher_options)
     build_yaml_cpp "$build_directory" "$prefix" "${options[@]}"
     build_cpr "$build_directory" "$prefix" "${options[@]}"
+    build_portaudio "$build_directory" "$prefix" "${options[@]}"
     touch "$prefix/.complete"
     rm -rf "$build_directory"
 }

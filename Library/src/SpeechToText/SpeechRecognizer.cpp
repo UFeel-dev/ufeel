@@ -18,7 +18,7 @@ SpeechRecognizer::SpeechRecognizer(
         throw std::runtime_error("Failed to load Vosk model.");
     }
 
-    recognizer_ = vosk_recognizer_new(model_, sampleRate);
+    recognizer_ = vosk_recognizer_new(model_, static_cast<float>(sampleRate_));
 
     if (recognizer_ == nullptr)
     {
@@ -69,6 +69,29 @@ auto SpeechRecognizer::finalize() -> std::string
 void SpeechRecognizer::reset()
 {
     vosk_recognizer_reset(recognizer_);
+}
+
+auto SpeechRecognizer::setSampleRate(
+    double sampleRate
+) -> bool
+{
+    if (sampleRate == sampleRate_)
+    {
+        return true;
+    }
+
+    VoskRecognizer* recognizer = vosk_recognizer_new(model_, static_cast<float>(sampleRate));
+
+    if (recognizer == nullptr)
+    {
+        return false;
+    }
+
+    vosk_recognizer_free(recognizer_);
+    recognizer_ = recognizer;
+    sampleRate_ = sampleRate;
+
+    return true;
 }
 
 auto SpeechRecognizer::extractText(

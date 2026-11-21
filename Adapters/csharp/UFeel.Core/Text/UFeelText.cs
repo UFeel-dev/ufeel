@@ -48,6 +48,15 @@ namespace UFeel
             };
         }
 
+        public static string DefaultMicrophone(IReadOnlyList<MicrophoneDevice> microphones)
+        {
+            if (microphones is null)
+                throw new ArgumentNullException(nameof(microphones));
+
+            MicrophoneDevice? device = microphones.FirstOrDefault(microphone => microphone.IsDefault);
+            return device is null ? "Default microphone" : $"Default microphone ({device.Name})";
+        }
+
         public static string Directions(EyeTrackingResult result)
         {
             if (!result.IsValid)

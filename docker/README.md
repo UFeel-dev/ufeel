@@ -32,9 +32,13 @@ docker build --target ci -t ufeeldocker:ci .
 
 Here are some options for the `run.sh` script:
 
-### Automatic display detection, ALSA audio
+### Automatic display detection, PulseAudio/PipeWire audio
 
 ./docker/run.sh
+
+### Force the audio backend (`alsa`, `pulse`, `pipewire`, `none`)
+
+AUDIO_BACKEND=alsa ./docker/run.sh
 
 ### Force Wayland
 

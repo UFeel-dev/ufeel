@@ -5,6 +5,7 @@
 #include "EyeTracking/EyeTrackingCalibrationModel.hpp"
 #include "EyeTracking/EyeTrackingDetector.hpp"
 #include "HeartRate/HeartRateSource.hpp"
+#include "SpeechToText/AudioSource.hpp"
 #include "WrapperAllocator.hpp"
 #include "opencv2/core/mat.hpp"
 #include "ufeel.h"
@@ -13,6 +14,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace ufeel::internal
 {
@@ -50,6 +52,11 @@ public:
     virtual auto updateSpeechToText() -> DataProcessorStatus = 0;
     [[nodiscard]] virtual auto getSpeechToText() const -> const SpeechToTextResult& = 0;
     virtual void toggleSpeechToText(bool enabled) = 0;
+    virtual auto updateMicrophones() -> DataProcessorStatus = 0;
+    [[nodiscard]] virtual auto getMicrophones() const -> const std::vector<Microphone>& = 0;
+    virtual auto selectMicrophone(const std::string& id) -> DataProcessorStatus = 0;
+    virtual auto updateMicrophonesChanged() -> DataProcessorStatus = 0;
+    [[nodiscard]] virtual auto getMicrophonesChanged() const -> bool = 0;
 
     virtual auto updateHeartRate() -> DataProcessorStatus = 0;
     [[nodiscard]] virtual auto getHeartRate() const -> HeartRateResult = 0;
@@ -79,6 +86,7 @@ constexpr auto toUFeelStatus(
     case DataProcessorStatus::FrameUnavailable:
         return UFEEL_STATUS_INVALID_FRAME;
     case DataProcessorStatus::InvalidDetectionType:
+    case DataProcessorStatus::InvalidArgument:
         return UFEEL_STATUS_INVALID_ARGUMENT;
     case DataProcessorStatus::UnsupportedFeature:
         return UFEEL_STATUS_UNSUPPORTED_FEATURE;

@@ -3,8 +3,11 @@
 #include "internal/UFeelProcessor.hpp" // IWYU pragma: keep
 #include "ufeel.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <limits>
+#include <span>
 
 using ufeel::internal::guarded;
 using ufeel::internal::guardedVoid;
@@ -18,6 +21,24 @@ void clearSpeechPayload(
 )
 {
     std::free(result.speech);
+    result = {};
+}
+
+void clearMicrophonesPayload(
+    UFeelMicrophonesResult& result
+)
+{
+    if (result.microphones != nullptr)
+    {
+        for (auto& microphone :
+             std::span(result.microphones, static_cast<std::size_t>(result.count)))
+        {
+            std::free(microphone.id);
+            std::free(microphone.name);
+        }
+        delete[] result.microphones;
+    }
+
     result = {};
 }
 
@@ -125,6 +146,139 @@ void ufeel_free_speech_to_text_result(
         }
         clearSpeechPayload(*speech);
         delete speech;
+    });
+}
+
+auto ufeel_get_microphones_result(
+    UFeelProcessor* processor, UFeelMicrophonesResult* result
+) -> int32_t
+{
+    return guarded(
+        "ufeel_get_microphones_result",
+        int32_t{UFEEL_STATUS_INTERNAL_ERROR},
+        [processor, result] -> int32_t {
+            if (result == nullptr)
+            {
+                return UFEEL_STATUS_INVALID_ARGUMENT;
+            }
+            clearMicrophonesPayload(*result);
+            if (processor == nullptr)
+            {
+                return UFEEL_STATUS_INVALID_PROCESSOR;
+            }
+
+            const auto updateStatus = processor->processor->updateMicrophones();
+            if (updateStatus != DataProcessorStatus::Ok)
+            {
+                return toUFeelStatus(updateStatus);
+            }
+
+            const auto& microphones = processor->processor->getMicrophones();
+            if (microphones.empty())
+            {
+                return UFEEL_STATUS_OK;
+            }
+            if (microphones.size() > static_cast<std::size_t>(std::numeric_limits<int32_t>::max()))
+            {
+                return UFEEL_STATUS_INTERNAL_ERROR;
+            }
+
+            result->microphones = processor->allocator->allocateMicrophones(microphones.size());
+            if (result->microphones == nullptr)
+            {
+                return UFEEL_STATUS_INTERNAL_ERROR;
+            }
+            result->count = static_cast<int32_t>(microphones.size());
+
+            auto microphone = microphones.begin();
+            for (auto& output : std::span(result->microphones, microphones.size()))
+            {
+                output.id = processor->allocator->duplicateString(microphone->id);
+                output.name = processor->allocator->duplicateString(microphone->name);
+                if (output.id == nullptr || output.name == nullptr)
+                {
+                    clearMicrophonesPayload(*result);
+                    return UFEEL_STATUS_INTERNAL_ERROR;
+                }
+                output.isDefault = microphone->isDefault ? 1 : 0;
+                ++microphone;
+            }
+
+            return UFEEL_STATUS_OK;
+        }
+    );
+}
+
+auto ufeel_set_microphone(
+    UFeelProcessor* processor, const char* utf8Id
+) -> int32_t
+{
+    return guarded(
+        "ufeel_set_microphone",
+        int32_t{UFEEL_STATUS_INTERNAL_ERROR},
+        [processor, utf8Id] -> int32_t {
+            if (processor == nullptr)
+            {
+                return UFEEL_STATUS_INVALID_PROCESSOR;
+            }
+
+            return toUFeelStatus(
+                processor->processor->selectMicrophone(utf8Id == nullptr ? "" : utf8Id)
+            );
+        }
+    );
+}
+
+auto ufeel_get_microphones_changed(
+    UFeelProcessor* processor, int32_t* changed
+) -> int32_t
+{
+    return guarded(
+        "ufeel_get_microphones_changed",
+        int32_t{UFEEL_STATUS_INTERNAL_ERROR},
+        [processor, changed] -> int32_t {
+            if (changed == nullptr)
+            {
+                return UFEEL_STATUS_INVALID_ARGUMENT;
+            }
+            *changed = 0;
+            if (processor == nullptr)
+            {
+                return UFEEL_STATUS_INVALID_PROCESSOR;
+            }
+
+            const auto status = processor->processor->updateMicrophonesChanged();
+            if (status != DataProcessorStatus::Ok)
+            {
+                return toUFeelStatus(status);
+            }
+
+            *changed = processor->processor->getMicrophonesChanged() ? 1 : 0;
+            return UFEEL_STATUS_OK;
+        }
+    );
+}
+
+auto ufeel_create_microphones_result() -> UFeelMicrophonesResult*
+{
+    return guarded(
+        "ufeel_create_microphones_result",
+        static_cast<UFeelMicrophonesResult*>(nullptr),
+        [] -> UFeelMicrophonesResult* { return new UFeelMicrophonesResult{}; }
+    );
+}
+
+void ufeel_free_microphones_result(
+    UFeelMicrophonesResult* microphones
+)
+{
+    guardedVoid("ufeel_free_microphones_result", [microphones] -> void {
+        if (microphones == nullptr)
+        {
+            return;
+        }
+        clearMicrophonesPayload(*microphones);
+        delete microphones;
     });
 }
 }

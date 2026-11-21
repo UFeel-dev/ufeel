@@ -52,12 +52,12 @@ set(OPENCV_DIR "${THIRDPARTY_DIR}/opencv")
 set(LIBTORCH_DIR "${THIRDPARTY_DIR}/libtorch")
 set(TFLITE_DIR "${THIRDPARTY_DIR}/tensorflowlite")
 set(VOSK_DIR "${THIRDPARTY_DIR}/vosk")
-set(PORTAUDIO_DIR "${THIRDPARTY_DIR}/portaudio")
 set(JSON_DIR "${THIRDPARTY_DIR}/json")
 
 set(UFEEL_DEPS_PREFIX "" CACHE PATH "Install prefix of the dependencies built from the 3rdparty submodules by ./build.sh deps")
+set(PORTAUDIO_DIR "${UFEEL_DEPS_PREFIX}")
 set(UFEEL_NEEDS_DEPS_PREFIX OFF)
-if(UFEEL_ENABLE_EMOTIONS OR UFEEL_ENABLE_HEART_RATE)
+if(UFEEL_ENABLE_EMOTIONS OR UFEEL_ENABLE_SPEECH_TO_TEXT OR UFEEL_ENABLE_HEART_RATE)
     set(UFEEL_NEEDS_DEPS_PREFIX ON)
 endif()
 
@@ -84,7 +84,7 @@ if(UFEEL_ENABLE_EYE_TRACKING)
     list(APPEND UFEEL_REQUIRED_DIRS "${TFLITE_DIR}")
 endif()
 if(UFEEL_ENABLE_SPEECH_TO_TEXT)
-    list(APPEND UFEEL_REQUIRED_DIRS "${VOSK_DIR}" "${PORTAUDIO_DIR}")
+    list(APPEND UFEEL_REQUIRED_DIRS "${VOSK_DIR}")
 endif()
 
 foreach(DIR IN LISTS UFEEL_REQUIRED_DIRS)
@@ -112,6 +112,12 @@ find_program(PATCHELF_EXECUTABLE NAMES patchelf REQUIRED)
 
 if(UFEEL_ENABLE_EMOTIONS)
     find_package(yaml-cpp 0.9 CONFIG REQUIRED PATHS "${UFEEL_DEPS_PREFIX}" NO_DEFAULT_PATH)
+endif()
+
+if(UFEEL_ENABLE_SPEECH_TO_TEXT)
+    find_path(PULSEAUDIO_INCLUDE_DIR pulse/pulseaudio.h REQUIRED)
+    find_library(PULSEAUDIO_LIBRARY pulse REQUIRED)
+    file(REAL_PATH "${PORTAUDIO_DIR}/lib/libportaudio.so.2" PORTAUDIO_LIBRARY_FILE)
 endif()
 
 set(OPENCV_LIBRARIES
@@ -191,6 +197,7 @@ endif()
 if(UFEEL_ENABLE_SPEECH_TO_TEXT)
     add_library(ufeel_feature_speech_to_text STATIC
         ${LIBRARY_DIR}/src/SpeechToText/AudioCapture.cpp
+        ${LIBRARY_DIR}/src/SpeechToText/PulseSources.cpp
         ${LIBRARY_DIR}/src/SpeechToText/SpeechRecognizer.cpp
         ${LIBRARY_DIR}/src/SpeechToText/SpeechToTextDetector.cpp
     )
@@ -300,7 +307,10 @@ if(UFEEL_ENABLE_SPEECH_TO_TEXT)
             ${VOSK_KALDI_LIBRARIES}
             "-Wl,--end-group"
             "${PORTAUDIO_DIR}/lib/libportaudio.so"
+        PRIVATE
+            "${PULSEAUDIO_LIBRARY}"
     )
+    target_include_directories(ufeel_feature_speech_to_text SYSTEM PRIVATE "${PULSEAUDIO_INCLUDE_DIR}")
 endif()
 
 if(UFEEL_ENABLE_HEART_RATE)
@@ -427,7 +437,7 @@ endif()
 
 if(UFEEL_ENABLE_SPEECH_TO_TEXT)
     install(
-        FILES "${PORTAUDIO_DIR}/lib/libportaudio.so.2.0.0"
+        FILES "${PORTAUDIO_LIBRARY_FILE}"
         RENAME libportaudio.so.2
         DESTINATION dependencies
     )

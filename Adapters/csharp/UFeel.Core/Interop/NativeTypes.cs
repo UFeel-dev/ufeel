@@ -85,6 +85,21 @@ namespace UFeel.Interop
     }
 
     [StructLayout(LayoutKind.Sequential)]
+    internal struct NativeMicrophone
+    {
+        public IntPtr Id;
+        public IntPtr Name;
+        public int IsDefault;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct NativeMicrophonesResult
+    {
+        public int Count;
+        public IntPtr Microphones;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
     internal struct NativeHeartRateResult
     {
         public int Status;

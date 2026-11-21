@@ -41,6 +41,7 @@ constexpr std::array kExportedFunctions{
     "ufeel_create_emotions_result",
     "ufeel_create_eye_tracking_result",
     "ufeel_create_heart_rate_result",
+    "ufeel_create_microphones_result",
     "ufeel_create_speech_to_text_result",
     "ufeel_destroy",
     "ufeel_finish_eye_tracking_calibration",
@@ -48,6 +49,7 @@ constexpr std::array kExportedFunctions{
     "ufeel_free_eye_tracking_result",
     "ufeel_free_frame",
     "ufeel_free_heart_rate_result",
+    "ufeel_free_microphones_result",
     "ufeel_free_speech_to_text_result",
     "ufeel_get_emotions_result",
     "ufeel_get_emotions_result_from_frame",
@@ -58,11 +60,14 @@ constexpr std::array kExportedFunctions{
     "ufeel_get_frame",
     "ufeel_get_frame_info",
     "ufeel_get_heart_rate_result",
+    "ufeel_get_microphones_changed",
+    "ufeel_get_microphones_result",
     "ufeel_get_speech_to_text_result",
     "ufeel_load_eye_tracking_calibration_profile",
     "ufeel_save_eye_tracking_calibration_profile",
     "ufeel_set_eye_tracking_calibration_target",
     "ufeel_set_frame",
+    "ufeel_set_microphone",
     "ufeel_set_speech_to_text_enabled",
     "ufeel_update",
     "ufeel_update_emotions",
@@ -174,4 +179,32 @@ TEST(
             feature.enabled ? UFEEL_STATUS_OK : UFEEL_STATUS_UNSUPPORTED_FEATURE
         ) << feature.name;
     }
+
+    const auto createMicrophones = resolve<decltype(&ufeel_create_microphones_result)>(
+        library, "ufeel_create_microphones_result"
+    );
+    const auto freeMicrophones =
+        resolve<decltype(&ufeel_free_microphones_result)>(library, "ufeel_free_microphones_result");
+    const auto getMicrophones =
+        resolve<decltype(&ufeel_get_microphones_result)>(library, "ufeel_get_microphones_result");
+    const auto setMicrophone =
+        resolve<decltype(&ufeel_set_microphone)>(library, "ufeel_set_microphone");
+    const auto getMicrophonesChanged =
+        resolve<decltype(&ufeel_get_microphones_changed)>(library, "ufeel_get_microphones_changed");
+    ASSERT_NE(createMicrophones, nullptr);
+    ASSERT_NE(getMicrophonesChanged, nullptr);
+    ASSERT_NE(freeMicrophones, nullptr);
+    ASSERT_NE(getMicrophones, nullptr);
+    ASSERT_NE(setMicrophone, nullptr);
+
+    const auto expected =
+        UFEEL_ENABLE_SPEECH_TO_TEXT != 0 ? UFEEL_STATUS_OK : UFEEL_STATUS_UNSUPPORTED_FEATURE;
+    const std::unique_ptr<UFeelMicrophonesResult, decltype(freeMicrophones)> microphones(
+        createMicrophones(), freeMicrophones
+    );
+    ASSERT_NE(microphones, nullptr);
+    EXPECT_EQ(getMicrophones(processor.get(), microphones.get()), expected);
+    EXPECT_EQ(setMicrophone(processor.get(), nullptr), expected);
+    int32_t changed = 0;
+    EXPECT_EQ(getMicrophonesChanged(processor.get(), &changed), expected);
 }

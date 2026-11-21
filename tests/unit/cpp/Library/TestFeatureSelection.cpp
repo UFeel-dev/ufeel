@@ -32,6 +32,9 @@ TEST(
 #endif
 #if !UFEEL_ENABLE_SPEECH_TO_TEXT
     EXPECT_EQ(processor.update(Speech), DataProcessorStatus::UnsupportedFeature);
+    EXPECT_EQ(processor.updateMicrophones(), DataProcessorStatus::UnsupportedFeature);
+    EXPECT_EQ(processor.selectMicrophone(""), DataProcessorStatus::UnsupportedFeature);
+    EXPECT_EQ(processor.updateMicrophonesChanged(), DataProcessorStatus::UnsupportedFeature);
 #endif
 #if !UFEEL_ENABLE_HEART_RATE
     EXPECT_EQ(processor.update(HeartRate), DataProcessorStatus::UnsupportedFeature);
