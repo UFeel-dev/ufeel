@@ -27,6 +27,7 @@ public:
     bool failFrame = false;
     bool failFrameData = false;
     bool failEmotionPairs = false;
+    bool failMicrophones = false;
     int32_t failStringAt = -1;
     int32_t stringAllocations = 0;
 
@@ -47,6 +48,13 @@ public:
     ) noexcept -> UFeelPair* override
     {
         return failEmotionPairs ? nullptr : new (std::nothrow) UFeelPair[count]{};
+    }
+
+    [[nodiscard]] auto allocateMicrophones(
+        std::size_t count
+    ) noexcept -> UFeelMicrophone* override
+    {
+        return failMicrophones ? nullptr : new (std::nothrow) UFeelMicrophone[count]{};
     }
 
     [[nodiscard]] auto duplicateString(
@@ -303,6 +311,12 @@ TEST(
     );
     EXPECT_EQ(speech->speech, nullptr);
     ufeel_free_speech_to_text_result(speech);
+    UFeelMicrophonesResult microphones{};
+    EXPECT_EQ(
+        ufeel_get_microphones_result(&test.processor, &microphones), UFEEL_STATUS_INTERNAL_ERROR
+    );
+    EXPECT_EQ(microphones.microphones, nullptr);
+    EXPECT_EQ(ufeel_set_microphone(&test.processor, "USB"), UFEEL_STATUS_INTERNAL_ERROR);
     test.backend->throwOnSpeech = false;
 
     test.backend->throwOnHeartRate = true;
@@ -660,4 +674,64 @@ TEST(
     );
     EXPECT_EQ(speech->speech, nullptr);
     ufeel_free_speech_to_text_result(speech);
+}
+
+TEST(
+    WrapperBehaviorTest, MicrophoneApisListAndSelectBackendMicrophones
+)
+{
+    TestProcessor test;
+    auto* microphones = ufeel_create_microphones_result();
+    ASSERT_NE(microphones, nullptr);
+
+    ASSERT_EQ(ufeel_get_microphones_result(&test.processor, microphones), UFEEL_STATUS_OK);
+    ASSERT_EQ(microphones->count, 2);
+    EXPECT_STREQ(microphones->microphones[0].name, "default");
+    EXPECT_EQ(microphones->microphones[0].isDefault, 0);
+    EXPECT_STREQ(microphones->microphones[1].name, "USB");
+    EXPECT_EQ(microphones->microphones[1].isDefault, 1);
+
+    test.backend->microphones.clear();
+    EXPECT_EQ(ufeel_get_microphones_result(&test.processor, microphones), UFEEL_STATUS_OK);
+    EXPECT_EQ(microphones->count, 0);
+    EXPECT_EQ(microphones->microphones, nullptr);
+
+    test.backend->microphonesStatus = DataProcessorStatus::UnsupportedFeature;
+    EXPECT_EQ(
+        ufeel_get_microphones_result(&test.processor, microphones), UFEEL_STATUS_UNSUPPORTED_FEATURE
+    );
+    EXPECT_EQ(ufeel_set_microphone(&test.processor, nullptr), UFEEL_STATUS_UNSUPPORTED_FEATURE);
+    ufeel_free_microphones_result(microphones);
+
+    test.backend->microphonesStatus = DataProcessorStatus::Ok;
+    test.backend->microphones = {{.name = "USB"}};
+    EXPECT_EQ(ufeel_set_microphone(&test.processor, "USB"), UFEEL_STATUS_OK);
+    EXPECT_EQ(test.backend->selectedMicrophone, "USB");
+    EXPECT_EQ(ufeel_set_microphone(&test.processor, "missing"), UFEEL_STATUS_INVALID_ARGUMENT);
+    EXPECT_EQ(test.backend->selectedMicrophone, "USB");
+    EXPECT_EQ(ufeel_set_microphone(&test.processor, nullptr), UFEEL_STATUS_OK);
+    EXPECT_EQ(test.backend->selectedMicrophone, "");
+}
+
+TEST(
+    WrapperBehaviorTest, MicrophonesResultReportsAllocationFailures
+)
+{
+    TestProcessor test;
+    UFeelMicrophonesResult microphones{};
+
+    test.allocator.failMicrophones = true;
+    EXPECT_EQ(
+        ufeel_get_microphones_result(&test.processor, &microphones), UFEEL_STATUS_INTERNAL_ERROR
+    );
+    EXPECT_EQ(microphones.microphones, nullptr);
+    EXPECT_EQ(microphones.count, 0);
+
+    test.allocator.failMicrophones = false;
+    test.allocator.failStringAt = 1;
+    EXPECT_EQ(
+        ufeel_get_microphones_result(&test.processor, &microphones), UFEEL_STATUS_INTERNAL_ERROR
+    );
+    EXPECT_EQ(microphones.microphones, nullptr);
+    EXPECT_EQ(microphones.count, 0);
 }

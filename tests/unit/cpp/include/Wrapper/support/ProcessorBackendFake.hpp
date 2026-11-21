@@ -6,12 +6,15 @@
 #include "EyeTracking/EyeTrackingDetector.hpp"
 #include "HeartRate/HeartRateSource.hpp"
 #include "HeartRate/UFeelHeartRateStatus.hpp"
+#include "SpeechToText/AudioSource.hpp"
 #include "internal/UFeelProcessor.hpp"
 #include "opencv2/core/mat.hpp"
 
+#include <algorithm>
 #include <cstdint>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 class ProcessorBackendFake final : public ufeel::internal::ProcessorBackend
 {
@@ -39,6 +42,9 @@ public:
     };
     EyeTrackingResult frameEyeTracking = eyeTracking;
     SpeechToTextResult speech{.status = SpeechToTextStatus::Valid, .text = "recognized"};
+    DataProcessorStatus microphonesStatus = DataProcessorStatus::Ok;
+    std::vector<Microphone> microphones{{.name = "default"}, {.name = "USB", .isDefault = true}};
+    std::string selectedMicrophone = "none";
     HeartRateResult heartRate{.bpm = 73, .status = HeartRateStatus::Valid};
     CalibrationProgress calibrationProgress{
         .targetsWithEnoughSamples = 2,
@@ -206,6 +212,35 @@ public:
     ) override
     {
         speechEnabled = enabled;
+    }
+
+    auto updateMicrophones() -> DataProcessorStatus override
+    {
+        throwIfEnabled(throwOnSpeech);
+        return microphonesStatus;
+    }
+
+    [[nodiscard]] auto getMicrophones() const -> const std::vector<Microphone>& override
+    {
+        return microphones;
+    }
+
+    auto selectMicrophone(
+        const std::string& name
+    ) -> DataProcessorStatus override
+    {
+        throwIfEnabled(throwOnSpeech);
+        if (microphonesStatus != DataProcessorStatus::Ok)
+        {
+            return microphonesStatus;
+        }
+        if (!name.empty() &&
+            std::ranges::find(microphones, name, &Microphone::name) == microphones.end())
+        {
+            return DataProcessorStatus::InvalidArgument;
+        }
+        selectedMicrophone = name;
+        return DataProcessorStatus::Ok;
     }
 
     auto updateHeartRate() -> DataProcessorStatus override

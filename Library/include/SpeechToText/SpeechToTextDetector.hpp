@@ -34,6 +34,11 @@ public:
 
     void toggle(bool state);
 
+    [[nodiscard]] auto microphones() -> std::vector<Microphone>;
+
+    /** Restarts a running capture on the new microphone. An empty name selects the default. */
+    auto selectMicrophone(const std::string& name) -> bool;
+
     [[nodiscard]]
     auto process(Clock::time_point now = Clock::now()) const -> std::string;
 

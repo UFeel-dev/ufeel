@@ -8,16 +8,17 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
+#include <string>
 #include <vector>
 
 class AudioCapture final : public AudioSource
 {
 public:
 
-    static constexpr double sampleRate = 16000.0;
     static constexpr std::uint64_t framesPerBuffer = 1600;
-    static constexpr std::size_t bufferCount = 8;
-    static constexpr std::size_t channelCount = 2;
+    static constexpr std::size_t bufferCount = 32;
+    static constexpr std::size_t maxChannelCount = 2;
 
     AudioCapture();
     ~AudioCapture() override;
@@ -33,14 +34,37 @@ public:
 
     auto read(std::vector<int16_t>& buffer) -> bool override;
 
+    [[nodiscard]] auto sampleRate() const -> double override;
+
+    /** Rescans the devices while no stream is open. */
+    [[nodiscard]] auto microphones() -> std::vector<Microphone> override;
+    auto selectMicrophone(const std::string& name) -> bool override;
+
 private:
 
     using AudioBuffer = std::array<int16_t, framesPerBuffer>;
+
+    struct CaptureFormat
+    {
+        int channelCount = 0;
+        double sampleRate = AudioSource::defaultSampleRate;
+        PaTime latency = 0.0;
+    };
+
+    struct Device
+    {
+        PaDeviceIndex index = paNoDevice;
+        std::string name;
+        CaptureFormat format;
+    };
 
     static_assert(std::atomic<std::uint64_t>::is_always_lock_free);
 
     PaStream* stream_ = nullptr;
     bool initialized_ = false;
+    std::string selectedName_;
+    std::optional<Device> openDevice_;
+    CaptureFormat format_;
 
     std::atomic<bool> running_{false};
 
@@ -55,7 +79,14 @@ private:
 
     auto initialize() -> bool;
     auto openStream() -> bool;
-    [[nodiscard]] static auto findInputDevice() -> PaDeviceIndex;
+    void rescan();
+
+    [[nodiscard]] static auto findFormat(PaDeviceIndex index, const PaDeviceInfo& info)
+        -> std::optional<CaptureFormat>;
+    [[nodiscard]] static auto usableDevices() -> std::vector<Device>;
+    [[nodiscard]] auto availableDevices() const -> std::vector<Device>;
+    [[nodiscard]] static auto defaultDevice(const std::vector<Device>& devices) -> const Device*;
+    [[nodiscard]] auto findInputDevice() const -> std::optional<Device>;
 
     void closeStream();
     void terminate();

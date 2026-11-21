@@ -311,3 +311,15 @@ TEST(
     EXPECT_FALSE(processor.saveEyeTrackingCalibrationProfile("/missing/path/profile.json"));
     EXPECT_FALSE(processor.loadEyeTrackingCalibrationProfile("/missing/path/profile.json"));
 }
+
+TEST(
+    DataProcessorTest, ForwardsMicrophoneOperationsToTheAudioSource
+)
+{
+    auto processor = createProcessor();
+
+    EXPECT_EQ(processor.updateMicrophones(), DataProcessorStatus::Ok);
+    EXPECT_TRUE(processor.getMicrophones().empty());
+    EXPECT_EQ(processor.selectMicrophone(""), DataProcessorStatus::Ok);
+    EXPECT_EQ(processor.selectMicrophone("USB"), DataProcessorStatus::InvalidArgument);
+}

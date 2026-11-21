@@ -4,6 +4,7 @@
 #include "TestDoubles.hpp"
 #include "portaudio.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -21,19 +22,17 @@ struct FakePaStream
 {
     PaStreamCallback* callback = nullptr;
     void* userData = nullptr;
+    int channelCount = 0;
     bool active = false;
 };
 
 struct FakePortAudioState
 {
     PaError initializeResult = paNoError;
-    PaDeviceIndex deviceCount = 1;
+    PaError deviceCountError = paNoError;
+    std::vector<speech_to_text_test::FakeInputDevice> devices{{}};
+    PaDeviceIndex defaultInputDevice = 0;
     bool deviceInfoAvailable = true;
-    bool nullDeviceInfoAfterFirstQuery = false;
-    std::size_t deviceInfoQueryCount = 0;
-    int inputChannels = 2;
-    double deviceSampleRate = 16000.0;
-    const char* deviceName = "Fake input device";
     PaError formatResult = paFormatIsSupported;
     PaError openResult = paNoError;
     PaError startResult = paNoError;
@@ -41,6 +40,12 @@ struct FakePortAudioState
     bool callbackInputAvailable = true;
     unsigned long callbackFrameCount = 1600;
     bool invokeCallbackOnStop = false;
+
+    int initializeCount = 0;
+    PaDeviceIndex openedDevice = paNoDevice;
+    int openedChannelCount = 0;
+    double openedSampleRate = 0.0;
+    PaDeviceInfo info{};
 };
 
 auto fakePortAudioState() -> FakePortAudioState&
@@ -49,22 +54,34 @@ auto fakePortAudioState() -> FakePortAudioState&
     return state;
 }
 
-auto simulatedDeviceInfo() -> PaDeviceInfo&
+auto fakeDevice(
+    PaDeviceIndex device
+) -> const speech_to_text_test::FakeInputDevice*
 {
-    static PaDeviceInfo info{
-        .structVersion = 2,
-        .name = "Fake input device",
-        .hostApi = 0,
-        .maxInputChannels = 2,
-        .maxOutputChannels = 0,
-        .defaultLowInputLatency = 0.01,
-        .defaultLowOutputLatency = 0.1,
-        .defaultHighInputLatency = 0.01,
-        .defaultHighOutputLatency = 0.1,
-        .defaultSampleRate = 16000.0,
-    };
+    const auto& devices = fakePortAudioState().devices;
+    if (device < 0 || std::cmp_greater_equal(device, devices.size()))
+    {
+        return nullptr;
+    }
 
-    return info;
+    return &devices[static_cast<std::size_t>(device)];
+}
+
+auto capturedSamples(
+    unsigned long frameCount, int channelCount
+) -> std::vector<int16_t>
+{
+    std::vector<int16_t> samples;
+    samples.reserve(frameCount * static_cast<std::size_t>(channelCount));
+    for (unsigned long frame = 0; frame < frameCount; ++frame)
+    {
+        for (int channel = 0; channel < channelCount; ++channel)
+        {
+            samples.push_back(static_cast<int16_t>(100 + (200 * channel)));
+        }
+    }
+
+    return samples;
 }
 
 } // namespace
@@ -88,7 +105,23 @@ void PortAudioFake::setDeviceCount(
     PaDeviceIndex count
 )
 {
-    fakePortAudioState().deviceCount = count;
+    FakePortAudioState& state = fakePortAudioState();
+    state.deviceCountError = count < 0 ? count : paNoError;
+    state.devices.resize(count < 0 ? 0 : static_cast<std::size_t>(count));
+}
+
+void PortAudioFake::setDevices(
+    std::vector<FakeInputDevice> devices
+)
+{
+    fakePortAudioState().devices = std::move(devices);
+}
+
+void PortAudioFake::setDefaultInputDevice(
+    PaDeviceIndex device
+)
+{
+    fakePortAudioState().defaultInputDevice = device;
 }
 
 void PortAudioFake::setDeviceInfoAvailable(
@@ -96,22 +129,6 @@ void PortAudioFake::setDeviceInfoAvailable(
 )
 {
     fakePortAudioState().deviceInfoAvailable = available;
-}
-
-void PortAudioFake::returnNullDeviceInfoAfterFirstQuery(
-    bool enabled
-)
-{
-    fakePortAudioState().nullDeviceInfoAfterFirstQuery = enabled;
-}
-
-void PortAudioFake::setDeviceCapabilities(
-    int channels, double sampleRate, const char* name
-)
-{
-    fakePortAudioState().inputChannels = channels;
-    fakePortAudioState().deviceSampleRate = sampleRate;
-    fakePortAudioState().deviceName = name;
 }
 
 void PortAudioFake::setFormatResult(
@@ -163,10 +180,31 @@ void PortAudioFake::invokeCallbackOnStop(
     fakePortAudioState().invokeCallbackOnStop = enabled;
 }
 
+auto PortAudioFake::initializeCount() -> int
+{
+    return fakePortAudioState().initializeCount;
+}
+
+auto PortAudioFake::openedDevice() -> PaDeviceIndex
+{
+    return fakePortAudioState().openedDevice;
+}
+
+auto PortAudioFake::openedChannelCount() -> int
+{
+    return fakePortAudioState().openedChannelCount;
+}
+
+auto PortAudioFake::openedSampleRate() -> double
+{
+    return fakePortAudioState().openedSampleRate;
+}
+
 } // namespace speech_to_text_test
 
 auto Pa_Initialize() -> PaError
 {
+    ++fakePortAudioState().initializeCount;
     return fakePortAudioState().initializeResult;
 }
 
@@ -177,7 +215,18 @@ auto Pa_Terminate() -> PaError
 
 auto Pa_GetDeviceCount() -> PaDeviceIndex
 {
-    return fakePortAudioState().deviceCount;
+    const FakePortAudioState& state = fakePortAudioState();
+    if (state.deviceCountError != paNoError)
+    {
+        return state.deviceCountError;
+    }
+
+    return static_cast<PaDeviceIndex>(state.devices.size());
+}
+
+auto Pa_GetDefaultInputDevice() -> PaDeviceIndex
+{
+    return fakePortAudioState().defaultInputDevice;
 }
 
 auto Pa_GetDeviceInfo(
@@ -185,19 +234,26 @@ auto Pa_GetDeviceInfo(
 ) -> const PaDeviceInfo*
 {
     FakePortAudioState& state = fakePortAudioState();
-    const bool returnNull = state.nullDeviceInfoAfterFirstQuery && state.deviceInfoQueryCount > 0;
-    ++state.deviceInfoQueryCount;
-    if (device < 0 || device >= state.deviceCount || !state.deviceInfoAvailable || returnNull)
+    const auto* fake = fakeDevice(device);
+    if (fake == nullptr || !state.deviceInfoAvailable)
     {
         return nullptr;
     }
 
-    PaDeviceInfo& info = simulatedDeviceInfo();
-    info.maxInputChannels = fakePortAudioState().inputChannels;
-    info.name = fakePortAudioState().deviceName;
-    info.defaultSampleRate = fakePortAudioState().deviceSampleRate;
+    state.info = {
+        .structVersion = 2,
+        .name = fake->name.c_str(),
+        .hostApi = 0,
+        .maxInputChannels = fake->inputChannels,
+        .maxOutputChannels = 0,
+        .defaultLowInputLatency = 0.01,
+        .defaultLowOutputLatency = 0.1,
+        .defaultHighInputLatency = 0.01,
+        .defaultHighOutputLatency = 0.1,
+        .defaultSampleRate = fake->sampleRates.empty() ? 16000.0 : fake->sampleRates.front(),
+    };
 
-    return &info;
+    return &state.info;
 }
 
 auto Pa_IsFormatSupported(
@@ -206,11 +262,29 @@ auto Pa_IsFormatSupported(
     double sampleRate
 ) -> PaError
 {
-    (void)inputParameters;
     (void)outputParameters;
-    (void)sampleRate;
 
-    return fakePortAudioState().formatResult;
+    if (fakePortAudioState().formatResult != paFormatIsSupported)
+    {
+        return fakePortAudioState().formatResult;
+    }
+
+    const auto* fake = fakeDevice(inputParameters->device);
+    if (fake == nullptr)
+    {
+        return paInvalidDevice;
+    }
+    if (inputParameters->channelCount > fake->inputChannels)
+    {
+        return paInvalidChannelCount;
+    }
+    if (!fake->sampleRates.empty() &&
+        std::ranges::find(fake->sampleRates, sampleRate) == fake->sampleRates.end())
+    {
+        return paInvalidSampleRate;
+    }
+
+    return paFormatIsSupported;
 }
 
 auto Pa_OpenStream(
@@ -224,22 +298,25 @@ auto Pa_OpenStream(
     void* userData
 ) -> PaError
 {
-    (void)inputParameters;
     (void)outputParameters;
-    (void)sampleRate;
     (void)framesPerBuffer;
     (void)streamFlags;
 
-    if (fakePortAudioState().openResult != paNoError)
+    FakePortAudioState& state = fakePortAudioState();
+    if (state.openResult != paNoError)
     {
-        return fakePortAudioState().openResult;
+        return state.openResult;
     }
 
-    auto* fakeStream = new FakePaStream{};
-    fakeStream->callback = callback;
-    fakeStream->userData = userData;
+    state.openedDevice = inputParameters->device;
+    state.openedChannelCount = inputParameters->channelCount;
+    state.openedSampleRate = sampleRate;
 
-    *stream = reinterpret_cast<PaStream*>(fakeStream);
+    *stream = reinterpret_cast<PaStream*>(new FakePaStream{
+        .callback = callback,
+        .userData = userData,
+        .channelCount = inputParameters->channelCount,
+    });
 
     return paNoError;
 }
@@ -261,19 +338,13 @@ auto Pa_StartStream(
 
     fakeStream->active = true;
 
-    std::vector<int16_t> samples(fakePortAudioState().callbackFrameCount * 2, 100);
+    const auto frameCount = fakePortAudioState().callbackFrameCount;
+    const auto samples = capturedSamples(frameCount, fakeStream->channelCount);
 
     if (fakeStream->callback != nullptr)
     {
         const void* input = fakePortAudioState().callbackInputAvailable ? samples.data() : nullptr;
-        fakeStream->callback(
-            input,
-            nullptr,
-            fakePortAudioState().callbackFrameCount,
-            nullptr,
-            0,
-            fakeStream->userData
-        );
+        fakeStream->callback(input, nullptr, frameCount, nullptr, 0, fakeStream->userData);
     }
 
     return paNoError;
@@ -293,7 +364,7 @@ auto Pa_StopStream(
 
     if (fakePortAudioState().invokeCallbackOnStop && fakeStream->callback != nullptr)
     {
-        std::vector<int16_t> samples(2, 100);
+        const auto samples = capturedSamples(1, fakeStream->channelCount);
         fakeStream->callback(samples.data(), nullptr, 1, nullptr, 0, fakeStream->userData);
     }
 
@@ -486,6 +557,75 @@ TEST_F(
         detector->toggle(true);
         detector.reset();
     });
+}
+
+TEST_F(
+    TestSpeechToTextDetector, RecognizerFollowsTheCaptureSampleRate
+)
+{
+    SpeechToTextDetector detector(
+        modelPath_,
+        std::make_unique<WavAudioSource>(
+            std::vector<int16_t>(AudioCapture::framesPerBuffer), 48000.0
+        )
+    );
+
+    detector.toggle(true);
+    detector.toggle(false);
+
+    EXPECT_FLOAT_EQ(speech_to_text_test::VoskFake::recognizerSampleRate(), 48000.0F);
+}
+
+TEST_F(
+    TestSpeechToTextDetector, StaysStoppedWhenTheSampleRateCannotBeRecognized
+)
+{
+    SpeechToTextDetector detector(
+        modelPath_, std::make_unique<WavAudioSource>(std::vector<int16_t>{}, 48000.0)
+    );
+    speech_to_text_test::VoskFake::setRecognizerCreationSucceeds(false);
+
+    detector.toggle(true);
+    detector.toggle(false);
+
+    EXPECT_TRUE(detector.process().empty());
+}
+
+TEST_F(
+    TestSpeechToTextDetector, SelectingAMicrophoneRestartsARunningCapture
+)
+{
+    speech_to_text_test::PortAudioFake::setDevices({{.name = "Built-in"}, {.name = "USB"}});
+    SpeechToTextDetector detector(modelPath_);
+
+    ASSERT_EQ(detector.microphones().size(), 2U);
+
+    detector.toggle(true);
+    EXPECT_EQ(speech_to_text_test::PortAudioFake::openedDevice(), 0);
+
+    EXPECT_TRUE(detector.selectMicrophone("USB"));
+    EXPECT_EQ(speech_to_text_test::PortAudioFake::openedDevice(), 1);
+
+    EXPECT_FALSE(detector.selectMicrophone("Unplugged"));
+    EXPECT_EQ(speech_to_text_test::PortAudioFake::openedDevice(), 1);
+
+    detector.toggle(false);
+    EXPECT_EQ(detector.process(), "final sentence");
+}
+
+TEST_F(
+    TestSpeechToTextDetector, SelectingAMicrophoneWhileStoppedDoesNotStartCapture
+)
+{
+    speech_to_text_test::PortAudioFake::setDevices({{.name = "Built-in"}, {.name = "USB"}});
+    SpeechToTextDetector detector(modelPath_);
+
+    EXPECT_TRUE(detector.selectMicrophone("USB"));
+    EXPECT_EQ(speech_to_text_test::PortAudioFake::openedDevice(), paNoDevice);
+
+    detector.toggle(true);
+    EXPECT_EQ(speech_to_text_test::PortAudioFake::openedDevice(), 1);
+    detector.toggle(false);
 }
 
 } // namespace

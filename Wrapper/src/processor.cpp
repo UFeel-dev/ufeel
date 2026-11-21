@@ -2,6 +2,7 @@
 #include "EyeTracking/EyeTrackingCalibrationModel.hpp"
 #include "EyeTracking/EyeTrackingDetector.hpp"
 #include "HeartRate/HeartRateSource.hpp"
+#include "SpeechToText/AudioSource.hpp"
 #include "internal/ErrorHandling.hpp"
 #include "internal/FrameConversion.hpp"
 #include "internal/UFeelProcessor.hpp"
@@ -18,6 +19,7 @@
 #include <memory>
 #include <new>
 #include <string>
+#include <vector>
 
 using ufeel::internal::convertFrame;
 using ufeel::internal::FrameCopyPolicy;
@@ -133,6 +135,23 @@ public:
     ) override
     {
         processor_.toggleSpeechToText(enabled);
+    }
+
+    auto updateMicrophones() -> DataProcessorStatus override
+    {
+        return processor_.updateMicrophones();
+    }
+
+    [[nodiscard]] auto getMicrophones() const -> const std::vector<Microphone>& override
+    {
+        return processor_.getMicrophones();
+    }
+
+    auto selectMicrophone(
+        const std::string& name
+    ) -> DataProcessorStatus override
+    {
+        return processor_.selectMicrophone(name);
     }
 
     auto updateHeartRate() -> DataProcessorStatus override

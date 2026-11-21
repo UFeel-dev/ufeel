@@ -113,23 +113,30 @@ TEST_F(
     AudioCaptureTest, SkipsIncompatibleInputDevices
 )
 {
-    speech_to_text_test::PortAudioFake::setDeviceInfoAvailable(false);
+    using speech_to_text_test::PortAudioFake;
+
+    PortAudioFake::setDeviceInfoAvailable(false);
     {
         AudioCapture capture;
         EXPECT_FALSE(capture.start());
     }
 
-    speech_to_text_test::PortAudioFake::setDeviceInfoAvailable(true);
-    speech_to_text_test::PortAudioFake::setDeviceCapabilities(
-        1, AudioCapture::sampleRate, "Mono input"
-    );
+    PortAudioFake::setDeviceInfoAvailable(true);
+    PortAudioFake::setDevices({{.name = "Output only", .inputChannels = 0}});
     {
         AudioCapture capture;
         EXPECT_FALSE(capture.start());
     }
 
-    speech_to_text_test::PortAudioFake::setDeviceCapabilities(2, 44100.0, "Other sample rate");
-    speech_to_text_test::PortAudioFake::setFormatResult(paInvalidSampleRate);
+    PortAudioFake::setDevices({{.name = "Telephone", .sampleRates = {8000.0}}});
+    {
+        AudioCapture capture;
+        EXPECT_FALSE(capture.start());
+        EXPECT_TRUE(capture.microphones().empty());
+    }
+
+    PortAudioFake::setDevices({{}});
+    PortAudioFake::setFormatResult(paInvalidSampleRate);
     {
         AudioCapture capture;
         EXPECT_FALSE(capture.start());
@@ -137,14 +144,155 @@ TEST_F(
 }
 
 TEST_F(
-    AudioCaptureTest, HandlesDeviceInfoDisappearingBeforeStreamOpen
+    AudioCaptureTest, CapturesMonoMicrophones
 )
 {
-    speech_to_text_test::PortAudioFake::returnNullDeviceInfoAfterFirstQuery(true);
+    speech_to_text_test::PortAudioFake::setDevices({{.name = "Mono", .inputChannels = 1}});
+    std::vector<int16_t> buffer;
 
     AudioCapture capture;
+    ASSERT_TRUE(capture.start());
+    EXPECT_EQ(speech_to_text_test::PortAudioFake::openedChannelCount(), 1);
+    ASSERT_TRUE(capture.read(buffer));
+    EXPECT_EQ(buffer.front(), 100);
+    capture.stop();
+}
 
-    EXPECT_FALSE(capture.start());
+TEST_F(
+    AudioCaptureTest, PrefersSixteenKilohertzAndFallsBackToNativeRates
+)
+{
+    using speech_to_text_test::PortAudioFake;
+
+    PortAudioFake::setDevices({{.sampleRates = {48000.0, 16000.0}}});
+    {
+        AudioCapture capture;
+        ASSERT_TRUE(capture.start());
+        EXPECT_DOUBLE_EQ(PortAudioFake::openedSampleRate(), 16000.0);
+        EXPECT_DOUBLE_EQ(capture.sampleRate(), 16000.0);
+    }
+
+    PortAudioFake::setDevices({{.sampleRates = {44100.0}}});
+    {
+        AudioCapture capture;
+        ASSERT_TRUE(capture.start());
+        EXPECT_DOUBLE_EQ(PortAudioFake::openedSampleRate(), 44100.0);
+        EXPECT_DOUBLE_EQ(capture.sampleRate(), 44100.0);
+    }
+}
+
+TEST_F(
+    AudioCaptureTest, ListsUsableMicrophonesAndMarksTheSystemDefault
+)
+{
+    using speech_to_text_test::PortAudioFake;
+
+    PortAudioFake::setDevices(
+        {{.name = "Speakers", .inputChannels = 0}, {.name = "Built-in"}, {.name = "USB"}}
+    );
+    PortAudioFake::setDefaultInputDevice(2);
+
+    AudioCapture capture;
+    auto microphones = capture.microphones();
+
+    ASSERT_EQ(microphones.size(), 2U);
+    EXPECT_EQ(microphones[0].name, "Built-in");
+    EXPECT_FALSE(microphones[0].isDefault);
+    EXPECT_EQ(microphones[1].name, "USB");
+    EXPECT_TRUE(microphones[1].isDefault);
+
+    ASSERT_TRUE(capture.start());
+    EXPECT_EQ(PortAudioFake::openedDevice(), 2);
+    capture.stop();
+
+    PortAudioFake::setDefaultInputDevice(0);
+    microphones = capture.microphones();
+    ASSERT_EQ(microphones.size(), 2U);
+    EXPECT_TRUE(microphones[0].isDefault);
+
+    ASSERT_TRUE(capture.start());
+    EXPECT_EQ(PortAudioFake::openedDevice(), 1);
+}
+
+TEST_F(
+    AudioCaptureTest, SelectsMicrophonesByNameFromTheNextStart
+)
+{
+    using speech_to_text_test::PortAudioFake;
+
+    PortAudioFake::setDevices({{.name = "Built-in"}, {.name = "USB"}});
+
+    AudioCapture capture;
+    ASSERT_TRUE(capture.start());
+    EXPECT_EQ(PortAudioFake::openedDevice(), 0);
+
+    EXPECT_TRUE(capture.selectMicrophone("USB"));
+    EXPECT_EQ(PortAudioFake::openedDevice(), 0);
+    capture.stop();
+    ASSERT_TRUE(capture.start());
+    EXPECT_EQ(PortAudioFake::openedDevice(), 1);
+    capture.stop();
+
+    EXPECT_FALSE(capture.selectMicrophone("Unplugged"));
+    ASSERT_TRUE(capture.start());
+    EXPECT_EQ(PortAudioFake::openedDevice(), 1);
+    capture.stop();
+
+    EXPECT_TRUE(capture.selectMicrophone(""));
+    ASSERT_TRUE(capture.start());
+    EXPECT_EQ(PortAudioFake::openedDevice(), 0);
+}
+
+TEST_F(
+    AudioCaptureTest, FallsBackToTheDefaultWhenTheSelectedMicrophoneDisappears
+)
+{
+    using speech_to_text_test::PortAudioFake;
+
+    PortAudioFake::setDevices({{.name = "Built-in"}, {.name = "USB"}});
+    AudioCapture capture;
+    ASSERT_TRUE(capture.selectMicrophone("USB"));
+
+    PortAudioFake::setDevices({{.name = "Built-in"}});
+    ASSERT_TRUE(capture.start());
+    EXPECT_EQ(PortAudioFake::openedDevice(), 0);
+}
+
+TEST_F(
+    AudioCaptureTest, KeepsListingTheMicrophoneBeingCaptured
+)
+{
+    using speech_to_text_test::PortAudioFake;
+
+    PortAudioFake::setDevices({{.name = "Built-in"}, {.name = "USB"}});
+    AudioCapture capture;
+    ASSERT_TRUE(capture.selectMicrophone("USB"));
+    ASSERT_TRUE(capture.start());
+
+    PortAudioFake::setDevices({{.name = "Built-in"}, {.name = "USB", .inputChannels = 0}});
+    const auto microphones = capture.microphones();
+
+    ASSERT_EQ(microphones.size(), 2U);
+    EXPECT_EQ(microphones[1].name, "USB");
+    EXPECT_TRUE(capture.selectMicrophone("USB"));
+}
+
+TEST_F(
+    AudioCaptureTest, RescansDevicesOnlyWhileStopped
+)
+{
+    using speech_to_text_test::PortAudioFake;
+
+    AudioCapture capture;
+    const int initialized = PortAudioFake::initializeCount();
+
+    static_cast<void>(capture.microphones());
+    EXPECT_EQ(PortAudioFake::initializeCount(), initialized + 1);
+
+    ASSERT_TRUE(capture.start());
+    static_cast<void>(capture.microphones());
+    EXPECT_TRUE(capture.selectMicrophone("Fake input device"));
+    EXPECT_EQ(PortAudioFake::initializeCount(), initialized + 1);
 }
 
 TEST_F(
@@ -166,13 +314,9 @@ TEST_F(
 }
 
 TEST_F(
-    AudioCaptureTest, StartsRepeatedlyAndSelectsNamedHardwareDevice
+    AudioCaptureTest, StartsRepeatedly
 )
 {
-    speech_to_text_test::PortAudioFake::setDeviceCapabilities(
-        2, AudioCapture::sampleRate, "default (hw:1,0)"
-    );
-
     AudioCapture capture;
 
     ASSERT_TRUE(capture.start());
@@ -190,8 +334,8 @@ TEST_F(
         ASSERT_TRUE(capture.start());
         ASSERT_TRUE(capture.read(buffer));
         ASSERT_EQ(buffer.size(), AudioCapture::framesPerBuffer);
-        EXPECT_EQ(buffer.front(), 100);
-        EXPECT_EQ(buffer.back(), 100);
+        EXPECT_EQ(buffer.front(), 200);
+        EXPECT_EQ(buffer.back(), 200);
         capture.stop();
     }
     speech_to_text_test::PortAudioFake::setCallbackInputAvailable(false);
@@ -230,7 +374,7 @@ TEST_F(
         {
             ASSERT_TRUE(capture.read(buffer));
             ASSERT_EQ(buffer.size(), AudioCapture::framesPerBuffer);
-            EXPECT_EQ(buffer.front(), 100);
+            EXPECT_EQ(buffer.front(), 200);
         }
         capture.stop();
         EXPECT_FALSE(capture.read(buffer));

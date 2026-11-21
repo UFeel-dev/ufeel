@@ -4,6 +4,7 @@
 #include "SpeechToText/AudioSource.hpp"
 
 #include <cstdint>
+#include <iostream>
 #include <memory>
 #include <mutex>
 #include <stdexcept>
@@ -49,6 +50,32 @@ void SpeechToTextDetector::toggle(
     stop();
 }
 
+auto SpeechToTextDetector::microphones() -> std::vector<Microphone>
+{
+    return audioSource_->microphones();
+}
+
+auto SpeechToTextDetector::selectMicrophone(
+    const std::string& name
+) -> bool
+{
+    const bool restart = running_;
+
+    if (restart)
+    {
+        stop();
+    }
+
+    const bool selected = audioSource_->selectMicrophone(name);
+
+    if (restart)
+    {
+        start();
+    }
+
+    return selected;
+}
+
 auto SpeechToTextDetector::process(
     Clock::time_point now
 ) const -> std::string
@@ -65,6 +92,15 @@ void SpeechToTextDetector::start()
 
     if (!audioSource_->start())
     {
+        running_ = false;
+        return;
+    }
+
+    if (!recognizer_.setSampleRate(audioSource_->sampleRate()))
+    {
+        std::cerr << "[SpeechToText] Cannot recognize audio at " << audioSource_->sampleRate()
+                  << " Hz\n";
+        audioSource_->stop();
         running_ = false;
         return;
     }

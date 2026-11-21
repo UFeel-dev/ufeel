@@ -83,6 +83,16 @@ struct SpeechResultDeleter
     }
 };
 
+struct MicrophonesResultDeleter
+{
+    void operator()(
+        UFeelMicrophonesResult* result
+    ) const
+    {
+        ufeel_free_microphones_result(result);
+    }
+};
+
 struct HeartRateResultDeleter
 {
     void operator()(
@@ -335,6 +345,17 @@ TEST(
         ufeel_get_speech_to_text_result(processor.get(), speech.get()), UFEEL_STATUS_NO_SPEECH
     );
     EXPECT_EQ(speech->status, UFEEL_SPEECH_STATUS_DISABLED);
+
+    const std::unique_ptr<UFeelMicrophonesResult, MicrophonesResultDeleter> microphones(
+        ufeel_create_microphones_result()
+    );
+    ASSERT_NE(microphones, nullptr);
+    ASSERT_EQ(ufeel_get_microphones_result(processor.get(), microphones.get()), UFEEL_STATUS_OK);
+    ASSERT_GT(microphones->count, 0);
+    EXPECT_EQ(
+        ufeel_set_microphone(processor.get(), microphones->microphones[0].name), UFEEL_STATUS_OK
+    );
+    EXPECT_EQ(ufeel_set_microphone(processor.get(), nullptr), UFEEL_STATUS_OK);
 
     const auto cameraUpdateStatus = ufeel_update_frame(processor.get());
     EXPECT_TRUE(
