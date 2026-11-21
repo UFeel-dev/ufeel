@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -30,6 +31,7 @@ namespace UFeel
         private UFeelSnapshot latest = UFeelSnapshot.Initial;
         private int supported = (int)DetectionTypes.All;
         private volatile bool speechEnabled;
+        private volatile string? selectedMicrophone;
         private volatile bool stopping;
         private bool disposed;
 
@@ -66,6 +68,9 @@ namespace UFeel
         public DetectionType SupportedFeatures => (DetectionType)Volatile.Read(ref supported);
 
         public bool IsSpeechToTextEnabled => speechEnabled;
+
+        /// <summary>Null while the default microphone is used.</summary>
+        public string? SelectedMicrophone => selectedMicrophone;
 
         public void Start() => thread.Start();
 
@@ -123,6 +128,27 @@ namespace UFeel
                     speechToText = SpeechToTextResult.Unavailable(SpeechToTextStatus.Disabled);
                     Publish(Latest.Message);
                 }
+            });
+        }
+
+        public Task<IReadOnlyList<MicrophoneDevice>> GetMicrophonesAsync()
+        {
+            return ExecuteAsync(p => p.GetMicrophones());
+        }
+
+        /// <summary>Null selects the default microphone. False when no listed microphone has this name.</summary>
+        public Task<bool> SelectMicrophoneAsync(string? name)
+        {
+            if (string.IsNullOrEmpty(name))
+                name = null;
+
+            return ExecuteAsync(p =>
+            {
+                if (!p.SelectMicrophone(name))
+                    return false;
+
+                selectedMicrophone = name;
+                return true;
             });
         }
 

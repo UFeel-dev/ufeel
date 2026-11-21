@@ -21,6 +21,8 @@ session.Start();
 session.Demand.Request(DetectionType.Emotions); // each frame you read it (or Demand.Pin once)
 EmotionType? dominant = session.Latest.Emotions.Dominant;
 
+IReadOnlyList<MicrophoneDevice> microphones = await session.GetMicrophonesAsync();
+await session.SelectMicrophoneAsync(microphones[0].Name); // null: default microphone
 await session.SetSpeechToTextEnabledAsync(true);
 await new EyeTrackingCalibration(session, presenter, profiles).RunAsync(token);
 

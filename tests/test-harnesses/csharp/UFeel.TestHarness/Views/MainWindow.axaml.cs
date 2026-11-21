@@ -43,6 +43,7 @@ public partial class MainWindow : Window
         Closed += OnClosed;
 
         session.Start();
+        RefreshMicrophones();
     }
 
     private string LoadProfile(UFeelProcessor processor)

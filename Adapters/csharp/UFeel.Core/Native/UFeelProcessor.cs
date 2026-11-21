@@ -1,6 +1,7 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using UFeel.Interop;
 using UFeel.Native;
@@ -13,6 +14,7 @@ namespace UFeel
         private readonly EmotionsReader emotions;
         private readonly EyeTrackingReader eyeTracking;
         private readonly SpeechToTextReader speechToText;
+        private readonly MicrophonesReader microphones;
         private readonly HeartRateReader heartRate;
         private readonly FrameReader frames = new FrameReader();
 
@@ -39,6 +41,7 @@ namespace UFeel
                 emotions = new EmotionsReader();
                 eyeTracking = new EyeTrackingReader();
                 speechToText = new SpeechToTextReader();
+                microphones = new MicrophonesReader();
                 heartRate = new HeartRateReader();
             }
             catch
@@ -117,6 +120,23 @@ namespace UFeel
             UFeelException.ThrowIfFailed(
                 (UFeelStatus)NativeMethods.ufeel_set_speech_to_text_enabled(Handle, enabled ? 1 : 0),
                 "change the speech-to-text state");
+        }
+
+        /// <summary>Refreshed only while speech-to-text is disabled. Empty without speech-to-text support.</summary>
+        public IReadOnlyList<MicrophoneDevice> GetMicrophones() => microphones.Read(Handle);
+
+        /// <summary>
+        /// Selects the speech-to-text microphone, null for the default one. A running capture restarts on it.
+        /// False when no listed microphone has this name.
+        /// </summary>
+        public bool SelectMicrophone(string? name)
+        {
+            var status = (UFeelStatus)NativeMethods.ufeel_set_microphone(Handle, name);
+            if (status == UFeelStatus.InvalidArgument)
+                return false;
+
+            UFeelException.ThrowIfFailed(status, "select the microphone");
+            return true;
         }
 
         public void BeginEyeTrackingCalibration()
@@ -217,6 +237,7 @@ namespace UFeel
         public void Dispose()
         {
             heartRate?.Dispose();
+            microphones?.Dispose();
             speechToText?.Dispose();
             eyeTracking?.Dispose();
             emotions?.Dispose();

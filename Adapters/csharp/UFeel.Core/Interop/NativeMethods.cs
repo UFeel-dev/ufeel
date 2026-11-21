@@ -134,6 +134,19 @@ namespace UFeel.Interop
         internal static extern void ufeel_free_speech_to_text_result(IntPtr result);
 
         [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int ufeel_get_microphones_result(IntPtr processor, IntPtr result);
+
+        [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int ufeel_set_microphone(
+            IntPtr processor, [MarshalAs(UnmanagedType.LPUTF8Str)] string? utf8Name);
+
+        [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern IntPtr ufeel_create_microphones_result();
+
+        [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern void ufeel_free_microphones_result(IntPtr result);
+
+        [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
         internal static extern int ufeel_update_heart_rate(IntPtr processor);
 
         [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
