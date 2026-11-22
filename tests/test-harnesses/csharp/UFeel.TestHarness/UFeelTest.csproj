@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -8,13 +8,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../../integration/csharp/UFeel.FeatureTests/UFeel.FeatureTests.csproj" />
-    <!-- TODO: find a way to avoid this reference -->
+    <ProjectReference Include="../../../../Adapters/csharp/UFeel.Core/UFeel.Core.csproj" />
 
     <PackageReference Include="Avalonia" Version="12.1.6" />
-    <PackageReference Include="Avalonia.Desktop" Version="12.1.5" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.5" />
-    <PackageReference Include="Avalonia.Skia" Version="12.1.5" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.6" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.6" />
+    <PackageReference Include="Avalonia.Skia" Version="12.1.6" />
     <PackageReference Include="Avalonia.Wayland" Version="12.1.6" />
   </ItemGroup>
 

@@ -69,7 +69,7 @@ Manual builds are supported but require compatible versions of all third-party d
 - Linux x86-64
 - GLIBC >= 2.35
 - libstdc++ providing GLIBCXX_3.4.30
-- ALSA runtime libraries
+- ALSA and PulseAudio development libraries (`libasound2-dev`, `libpulse-dev`)
 - .NET SDK 10.0
 - Clang >= 22.0
 - CMake >= 3.20
@@ -81,14 +81,13 @@ Manual builds are supported but require compatible versions of all third-party d
 - IWYU >= 0.26
 - act  => 0.2.97
 
-The native package still relies on some operating-system libraries, including glibc, libstdc++, audio libraries and other system dependencies.
+The native package still relies on some operating-system libraries, including glibc, libstdc++, the ALSA and PulseAudio client libraries (`libasound.so.2`, `libpulse.so.0`, PipeWire provides the PulseAudio server) and other system dependencies.
 
 If some dependencies are missing for your system, please open an issue. The [Dockerfile](docker/Dockerfile) documents the build environment.
 
 ## Third-Party Libraries
 
-This project uses Git LFS to store large third-party libraries in `3rdparty/`, including prebuilt `.so` and `.a` files.
-
+This project uses Git LFS to store large third-party libraries in `3rdparty/`, including prebuilt `.so` and `.a` files. yaml-cpp, cpr and PortAudio are Git submodules built from source.
 After cloning, initialize all submodules and download the Git LFS files:
 
 ```bash
@@ -118,10 +117,10 @@ git lfs pull
 ./build.sh all                   # Configure, build, and package (Release)
 ./build.sh test                  # Run all automated tests
 ./build.sh test-unit             # Run C++ unit tests
-./build.sh test-integration      # Run C++ and C# integration tests
+./build.sh test-integration      # Run C++ integration tests
 ./build.sh test-e2e              # Run C++ end-to-end tests
 ./build.sh test-harness          # Build the interactive C# test harness
-./build.sh test-feature-matrix   # Test every feature configuration through C# integration tests
+./build.sh test-feature-matrix   # Test every feature configuration
 ./build.sh coverage              # Run native tests and generate coverage
 ```
 
@@ -147,13 +146,17 @@ The default build includes every detection domain. To produce a smaller library 
 
 The available options are `UFEEL_ENABLE_EMOTIONS`, `UFEEL_ENABLE_EYE_TRACKING`, `UFEEL_ENABLE_SPEECH_TO_TEXT`, and `UFEEL_ENABLE_HEART_RATE`. All default to `ON`. The package contains only the selected domain's models and native runtime dependencies. The C ABI remains available for disabled domains and returns `UFEEL_STATUS_UNSUPPORTED_FEATURE` when a disabled domain is requested.
 
+### Adapters
+
+Language adapters are packaged only on request: `./build.sh all --adapter csharp` adds `package/release/adapters/csharp/UFeel.Core` ([C# adapter](Adapters/csharp/UFeel.Core/README.md)).
+
 ## Documentation
 
 | Document | Description |
 | --- | --- |
 | [Contributing](CONTRIBUTING.md) | Contribution guidelines |
 | [Disclaimer](DISCLAIMER.md) | Limitations and prohibited use |
-| [Architecture](docs/architecture.md) | Layers, feature flags, packaging |
+| [Architecture](docs/architecture.md) | Layers, feature flags, adapters, packaging |
 | [Docker](docker/README.md) | Docker setup instructions |
 | [Heart rate](docs/heart-rate.md) | Heart-rate sources: sensor and smartwatch |
 | [Testing](docs/testing.md) | Test levels, layout and rules |

@@ -50,6 +50,7 @@ enum class DataProcessorStatus : std::uint8_t
     FrameUnavailable,
     InvalidDetectionType,
     UnsupportedFeature,
+    InvalidArgument,
 };
 
 enum class EmotionStatus : std::uint8_t
@@ -140,6 +141,12 @@ public:
     auto updateSpeechToText() -> DataProcessorStatus;
     [[nodiscard]] auto getSpeechToText() const -> const SpeechToTextResult&;
 
+    auto updateMicrophones() -> DataProcessorStatus;
+    [[nodiscard]] auto getMicrophones() const -> const std::vector<Microphone>&;
+    auto selectMicrophone(const std::string& id) -> DataProcessorStatus;
+    auto updateMicrophonesChanged() -> DataProcessorStatus;
+    [[nodiscard]] auto getMicrophonesChanged() const -> bool;
+
     auto updateHeartRate() -> DataProcessorStatus;
     [[nodiscard]] auto getHeartRate() const -> HeartRateResult;
 
@@ -147,6 +154,7 @@ public:
     [[nodiscard]] auto setEyeTrackingCalibrationTarget(float x, float y) -> bool;
     [[nodiscard]] auto finishEyeTrackingCalibration() -> bool;
     void cancelEyeTrackingCalibration();
+    void setEyeTrackingHeadWeight(float weight);
     [[nodiscard]] auto getEyeTrackingCalibrationProgress() const -> CalibrationProgress;
     [[nodiscard]] auto getEyeTrackingCalibrationDiagnostics() const -> CalibrationDiagnostics;
     [[nodiscard]] auto saveEyeTrackingCalibrationProfile(const std::string& path) const -> bool;
@@ -163,6 +171,8 @@ private:
     EmotionResult emotions_;
     EyeTrackingResult eyeTracking_;
     SpeechToTextResult speechToText_;
+    std::vector<Microphone> microphones_;
+    bool microphonesChanged_ = false;
     HeartRateResult heartRate_{};
     bool speechToTextEnabled_ = false;
 

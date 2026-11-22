@@ -1,132 +1,101 @@
 using System;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using UFeel;
 
 namespace UFeelTest;
 
 public partial class MainWindow : Window
 {
-    private readonly UFeelProcessor processor;
-    private readonly CancellationTokenSource cancellation = new();
-    private readonly SemaphoreSlim processorGate = new(1, 1);
-    private readonly FeatureScheduler scheduler = FeatureScheduler.CreateDefault();
-    private readonly EyeTrackingSmoother eyeTrackingSmoother = new();
-    private readonly FrameBitmapBuffer frameBitmaps = new();
-    private readonly LatestFrameCapture frameCapture = new();
+    private readonly CalibrationProfileStore profiles = CalibrationProfileStore.CreateDefault();
+    private readonly FrameBitmapBuffer frameBitmaps;
+    private readonly UFeelSession session;
 
-    private readonly Task processTask;
-    private readonly string calibrationProfilePath;
-
-    private EyeTrackingResultData lastEyeTracking = NotCalibratedEyeTracking;
-    private volatile bool speechEnabled;
-    private volatile bool closing;
+    private string idleStatus = string.Empty;
+    private bool closing;
 
     public MainWindow()
     {
         InitializeComponent();
 
-        UFeelPaths paths = UFeelPaths.Resolve();
-        calibrationProfilePath = paths.CalibrationProfilePath;
+        HarnessPaths paths = HarnessPaths.FromEnvironment();
+        NativeLibraryLoader.Use(paths.LibraryPath);
 
-        processor = new UFeelProcessor(
-            paths.ModelDirectory,
-            paths.SpeechModelPath,
-            paths.LibraryPath);
+        var processor = new UFeelProcessor(paths.Layout);
+        ShowIdleStatus(LoadProfile(processor));
 
-        if (File.Exists(calibrationProfilePath))
+        var demand = FeatureDemand.CreateDefault();
+        demand.Pin(DetectionTypes.All & ~DetectionType.SpeechToText);
+
+        frameBitmaps = new FrameBitmapBuffer(bitmap =>
         {
-            try
-            {
-                StatusText.Text = processor.LoadEyeTrackingCalibrationProfile(calibrationProfilePath)
-                    ? "Loaded saved eye-tracking calibration"
-                    : "Saved eye-tracking calibration is invalid, recalibrate to replace it";
-            }
-            catch (Exception exception)
-            {
-                StatusText.Text = $"Could not load eye-tracking calibration: {exception.Message}";
-            }
-        }
+            if (!closing)
+                FrameImage.Source = bitmap;
+        });
 
-        CalibrationCanvas.SizeChanged += (_, _) =>
-            UpdateCalibrationMarker(calibrationTargetX, calibrationTargetY);
-        EyeTrackingCanvas.SizeChanged += (_, _) =>
-        {
-            if (EyeTrackingOverlay.IsVisible)
-                UpdateEyeTrackingMarker(lastEyeTracking);
-        };
+        session = new UFeelSession(processor, demand: demand, frameObserver: frameBitmaps);
+        session.SnapshotPublished += snapshot => Dispatcher.UIThread.Post(() => ShowSnapshot(snapshot));
+        session.MicrophonesChanged += () => Dispatcher.UIThread.Post(RefreshMicrophones);
+
+        CalibrationCanvas.SizeChanged += (_, _) => UpdateCalibrationMarker();
+        EyeTrackingCanvas.SizeChanged += (_, _) => UpdateEyeTrackingMarker();
         KeyDown += MainWindow_OnKeyDown;
         Closed += OnClosed;
-        processTask = Task.Run(() => ProcessLoopAsync(cancellation.Token));
+
+        session.Start();
+        RefreshMicrophones();
     }
 
-    private async void SpeechToTextButton_OnClick(
-        object? sender,
-        RoutedEventArgs e)
+    private string LoadProfile(UFeelProcessor processor)
     {
-        bool requestedState = !speechEnabled;
+        try
+        {
+            return profiles.Load(processor) switch
+            {
+                ProfileLoadResult.Loaded => "Loaded saved eye-tracking calibration",
+                ProfileLoadResult.Invalid => "Saved eye-tracking calibration is invalid, recalibrate to replace it",
+                _ => string.Empty,
+            };
+        }
+        catch (Exception exception)
+        {
+            return $"Could not load eye-tracking calibration: {exception.Message}";
+        }
+    }
+
+    private async void SpeechToTextButton_OnClick(object? sender, RoutedEventArgs e)
+    {
+        bool requested = !session.IsSpeechToTextEnabled;
 
         try
         {
-            await processorGate.WaitAsync(cancellation.Token);
-
-            try
-            {
-                processor.SetSpeechToTextEnabled(requestedState);
-                speechEnabled = requestedState;
-            }
-            finally
-            {
-                processorGate.Release();
-            }
-
-            SpeechToTextButton.Content = speechEnabled
-                ? "Disable speech"
-                : "Enable speech";
+            await session.SetSpeechToTextEnabledAsync(requested);
+            SpeechToTextButton.Content = requested ? "Disable speech" : "Enable speech";
         }
         catch (OperationCanceledException)
         {
         }
         catch (Exception exception)
         {
-            StatusText.Text = exception.Message;
+            ShowIdleStatus(exception.Message);
         }
     }
 
-    private async void OnClosed(object? sender, EventArgs e)
+    private void ShowIdleStatus(string status)
+    {
+        idleStatus = status;
+        StatusText.Text = status;
+    }
+
+    private void OnClosed(object? sender, EventArgs e)
     {
         closing = true;
-        cancellation.Cancel();
         calibrationCancellation?.Cancel();
 
-        await processTask;
-        if (calibrationTask is not null)
-            await calibrationTask;
+        session.Dispose();
 
-        try
-        {
-            await processorGate.WaitAsync();
-
-            try
-            {
-                processor.SetSpeechToTextEnabled(false);
-                processor.Dispose();
-            }
-            finally
-            {
-                processorGate.Release();
-            }
-        }
-        finally
-        {
-            FrameImage.Source = null;
-            frameBitmaps.Dispose();
-
-            processorGate.Dispose();
-            cancellation.Dispose();
-        }
+        FrameImage.Source = null;
+        frameBitmaps.Dispose();
     }
 }

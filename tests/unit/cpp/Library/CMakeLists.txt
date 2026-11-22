@@ -35,6 +35,8 @@ if(UFEEL_ENABLE_EYE_TRACKING)
         EyeTracking/IrisDetection/TestFaceDetection.cpp
         EyeTracking/IrisDetection/TestFaceLandmark.cpp
         EyeTracking/IrisDetection/TestIrisLandmark.cpp
+        EyeTracking/TestEyeBlinkTracker.cpp
+        EyeTracking/TestEyeGazeDirection.cpp
         EyeTracking/TestEyeTrackingCalibrationModel.cpp
         EyeTracking/TestEyeTrackingDetector.cpp
         EyeTracking/TestEyeTrackingKalmanFilter.cpp

@@ -2,6 +2,7 @@
 #include "EyeTracking/EyeTrackingCalibrationModel.hpp"
 #include "EyeTracking/EyeTrackingDetector.hpp"
 #include "HeartRate/HeartRateSource.hpp"
+#include "SpeechToText/AudioSource.hpp"
 #include "internal/ErrorHandling.hpp"
 #include "internal/FrameConversion.hpp"
 #include "internal/UFeelProcessor.hpp"
@@ -18,6 +19,7 @@
 #include <memory>
 #include <new>
 #include <string>
+#include <vector>
 
 using ufeel::internal::convertFrame;
 using ufeel::internal::FrameCopyPolicy;
@@ -135,6 +137,33 @@ public:
         processor_.toggleSpeechToText(enabled);
     }
 
+    auto updateMicrophones() -> DataProcessorStatus override
+    {
+        return processor_.updateMicrophones();
+    }
+
+    [[nodiscard]] auto getMicrophones() const -> const std::vector<Microphone>& override
+    {
+        return processor_.getMicrophones();
+    }
+
+    auto selectMicrophone(
+        const std::string& id
+    ) -> DataProcessorStatus override
+    {
+        return processor_.selectMicrophone(id);
+    }
+
+    auto updateMicrophonesChanged() -> DataProcessorStatus override
+    {
+        return processor_.updateMicrophonesChanged();
+    }
+
+    [[nodiscard]] auto getMicrophonesChanged() const -> bool override
+    {
+        return processor_.getMicrophonesChanged();
+    }
+
     auto updateHeartRate() -> DataProcessorStatus override
     {
         return processor_.updateHeartRate();
@@ -165,6 +194,13 @@ public:
     void cancelEyeTrackingCalibration() override
     {
         processor_.cancelEyeTrackingCalibration();
+    }
+
+    void setEyeTrackingHeadWeight(
+        float weight
+    ) override
+    {
+        processor_.setEyeTrackingHeadWeight(weight);
     }
 
     [[nodiscard]] auto getEyeTrackingCalibrationProgress() const -> CalibrationProgress override

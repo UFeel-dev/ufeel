@@ -28,6 +28,7 @@ jobs:
           sparse-checkout: |
             .github
             3rdparty
+            Adapters
             Library
             Wrapper
             cmake
@@ -39,6 +40,9 @@ jobs:
         uses: ./.github/actions/ci-image
         with:
           write-cache: "true"
+
+      - name: Restore submodule dependencies
+        uses: ./.github/actions/deps-cache
 
       - name: Compute clang-tidy cache key
         id: ctcache

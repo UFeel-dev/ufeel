@@ -131,13 +131,13 @@ public:
 
         switch (index)
         {
-        case 446:
+        case 362:
             return {100, 100};
-        case 464:
+        case 263:
             return {120, 100};
-        case 244:
+        case 33:
             return {200, 100};
-        case 226:
+        case 133:
             return {220, 100};
         default:
             return {};
@@ -210,10 +210,10 @@ TEST_F(
     TestIrisLandmark, RejectsInvalidLandmarkIndicesBeforeInference
 )
 {
-    EXPECT_EQ(irisLandmark_->getEyeLandmarkAt(-1, true, false), cv::Point());
-    EXPECT_EQ(irisLandmark_->getEyeLandmarkAt(71, false, false), cv::Point());
-    EXPECT_EQ(irisLandmark_->getEyeLandmarkAt(-1, true, true), cv::Point());
-    EXPECT_EQ(irisLandmark_->getEyeLandmarkAt(5, false, true), cv::Point());
+    EXPECT_EQ(irisLandmark_->getEyeLandmarkAt(-1, true, false), cv::Point2f());
+    EXPECT_EQ(irisLandmark_->getEyeLandmarkAt(71, false, false), cv::Point2f());
+    EXPECT_EQ(irisLandmark_->getEyeLandmarkAt(-1, true, true), cv::Point2f());
+    EXPECT_EQ(irisLandmark_->getEyeLandmarkAt(5, false, true), cv::Point2f());
 }
 
 TEST_F(
@@ -273,10 +273,10 @@ TEST_F(
 {
     ASSERT_TRUE(prepareInference()) << "No face detected in astronaut.png.";
 
-    EXPECT_EQ(irisLandmark_->getEyeLandmarkAt(-1, true, false), cv::Point());
-    EXPECT_EQ(irisLandmark_->getEyeLandmarkAt(71, true, false), cv::Point());
-    EXPECT_EQ(irisLandmark_->getEyeLandmarkAt(-1, false, false), cv::Point());
-    EXPECT_EQ(irisLandmark_->getEyeLandmarkAt(71, false, false), cv::Point());
+    EXPECT_EQ(irisLandmark_->getEyeLandmarkAt(-1, true, false), cv::Point2f());
+    EXPECT_EQ(irisLandmark_->getEyeLandmarkAt(71, true, false), cv::Point2f());
+    EXPECT_EQ(irisLandmark_->getEyeLandmarkAt(-1, false, false), cv::Point2f());
+    EXPECT_EQ(irisLandmark_->getEyeLandmarkAt(71, false, false), cv::Point2f());
 }
 
 TEST_F(
@@ -316,10 +316,10 @@ TEST_F(
 {
     ASSERT_TRUE(prepareInference()) << "No face detected in astronaut.png.";
 
-    EXPECT_EQ(irisLandmark_->getEyeLandmarkAt(-1, true, true), cv::Point());
-    EXPECT_EQ(irisLandmark_->getEyeLandmarkAt(5, true, true), cv::Point());
-    EXPECT_EQ(irisLandmark_->getEyeLandmarkAt(-1, false, true), cv::Point());
-    EXPECT_EQ(irisLandmark_->getEyeLandmarkAt(5, false, true), cv::Point());
+    EXPECT_EQ(irisLandmark_->getEyeLandmarkAt(-1, true, true), cv::Point2f());
+    EXPECT_EQ(irisLandmark_->getEyeLandmarkAt(5, true, true), cv::Point2f());
+    EXPECT_EQ(irisLandmark_->getEyeLandmarkAt(-1, false, true), cv::Point2f());
+    EXPECT_EQ(irisLandmark_->getEyeLandmarkAt(5, false, true), cv::Point2f());
 }
 
 TEST(
@@ -335,8 +335,8 @@ TEST(
         std::move(faceModel), std::move(leftModel), std::move(rightModel)
     );
 
-    EXPECT_EQ(landmark.getEyeLandmarkAt(0, true, false), cv::Point());
-    EXPECT_EQ(landmark.getEyeLandmarkAt(0, false, true), cv::Point());
+    EXPECT_EQ(landmark.getEyeLandmarkAt(0, true, false), cv::Point2f());
+    EXPECT_EQ(landmark.getEyeLandmarkAt(0, false, true), cv::Point2f());
 }
 
 TEST(
@@ -352,8 +352,8 @@ TEST(
         std::move(faceModel), std::move(leftModel), std::move(rightModel)
     );
 
-    EXPECT_EQ(landmark.getEyeLandmarkAt(0, true, false), cv::Point());
-    EXPECT_EQ(landmark.getEyeLandmarkAt(0, false, true), cv::Point());
+    EXPECT_EQ(landmark.getEyeLandmarkAt(0, true, false), cv::Point2f());
+    EXPECT_EQ(landmark.getEyeLandmarkAt(0, false, true), cv::Point2f());
 }
 
 TEST(
@@ -369,8 +369,8 @@ TEST(
         std::move(faceModel), std::move(leftModel), std::move(rightModel)
     );
 
-    EXPECT_EQ(landmark.getEyeLandmarkAt(0, true, false), cv::Point());
-    EXPECT_EQ(landmark.getEyeLandmarkAt(0, false, true), cv::Point());
+    EXPECT_EQ(landmark.getEyeLandmarkAt(0, true, false), cv::Point2f());
+    EXPECT_EQ(landmark.getEyeLandmarkAt(0, false, true), cv::Point2f());
 }
 
 TEST(
@@ -386,8 +386,8 @@ TEST(
         std::move(faceModel), std::move(leftModel), std::move(rightModel)
     );
 
-    EXPECT_EQ(landmark.getEyeLandmarkAt(0, true, false), cv::Point());
-    EXPECT_EQ(landmark.getEyeLandmarkAt(0, false, true), cv::Point());
+    EXPECT_EQ(landmark.getEyeLandmarkAt(0, true, false), cv::Point2f());
+    EXPECT_EQ(landmark.getEyeLandmarkAt(0, false, true), cv::Point2f());
 }
 
 TEST(

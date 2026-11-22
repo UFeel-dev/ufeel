@@ -88,7 +88,6 @@ typedef enum
 {
     UFEEL_GAZE_STATUS_NOT_CALIBRATED = 0,
     UFEEL_GAZE_STATUS_FACE_UNAVAILABLE = 1,
-    UFEEL_GAZE_STATUS_BLINKING = 2,
     UFEEL_GAZE_STATUS_LOW_QUALITY = 3,
     UFEEL_GAZE_STATUS_CALIBRATING = 4,
     UFEEL_GAZE_STATUS_VALID = 5,
@@ -109,8 +108,17 @@ typedef enum
     UFEEL_GAZE_DIRECTION_CENTER = 1 << 4
 } UFeelEyeTrackingDirection;
 
+typedef enum
+{
+    UFEEL_EYE_STATE_NONE = 0,
+    UFEEL_EYE_STATE_TRACKED = 1 << 0,
+    UFEEL_EYE_STATE_LEFT_CLOSED = 1 << 1,
+    UFEEL_EYE_STATE_RIGHT_CLOSED = 1 << 2
+} UFeelEyeState;
+
 /** Estimated eye-tracking coordinates and diagnostics for the current video frame. `status` is a
- * UFeelEyeTrackingStatus value. */
+ * UFeelEyeTrackingStatus value for `x`/`y` (0..1). `gazeX`/`gazeY` are -1..1 (1 = right/bottom
+ * screen edge), openness is 0..1. */
 typedef struct
 {
     int32_t status;
@@ -120,6 +128,13 @@ typedef struct
     float recordedY;
     float confidence;
     int32_t directions;
+    float gazeX;
+    float gazeY;
+    float leftOpenness;
+    float rightOpenness;
+    int32_t eyeState;
+    uint32_t blinkCount;
+    float eyesClosedSeconds;
 } UFeelEyeTrackingResult;
 
 /** Progress of the active eye tracking calibration session. */
@@ -170,6 +185,21 @@ typedef struct
     int32_t status;
     char* speech;
 } UFeelSpeechToTextResult;
+
+/** A microphone usable for speech-to-text. id is stable across runs, name is for display.
+ * isDefault marks the system default one, used when none is selected. */
+typedef struct
+{
+    char* id;
+    char* name;
+    int32_t isDefault;
+} UFeelMicrophone;
+
+typedef struct
+{
+    int32_t count;
+    UFeelMicrophone* microphones;
+} UFeelMicrophonesResult;
 
 //? HEARTRATE
 
@@ -282,6 +312,10 @@ UFEEL_API int32_t ufeel_finish_eye_tracking_calibration(UFeelProcessor* processo
 /** Aborts eye tracking calibration without activating the unfinished model. */
 UFEEL_API int32_t ufeel_cancel_eye_tracking_calibration(UFeelProcessor* processor);
 
+/** Sets how much head rotation adds to the gaze direction: 0 = eyes only (default), 1 = eyes and
+ * head. */
+UFEEL_API int32_t ufeel_set_eye_tracking_head_weight(UFeelProcessor* processor, float weight);
+
 /** Retrieves the latest eye_tracking estimate and its validity status. */
 UFEEL_API int32_t
 ufeel_get_eye_tracking_result(UFeelProcessor* processor, UFeelEyeTrackingResult* result);
@@ -334,6 +368,25 @@ UFEEL_API UFeelSpeechToTextResult* ufeel_create_speech_to_text_result();
 
 /** Releases speech result returned by ufeel_get_speech_to_text_result(). Accepts NULL. */
 UFEEL_API void ufeel_free_speech_to_text_result(UFeelSpeechToTextResult* speech);
+
+/** Lists the microphones into a result created with ufeel_create_microphones_result(). Rescanning
+ * restarts a running capture. Reusing a result releases its previous list. */
+UFEEL_API int32_t
+ufeel_get_microphones_result(UFeelProcessor* processor, UFeelMicrophonesResult* result);
+
+/** Selects the speech-to-text microphone by id, NULL or "" for the default one. A running capture
+ * restarts on it. Returns UFEEL_STATUS_INVALID_ARGUMENT when no such microphone is listed. */
+UFEEL_API int32_t ufeel_set_microphone(UFeelProcessor* processor, const char* utf8Id);
+
+/** Sets changed to 1 once after a microphone was added or removed, or the system default changed,
+ * else 0. Always 0 without a PulseAudio or PipeWire server. */
+UFEEL_API int32_t ufeel_get_microphones_changed(UFeelProcessor* processor, int32_t* changed);
+
+/** Create microphones results. */
+UFEEL_API UFeelMicrophonesResult* ufeel_create_microphones_result();
+
+/** Releases microphones result returned by ufeel_get_microphones_result(). Accepts NULL. */
+UFEEL_API void ufeel_free_microphones_result(UFeelMicrophonesResult* microphones);
 
 /** Updates heart rate. Returns a UFeelStatus code, including UFEEL_STATUS_NO_HEARTRATE. */
 UFEEL_API int32_t ufeel_update_heart_rate(UFeelProcessor* processor);

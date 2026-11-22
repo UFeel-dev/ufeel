@@ -8,7 +8,7 @@ You can run this project in a docker container so all dependencies are already i
 
 ## Installation
 
-1. Setup the Dockerfile (the build command should be ran in the same directory as the Dockerfile)
+1. Build the Docker image (the build command should be ran in the same directory as the Dockerfile)
 
 ```bash
 cd docker
@@ -22,7 +22,7 @@ The Dockerfile has two targets. The default one (`dev`, used above) contains eve
 docker build --target ci -t ufeeldocker:ci .
 ```
 
-1. Run the docker container from the root of the repository
+2. Run the docker container from the root of the repository
 
 ```bash
 ./docker/run.sh
@@ -32,9 +32,13 @@ docker build --target ci -t ufeeldocker:ci .
 
 Here are some options for the `run.sh` script:
 
-### Automatic display detection, ALSA audio
+### Automatic display detection, PulseAudio/PipeWire audio
 
 ./docker/run.sh
+
+### Force the audio backend (`alsa`, `pulse`, `pipewire`, `none`)
+
+AUDIO_BACKEND=alsa ./docker/run.sh
 
 ### Force Wayland
 

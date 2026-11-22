@@ -27,6 +27,7 @@ public:
     bool failFrame = false;
     bool failFrameData = false;
     bool failEmotionPairs = false;
+    bool failMicrophones = false;
     int32_t failStringAt = -1;
     int32_t stringAllocations = 0;
 
@@ -47,6 +48,13 @@ public:
     ) noexcept -> UFeelPair* override
     {
         return failEmotionPairs ? nullptr : new (std::nothrow) UFeelPair[count]{};
+    }
+
+    [[nodiscard]] auto allocateMicrophones(
+        std::size_t count
+    ) noexcept -> UFeelMicrophone* override
+    {
+        return failMicrophones ? nullptr : new (std::nothrow) UFeelMicrophone[count]{};
     }
 
     [[nodiscard]] auto duplicateString(
@@ -303,6 +311,17 @@ TEST(
     );
     EXPECT_EQ(speech->speech, nullptr);
     ufeel_free_speech_to_text_result(speech);
+    UFeelMicrophonesResult microphones{};
+    EXPECT_EQ(
+        ufeel_get_microphones_result(&test.processor, &microphones), UFEEL_STATUS_INTERNAL_ERROR
+    );
+    EXPECT_EQ(microphones.microphones, nullptr);
+    EXPECT_EQ(ufeel_set_microphone(&test.processor, "USB"), UFEEL_STATUS_INTERNAL_ERROR);
+    int32_t changed = 1;
+    EXPECT_EQ(
+        ufeel_get_microphones_changed(&test.processor, &changed), UFEEL_STATUS_INTERNAL_ERROR
+    );
+    EXPECT_EQ(changed, 0);
     test.backend->throwOnSpeech = false;
 
     test.backend->throwOnHeartRate = true;
@@ -321,6 +340,9 @@ TEST(
     );
     EXPECT_EQ(ufeel_finish_eye_tracking_calibration(&test.processor), UFEEL_STATUS_INTERNAL_ERROR);
     EXPECT_EQ(ufeel_cancel_eye_tracking_calibration(&test.processor), UFEEL_STATUS_INTERNAL_ERROR);
+    EXPECT_EQ(
+        ufeel_set_eye_tracking_head_weight(&test.processor, 0.0F), UFEEL_STATUS_INTERNAL_ERROR
+    );
     UFeelEyeTrackingCalibrationProgress progress{};
     EXPECT_EQ(
         ufeel_get_eye_tracking_calibration_progress(&test.processor, &progress),
@@ -540,11 +562,31 @@ TEST(
         .confidence = 0.9F,
         .directions = EyeTrackingLeft | EyeTrackingUp,
         .status = EyeTrackingStatus::Valid,
+        .gazeX = -0.5F,
+        .gazeY = 0.25F,
+        .leftOpenness = 0.8F,
+        .rightOpenness = 0.1F,
+        .eyeState = EyeStateTracked | EyeStateRightClosed,
+        .blinkCount = 3,
+        .eyesClosedSeconds = 0.0F,
     };
     EXPECT_EQ(ufeel_get_eye_tracking_result(&test.processor, &result), UFEEL_STATUS_OK);
     EXPECT_FLOAT_EQ(result.x, 0.2F);
     EXPECT_FLOAT_EQ(result.recordedY, 0.6F);
     EXPECT_EQ(result.directions, EyeTrackingLeft | EyeTrackingUp);
+    EXPECT_FLOAT_EQ(result.gazeX, -0.5F);
+    EXPECT_FLOAT_EQ(result.gazeY, 0.25F);
+    EXPECT_FLOAT_EQ(result.leftOpenness, 0.8F);
+    EXPECT_FLOAT_EQ(result.rightOpenness, 0.1F);
+    EXPECT_EQ(result.eyeState, UFEEL_EYE_STATE_TRACKED | UFEEL_EYE_STATE_RIGHT_CLOSED);
+    EXPECT_EQ(result.blinkCount, 3U);
+
+    EXPECT_EQ(ufeel_set_eye_tracking_head_weight(&test.processor, 0.5F), UFEEL_STATUS_OK);
+    EXPECT_FLOAT_EQ(test.backend->headWeight, 0.5F);
+    EXPECT_EQ(
+        ufeel_set_eye_tracking_head_weight(&test.processor, 1.5F), UFEEL_STATUS_INVALID_ARGUMENT
+    );
+    EXPECT_FLOAT_EQ(test.backend->headWeight, 0.5F);
 
     eyeTrackingCallbackValue() = {};
     ufeel_get_eye_tracking_result_from_frame(&test.processor, nullptr, recordEyeTrackingResult);
@@ -660,4 +702,77 @@ TEST(
     );
     EXPECT_EQ(speech->speech, nullptr);
     ufeel_free_speech_to_text_result(speech);
+}
+
+TEST(
+    WrapperBehaviorTest, MicrophoneApisListAndSelectBackendMicrophones
+)
+{
+    TestProcessor test;
+    auto* microphones = ufeel_create_microphones_result();
+    ASSERT_NE(microphones, nullptr);
+
+    ASSERT_EQ(ufeel_get_microphones_result(&test.processor, microphones), UFEEL_STATUS_OK);
+    ASSERT_EQ(microphones->count, 2);
+    EXPECT_STREQ(microphones->microphones[0].id, "alsa_input.dmic");
+    EXPECT_STREQ(microphones->microphones[0].name, "Digital Microphone");
+    EXPECT_EQ(microphones->microphones[0].isDefault, 0);
+    EXPECT_STREQ(microphones->microphones[1].id, "bluez_input.headset");
+    EXPECT_STREQ(microphones->microphones[1].name, "Headset");
+    EXPECT_EQ(microphones->microphones[1].isDefault, 1);
+
+    test.backend->microphones.clear();
+    EXPECT_EQ(ufeel_get_microphones_result(&test.processor, microphones), UFEEL_STATUS_OK);
+    EXPECT_EQ(microphones->count, 0);
+    EXPECT_EQ(microphones->microphones, nullptr);
+
+    test.backend->microphonesStatus = DataProcessorStatus::UnsupportedFeature;
+    EXPECT_EQ(
+        ufeel_get_microphones_result(&test.processor, microphones), UFEEL_STATUS_UNSUPPORTED_FEATURE
+    );
+    EXPECT_EQ(ufeel_set_microphone(&test.processor, nullptr), UFEEL_STATUS_UNSUPPORTED_FEATURE);
+    int32_t changed = 1;
+    EXPECT_EQ(
+        ufeel_get_microphones_changed(&test.processor, &changed), UFEEL_STATUS_UNSUPPORTED_FEATURE
+    );
+    EXPECT_EQ(changed, 0);
+    ufeel_free_microphones_result(microphones);
+
+    test.backend->microphonesStatus = DataProcessorStatus::Ok;
+    test.backend->microphones = {{.id = "usb", .name = "USB"}};
+    EXPECT_EQ(ufeel_set_microphone(&test.processor, "usb"), UFEEL_STATUS_OK);
+    EXPECT_EQ(test.backend->selectedMicrophone, "usb");
+    EXPECT_EQ(ufeel_set_microphone(&test.processor, "USB"), UFEEL_STATUS_INVALID_ARGUMENT);
+    EXPECT_EQ(test.backend->selectedMicrophone, "usb");
+    EXPECT_EQ(ufeel_set_microphone(&test.processor, nullptr), UFEEL_STATUS_OK);
+    EXPECT_EQ(test.backend->selectedMicrophone, "");
+
+    EXPECT_EQ(ufeel_get_microphones_changed(&test.processor, &changed), UFEEL_STATUS_OK);
+    EXPECT_EQ(changed, 0);
+    test.backend->microphonesChanged = true;
+    EXPECT_EQ(ufeel_get_microphones_changed(&test.processor, &changed), UFEEL_STATUS_OK);
+    EXPECT_EQ(changed, 1);
+}
+
+TEST(
+    WrapperBehaviorTest, MicrophonesResultReportsAllocationFailures
+)
+{
+    TestProcessor test;
+    UFeelMicrophonesResult microphones{};
+
+    test.allocator.failMicrophones = true;
+    EXPECT_EQ(
+        ufeel_get_microphones_result(&test.processor, &microphones), UFEEL_STATUS_INTERNAL_ERROR
+    );
+    EXPECT_EQ(microphones.microphones, nullptr);
+    EXPECT_EQ(microphones.count, 0);
+
+    test.allocator.failMicrophones = false;
+    test.allocator.failStringAt = 1;
+    EXPECT_EQ(
+        ufeel_get_microphones_result(&test.processor, &microphones), UFEEL_STATUS_INTERNAL_ERROR
+    );
+    EXPECT_EQ(microphones.microphones, nullptr);
+    EXPECT_EQ(microphones.count, 0);
 }

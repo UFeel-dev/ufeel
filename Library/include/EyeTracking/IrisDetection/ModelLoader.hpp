@@ -159,6 +159,8 @@ public:
         return loadOutput(0);
     }
 
+    void setImageInputRange(float minimum, float maximum);
+
 protected:
 
     ModelLoader() = default;
@@ -198,6 +200,9 @@ private:
     Convert image of type CV_8UC3 or CV_8UC4 to RGB format
     */
     static auto convertToRGB(const cv::Mat& in) -> cv::Mat;
+
+    float imageInputMinimum_ = -1.0F;
+    float imageInputMaximum_ = 1.0F;
 
     /*
     Information of input tensors

@@ -2,15 +2,15 @@
 
 UFEEL native library is licensed under the Apache License 2.0 (see [LICENSE](LICENSE), Copyright 2026 augustin-grosnon).
 
-This file lists the third-party components distributed with or linked by the library, with their licenses. 
+This file lists the third-party components distributed with or linked by the library, with their licenses.
 
 ## Libraries
 
 | Component | Version | License | License file |
 | --- | --- | --- | --- |
-| yaml-cpp | 0.7.0 | MIT | `3rdparty/yaml-cpp/LICENSE` and googletest 1.10.0 (test only, not built): `3rdparty/yaml-cpp/test/gtest-1.10.0/LICENSE` |
+| yaml-cpp (submodule) | 0.9.0 | MIT | `3rdparty/yaml-cpp/LICENSE` |
 | nlohmann/json | 3.12.0 | MIT | `3rdparty/json/share/licenses/json/LICENSE.MIT` |
-| cpr | 1.15.1 | MIT | `3rdparty/cpr/share/licenses/cpr/LICENSE` |
+| cpr (submodule) | 1.15.1 | MIT | `3rdparty/cpr/LICENSE` |
 | OpenCV | 4.8.1 | Apache-2.0 | `3rdparty/opencv/share/licenses/opencv4/LICENSE` |
 | OpenCV bundled libs | 4.8.1 | See `3rdparty/opencv/share/licenses/opencv4/` (zlib, libpng, libjpeg-turbo, libtiff, OpenEXR, protobuf, flatbuffers, ittnotify, quirc, and others) | `3rdparty/opencv/share/licenses/opencv4/` |
 | LibTorch | 2.10.0 | BSD-3-Clause | `3rdparty/libtorch/share/licenses/libtorch/LICENSE`, `3rdparty/libtorch/share/licenses/libtorch/NOTICE` |
@@ -22,7 +22,7 @@ This file lists the third-party components distributed with or linked by the lib
 | libf2c (in CLAPACK, in Vosk) | 3.2.1 (via CLAPACK) | HPND (AT&T / Lucent / Bellcore) | `3rdparty/vosk/share/licenses/clapack/libf2c-Notice` |
 | TensorFlow Lite | 2.15.0 | Apache-2.0 | `3rdparty/tensorflowlite/share/licenses/tensorflowlite/LICENSE` |
 | FlatBuffers (in TFLite) | 23.5.26 (TFLite headers) | Apache-2.0 | `3rdparty/opencv/share/licenses/opencv4/flatbuffers-LICENSE.txt` and TFLite headers |
-| PortAudio | 2.0.0 | MIT-style | `3rdparty/portaudio/share/licenses/portaudio/LICENSE.txt` |
+| PortAudio | 19.8 dev, unreleased (master `e813847`) | MIT-style | `3rdparty/portaudio/LICENSE.txt` |
 
 ## Models
 

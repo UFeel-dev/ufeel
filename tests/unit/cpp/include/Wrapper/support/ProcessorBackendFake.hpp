@@ -6,12 +6,15 @@
 #include "EyeTracking/EyeTrackingDetector.hpp"
 #include "HeartRate/HeartRateSource.hpp"
 #include "HeartRate/UFeelHeartRateStatus.hpp"
+#include "SpeechToText/AudioSource.hpp"
 #include "internal/UFeelProcessor.hpp"
 #include "opencv2/core/mat.hpp"
 
+#include <algorithm>
 #include <cstdint>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 class ProcessorBackendFake final : public ufeel::internal::ProcessorBackend
 {
@@ -39,6 +42,13 @@ public:
     };
     EyeTrackingResult frameEyeTracking = eyeTracking;
     SpeechToTextResult speech{.status = SpeechToTextStatus::Valid, .text = "recognized"};
+    DataProcessorStatus microphonesStatus = DataProcessorStatus::Ok;
+    std::vector<Microphone> microphones{
+        {.id = "alsa_input.dmic", .name = "Digital Microphone"},
+        {.id = "bluez_input.headset", .name = "Headset", .isDefault = true},
+    };
+    std::string selectedMicrophone = "none";
+    bool microphonesChanged = false;
     HeartRateResult heartRate{.bpm = 73, .status = HeartRateStatus::Valid};
     CalibrationProgress calibrationProgress{
         .targetsWithEnoughSamples = 2,
@@ -80,6 +90,7 @@ public:
     bool throwOnSpeech = false;
     bool throwOnHeartRate = false;
     bool throwOnCalibration = false;
+    float headWeight = -1.0F;
     bool throwUnknownOnCalibration = false;
 
     auto update(
@@ -208,6 +219,45 @@ public:
         speechEnabled = enabled;
     }
 
+    auto updateMicrophones() -> DataProcessorStatus override
+    {
+        throwIfEnabled(throwOnSpeech);
+        return microphonesStatus;
+    }
+
+    [[nodiscard]] auto getMicrophones() const -> const std::vector<Microphone>& override
+    {
+        return microphones;
+    }
+
+    auto selectMicrophone(
+        const std::string& id
+    ) -> DataProcessorStatus override
+    {
+        throwIfEnabled(throwOnSpeech);
+        if (microphonesStatus != DataProcessorStatus::Ok)
+        {
+            return microphonesStatus;
+        }
+        if (!id.empty() && std::ranges::find(microphones, id, &Microphone::id) == microphones.end())
+        {
+            return DataProcessorStatus::InvalidArgument;
+        }
+        selectedMicrophone = id;
+        return DataProcessorStatus::Ok;
+    }
+
+    auto updateMicrophonesChanged() -> DataProcessorStatus override
+    {
+        throwIfEnabled(throwOnSpeech);
+        return microphonesStatus;
+    }
+
+    [[nodiscard]] auto getMicrophonesChanged() const -> bool override
+    {
+        return microphonesChanged;
+    }
+
     auto updateHeartRate() -> DataProcessorStatus override
     {
         throwIfEnabled(throwOnHeartRate);
@@ -248,6 +298,14 @@ public:
             throw 1;
         }
         throwIfEnabled(throwOnCalibration);
+    }
+
+    void setEyeTrackingHeadWeight(
+        float weight
+    ) override
+    {
+        throwIfEnabled(throwOnCalibration);
+        headWeight = weight;
     }
 
     [[nodiscard]] auto getEyeTrackingCalibrationProgress() const -> CalibrationProgress override

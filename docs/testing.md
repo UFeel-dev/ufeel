@@ -36,4 +36,4 @@ Every other test must pass without devices or network. Build `DataProcessor` wit
 
 ## Manual testing
 
-`./build.sh test-harness` builds an interactive Avalonia app ([UFeel.TestHarness](../tests/test-harnesses/csharp/UFeel.TestHarness)) to try every feature live. For heart rate without hardware, use [Tools/](../Tools/TOOLS.md).
+`./build.sh test-harness` builds an interactive Avalonia app ([UFeel.TestHarness](../tests/test-harnesses/csharp/UFeel.TestHarness)) on top of the [C# adapter](../Adapters/csharp/UFeel.Core/README.md) to try every feature live. For heart rate without hardware, use [Tools/](../Tools/TOOLS.md).

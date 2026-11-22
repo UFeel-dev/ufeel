@@ -1,6 +1,7 @@
 #include "DataProcessor.hpp"
 
 #include "Emotions/EmotionDetector.hpp"
+#include "SpeechToText/AudioSource.hpp"
 #include "SpeechToText/SpeechToTextDetector.hpp"
 #if UFEEL_ENABLE_EYE_TRACKING
 #include "EyeTracking/EyeTrackingCalibrationModel.hpp"
@@ -21,6 +22,7 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace
 {
@@ -460,6 +462,49 @@ auto DataProcessor::getSpeechToText() const -> const SpeechToTextResult&
     return speechToText_;
 }
 
+auto DataProcessor::updateMicrophones() -> DataProcessorStatus
+{
+#if !UFEEL_ENABLE_SPEECH_TO_TEXT
+    return DataProcessorStatus::UnsupportedFeature;
+#else
+    microphones_ = speechToTextDetector_->microphones();
+    return DataProcessorStatus::Ok;
+#endif
+}
+
+auto DataProcessor::getMicrophones() const -> const std::vector<Microphone>&
+{
+    return microphones_;
+}
+
+auto DataProcessor::selectMicrophone(
+    const std::string& id
+) -> DataProcessorStatus
+{
+#if !UFEEL_ENABLE_SPEECH_TO_TEXT
+    static_cast<void>(id);
+    return DataProcessorStatus::UnsupportedFeature;
+#else
+    return speechToTextDetector_->selectMicrophone(id) ? DataProcessorStatus::Ok
+                                                       : DataProcessorStatus::InvalidArgument;
+#endif
+}
+
+auto DataProcessor::updateMicrophonesChanged() -> DataProcessorStatus
+{
+#if !UFEEL_ENABLE_SPEECH_TO_TEXT
+    return DataProcessorStatus::UnsupportedFeature;
+#else
+    microphonesChanged_ = speechToTextDetector_->microphonesChanged();
+    return DataProcessorStatus::Ok;
+#endif
+}
+
+auto DataProcessor::getMicrophonesChanged() const -> bool
+{
+    return microphonesChanged_;
+}
+
 void DataProcessor::beginEyeTrackingCalibration()
 {
 #if UFEEL_ENABLE_EYE_TRACKING
@@ -493,6 +538,17 @@ void DataProcessor::cancelEyeTrackingCalibration()
 {
 #if UFEEL_ENABLE_EYE_TRACKING
     eyeTrackingDetector_->cancelCalibration();
+#endif
+}
+
+void DataProcessor::setEyeTrackingHeadWeight(
+    float weight
+)
+{
+#if UFEEL_ENABLE_EYE_TRACKING
+    eyeTrackingDetector_->setHeadWeight(weight);
+#else
+    static_cast<void>(weight);
 #endif
 }
 

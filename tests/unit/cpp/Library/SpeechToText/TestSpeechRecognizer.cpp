@@ -33,6 +33,7 @@ struct FakeVoskState
     std::string finalizedResult = R"({"text": "final sentence"})";
 
     int lastSampleCount = 0;
+    float recognizerSampleRate = 0.0F;
 };
 
 auto fakeVoskState() -> FakeVoskState&
@@ -72,6 +73,19 @@ void VoskFake::reset()
     state.partialResult = R"({"partial": "hello"})";
     state.finalizedResult = R"({"text": "final sentence"})";
     state.lastSampleCount = 0;
+    state.recognizerSampleRate = 0.0F;
+}
+
+void VoskFake::setRecognizerCreationSucceeds(
+    bool succeeds
+)
+{
+    fakeVoskState().recognizerCreationSucceeds = succeeds;
+}
+
+auto VoskFake::recognizerSampleRate() -> float
+{
+    return fakeVoskState().recognizerSampleRate;
 }
 
 void VoskFake::setFinalizedResult(
@@ -155,11 +169,12 @@ auto vosk_recognizer_new(
 ) -> VoskRecognizer*
 {
     (void)model;
-    (void)sample_rate;
     if (!fakeVoskState().recognizerCreationSucceeds)
     {
         return nullptr;
     }
+
+    fakeVoskState().recognizerSampleRate = sample_rate;
 
     return fakeRecognizer();
 }
@@ -359,6 +374,36 @@ TEST_F(
     SpeechRecognizer recognizer("fake-model-path");
 
     EXPECT_TRUE(recognizer.finalize().empty());
+}
+
+TEST_F(
+    TestSpeechRecognizer, SampleRateChangeRecreatesTheRecognizer
+)
+{
+    SpeechRecognizer recognizer("fake-model-path");
+    EXPECT_FLOAT_EQ(fakeVoskState().recognizerSampleRate, 16000.0F);
+
+    EXPECT_TRUE(recognizer.setSampleRate(16000.0));
+    EXPECT_FALSE(fakeVoskState().recognizerFree);
+
+    EXPECT_TRUE(recognizer.setSampleRate(48000.0));
+    EXPECT_TRUE(fakeVoskState().recognizerFree);
+    EXPECT_FLOAT_EQ(fakeVoskState().recognizerSampleRate, 48000.0F);
+}
+
+TEST_F(
+    TestSpeechRecognizer, SampleRateChangeKeepsTheRecognizerOnFailure
+)
+{
+    SpeechRecognizer recognizer("fake-model-path");
+    fakeVoskState().recognizerCreationSucceeds = false;
+
+    EXPECT_FALSE(recognizer.setSampleRate(48000.0));
+    EXPECT_FALSE(fakeVoskState().recognizerFree);
+    EXPECT_FLOAT_EQ(fakeVoskState().recognizerSampleRate, 16000.0F);
+
+    fakeVoskState().recognizerCreationSucceeds = true;
+    EXPECT_TRUE(recognizer.setSampleRate(48000.0));
 }
 
 } // namespace

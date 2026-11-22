@@ -51,7 +51,7 @@ foreach(LIB IN LISTS BUNDLED_LIBS)
 endforeach()
 
 if(@UFEEL_ENABLE_EMOTIONS@ AND
-   NOT EXISTS "${DEPENDENCIES_DIR}/libyaml-cpp.so.0.7")
+   NOT EXISTS "${DEPENDENCIES_DIR}/libyaml-cpp.so.0.9")
     message(FATAL_ERROR "Bundled yaml-cpp SONAME file is missing")
 endif()
 
@@ -63,9 +63,4 @@ endif()
 if(@UFEEL_ENABLE_SPEECH_TO_TEXT@ AND
    NOT EXISTS "${DEPENDENCIES_DIR}/libportaudio.so.2")
     message(FATAL_ERROR "Bundled PortAudio SONAME file is missing")
-endif()
-
-if(@UFEEL_ENABLE_HEART_RATE@ AND
-   NOT EXISTS "${DEPENDENCIES_DIR}/libcurl.so.4")
-    message(FATAL_ERROR "Bundled curl SONAME file is missing")
 endif()

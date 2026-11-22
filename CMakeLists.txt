@@ -52,15 +52,20 @@ set(OPENCV_DIR "${THIRDPARTY_DIR}/opencv")
 set(LIBTORCH_DIR "${THIRDPARTY_DIR}/libtorch")
 set(TFLITE_DIR "${THIRDPARTY_DIR}/tensorflowlite")
 set(VOSK_DIR "${THIRDPARTY_DIR}/vosk")
-set(PORTAUDIO_DIR "${THIRDPARTY_DIR}/portaudio")
 set(JSON_DIR "${THIRDPARTY_DIR}/json")
-set(YAML_CPP_DIR "${THIRDPARTY_DIR}/yaml-cpp")
+
+set(UFEEL_DEPS_PREFIX "" CACHE PATH "Install prefix of the dependencies built from the 3rdparty submodules by ./build.sh deps")
+set(PORTAUDIO_DIR "${UFEEL_DEPS_PREFIX}")
+set(UFEEL_NEEDS_DEPS_PREFIX OFF)
+if(UFEEL_ENABLE_EMOTIONS OR UFEEL_ENABLE_SPEECH_TO_TEXT OR UFEEL_ENABLE_HEART_RATE)
+    set(UFEEL_NEEDS_DEPS_PREFIX ON)
+endif()
 
 set(CMAKE_BUILD_RPATH "${OPENCV_DIR}/lib")
 if(UFEEL_ENABLE_EMOTIONS)
     list(APPEND CMAKE_BUILD_RPATH
         "${LIBTORCH_DIR}/lib"
-        "${CMAKE_BINARY_DIR}/yaml-cpp"
+        "${UFEEL_DEPS_PREFIX}/lib"
     )
 endif()
 if(UFEEL_ENABLE_SPEECH_TO_TEXT)
@@ -79,10 +84,7 @@ if(UFEEL_ENABLE_EYE_TRACKING)
     list(APPEND UFEEL_REQUIRED_DIRS "${TFLITE_DIR}")
 endif()
 if(UFEEL_ENABLE_SPEECH_TO_TEXT)
-    list(APPEND UFEEL_REQUIRED_DIRS "${VOSK_DIR}" "${PORTAUDIO_DIR}")
-endif()
-if(UFEEL_ENABLE_EMOTIONS)
-    list(APPEND UFEEL_REQUIRED_DIRS "${YAML_CPP_DIR}")
+    list(APPEND UFEEL_REQUIRED_DIRS "${VOSK_DIR}")
 endif()
 
 foreach(DIR IN LISTS UFEEL_REQUIRED_DIRS)
@@ -91,9 +93,8 @@ foreach(DIR IN LISTS UFEEL_REQUIRED_DIRS)
     endif()
 endforeach()
 
-if(UFEEL_ENABLE_EMOTIONS AND
-   NOT EXISTS "${YAML_CPP_DIR}/CMakeLists.txt")
-    message(FATAL_ERROR "yaml-cpp submodule is not initialized. Run git submodule update --init --recursive")
+if(UFEEL_NEEDS_DEPS_PREFIX AND NOT EXISTS "${UFEEL_DEPS_PREFIX}/.complete")
+    message(FATAL_ERROR "UFEEL_DEPS_PREFIX ('${UFEEL_DEPS_PREFIX}') does not point to built dependencies. Run ./build.sh deps, or configure through ./build.sh")
 endif()
 
 if(UFEEL_ENABLE_EMOTIONS)
@@ -102,39 +103,21 @@ if(UFEEL_ENABLE_EMOTIONS)
 endif()
 
 if(UFEEL_ENABLE_HEART_RATE)
-    find_package(CURL REQUIRED)
-    include(FetchContent)
-
-    set(CPR_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-    set(CPR_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
-    set(CPR_ENABLE_SSL OFF CACHE BOOL "" FORCE)
-    set(CPR_USE_EXISTING_CURL_TARGET ON CACHE BOOL "" FORCE)
-
-    FetchContent_Declare(
-        cpr
-        URL https://github.com/libcpr/cpr/archive/refs/tags/1.15.1.tar.gz
-        URL_HASH SHA256=c2fc62a030c4ca5d7c3517e8068531297f938bf4ab52bf951d4fc9bbc9222716
-        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-    )
-    FetchContent_MakeAvailable(cpr)
+    find_package(Threads REQUIRED)
+    find_package(CURL CONFIG REQUIRED PATHS "${UFEEL_DEPS_PREFIX}" NO_DEFAULT_PATH)
+    include("${UFEEL_DEPS_PREFIX}/lib/cmake/cpr/cprTargets.cmake")
 endif()
 
 find_program(PATCHELF_EXECUTABLE NAMES patchelf REQUIRED)
 
 if(UFEEL_ENABLE_EMOTIONS)
-    set(YAML_BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE)
-    set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-    set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
-    set(YAML_CPP_BUILD_CONTRIB OFF CACHE BOOL "" FORCE)
+    find_package(yaml-cpp 0.9 CONFIG REQUIRED PATHS "${UFEEL_DEPS_PREFIX}" NO_DEFAULT_PATH)
+endif()
 
-    add_subdirectory(
-        "${YAML_CPP_DIR}"
-        "${CMAKE_BINARY_DIR}/yaml-cpp"
-    )
-
-    if(NOT TARGET yaml-cpp::yaml-cpp)
-        message(FATAL_ERROR "yaml-cpp::yaml-cpp target was not created")
-    endif()
+if(UFEEL_ENABLE_SPEECH_TO_TEXT)
+    find_path(PULSEAUDIO_INCLUDE_DIR pulse/pulseaudio.h REQUIRED)
+    find_library(PULSEAUDIO_LIBRARY pulse REQUIRED)
+    file(REAL_PATH "${PORTAUDIO_DIR}/lib/libportaudio.so.2" PORTAUDIO_LIBRARY_FILE)
 endif()
 
 set(OPENCV_LIBRARIES
@@ -205,6 +188,8 @@ if(UFEEL_ENABLE_EYE_TRACKING)
         ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/FaceLandmark.cpp
         ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/IrisLandmark.cpp
         ${LIBRARY_DIR}/src/EyeTracking/IrisDetection/ModelLoader.cpp
+        ${LIBRARY_DIR}/src/EyeTracking/EyeBlinkTracker.cpp
+        ${LIBRARY_DIR}/src/EyeTracking/EyeGazeDirection.cpp
         ${LIBRARY_DIR}/src/EyeTracking/EyeTrackingCalibrationModel.cpp
         ${LIBRARY_DIR}/src/EyeTracking/EyeTrackingDetector.cpp
         ${LIBRARY_DIR}/src/EyeTracking/EyeTrackingKalmanFilter.cpp
@@ -214,6 +199,7 @@ endif()
 if(UFEEL_ENABLE_SPEECH_TO_TEXT)
     add_library(ufeel_feature_speech_to_text STATIC
         ${LIBRARY_DIR}/src/SpeechToText/AudioCapture.cpp
+        ${LIBRARY_DIR}/src/SpeechToText/PulseSources.cpp
         ${LIBRARY_DIR}/src/SpeechToText/SpeechRecognizer.cpp
         ${LIBRARY_DIR}/src/SpeechToText/SpeechToTextDetector.cpp
     )
@@ -323,7 +309,10 @@ if(UFEEL_ENABLE_SPEECH_TO_TEXT)
             ${VOSK_KALDI_LIBRARIES}
             "-Wl,--end-group"
             "${PORTAUDIO_DIR}/lib/libportaudio.so"
+        PRIVATE
+            "${PULSEAUDIO_LIBRARY}"
     )
+    target_include_directories(ufeel_feature_speech_to_text SYSTEM PRIVATE "${PULSEAUDIO_INCLUDE_DIR}")
 endif()
 
 if(UFEEL_ENABLE_HEART_RATE)
@@ -450,26 +439,17 @@ endif()
 
 if(UFEEL_ENABLE_SPEECH_TO_TEXT)
     install(
-        FILES "${PORTAUDIO_DIR}/lib/libportaudio.so.2.0.0"
+        FILES "${PORTAUDIO_LIBRARY_FILE}"
         RENAME libportaudio.so.2
         DESTINATION dependencies
     )
 endif()
 
-if(UFEEL_ENABLE_HEART_RATE)
-    get_filename_component(CURL_LIBRARY_REALPATH "${CURL_LIBRARY}" REALPATH)
-    install(
-        FILES "${CURL_LIBRARY_REALPATH}"
-        RENAME libcurl.so.4
-        DESTINATION dependencies
-    )
-endif()
-
 if(UFEEL_ENABLE_EMOTIONS)
+    file(GLOB YAML_CPP_SHARED_LIBRARIES "${UFEEL_DEPS_PREFIX}/lib/libyaml-cpp.so*")
     install(
-        TARGETS yaml-cpp
-        LIBRARY DESTINATION dependencies
-        RUNTIME DESTINATION dependencies
+        FILES ${YAML_CPP_SHARED_LIBRARIES}
+        DESTINATION dependencies
     )
 endif()
 
@@ -492,6 +472,8 @@ endif()
 if(UFEEL_ENABLE_SPEECH_TO_TEXT)
     install(DIRECTORY "${MODELS_DIR}/SpeechToText/" DESTINATION models/SpeechToText)
 endif()
+
+add_subdirectory(Adapters)
 
 option(UFEEL_BUILD_TESTS "Build unit tests" ON)
 

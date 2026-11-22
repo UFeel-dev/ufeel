@@ -1,6 +1,8 @@
 #ifndef EYETRACKING_EYETRACKINGDETECTOR_HPP
 #define EYETRACKING_EYETRACKINGDETECTOR_HPP
 
+#include "EyeTracking/EyeBlinkTracker.hpp"
+#include "EyeTracking/EyeGazeDirection.hpp"
 #include "EyeTracking/EyeTrackingCalibrationModel.hpp"
 #include "EyeTracking/EyeTrackingKalmanFilter.hpp"
 #include "EyeTracking/IrisDetection/IrisLandmark.hpp"
@@ -10,10 +12,10 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
-#include <deque>
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace cv
@@ -41,9 +43,9 @@ public:
     virtual void runInference() = 0;
     [[nodiscard]] virtual auto getFaceRoi() const -> cv::Rect = 0;
     [[nodiscard]] virtual auto getAllEyeLandmarks(bool leftEye, bool iris) const
-        -> std::vector<cv::Point> = 0;
+        -> std::vector<cv::Point2f> = 0;
     [[nodiscard]] virtual auto getEyeRoi(bool leftEye) const -> cv::Rect = 0;
-    [[nodiscard]] virtual auto getFaceLandmarkAt(int index) const -> cv::Point = 0;
+    [[nodiscard]] virtual auto getFaceLandmarkAt(int index) const -> cv::Point2f = 0;
     [[nodiscard]] virtual auto getFaceLandmark3DAt(int index) const -> cv::Point3f = 0;
 };
 
@@ -53,7 +55,6 @@ enum class EyeTrackingStatus : std::uint8_t
 {
     NotCalibrated = 0,
     FaceUnavailable = 1,
-    Blinking = 2,
     LowQuality = 3,
     Calibrating = 4,
     Valid = 5,
@@ -70,6 +71,21 @@ struct EyeTrackingResult
     float confidence = 0;
     uint32_t directions = 0;
     EyeTrackingStatus status = EyeTrackingStatus::NotCalibrated;
+    float gazeX = 0;
+    float gazeY = 0;
+    float leftOpenness = 0;
+    float rightOpenness = 0;
+    uint32_t eyeState = 0;
+    uint32_t blinkCount = 0;
+    float eyesClosedSeconds = 0;
+};
+
+enum EyeStateFlags : std::uint8_t // NOLINT(cppcoreguidelines-use-enum-class): bit flags mirrored
+                                  // by the public C API.
+{
+    EyeStateTracked = 1U << 0U,
+    EyeStateLeftClosed = 1U << 1U,
+    EyeStateRightClosed = 1U << 2U,
 };
 
 struct CalibrationProgress
@@ -109,6 +125,7 @@ public:
 
     auto process(const cv::Mat& frame, Clock::time_point now = Clock::now()) -> EyeTrackingResult;
     void toggleEyeTrackingDetection(bool state);
+    void setHeadWeight(float weight);
     void close();
     void beginCalibration();
     [[nodiscard]] auto setCalibrationTarget(float x, float y, Clock::time_point now = Clock::now())
@@ -122,18 +139,31 @@ public:
 
 private:
 
-    [[nodiscard]] auto
-    extractFeatures(const cv::Mat& frame, EyeTrackingStatus& status, float& quality)
-        -> std::optional<EyeTrackingFeatureVector>;
+    struct EyeObservation
+    {
+        std::optional<std::pair<double, double>> aspectRatios;
+        std::optional<EyeGazeSample> gaze;
+    };
+
+    [[nodiscard]] auto processFrame(const cv::Mat& frame, Clock::time_point now)
+        -> EyeTrackingResult;
+    [[nodiscard]] auto extractFeatures(
+        const cv::Mat& frame, EyeObservation& observation, EyeTrackingStatus& status, float& quality
+    ) -> std::optional<EyeTrackingFeatureVector>;
+    [[nodiscard]] auto statusWithoutPosition() const -> EyeTrackingStatus;
+    void resetTracking();
 
     bool processEnable_ = true;
     bool calibrationActive_ = false;
     std::optional<std::size_t> calibrationTargetIndex_;
     std::optional<Clock::time_point> calibrationTargetSetAt_;
     std::vector<EyeTrackingCalibrationTarget> calibrationTargets_;
-    std::deque<double> eyeAspectHistory_;
+    std::vector<std::vector<EyeGazeSample>> calibrationGazeSamples_;
     EyeTrackingCalibrationModel calibrationModel_;
     EyeTrackingKalmanFilter gazeEstimator_;
+    EyeBlinkTracker blinkTracker_;
+    EyeGazeDirection gazeDirection_;
+    std::optional<EyeTrackingResult> heldResult_;
     EyeTrackingResult result_;
 
     CalibrationDiagnostics lastCalibrationDiagnostics_{};

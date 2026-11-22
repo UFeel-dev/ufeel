@@ -1,5 +1,6 @@
 #include "EyeTracking/EyeTrackingCalibrationModel.hpp"
 
+#include "EyeTracking/EyeGazeDirection.hpp"
 #include "opencv2/core.hpp"
 #include "opencv2/core/base.hpp"
 #include "opencv2/core/hal/interface.h"
@@ -27,13 +28,17 @@ namespace
 {
 
 constexpr std::size_t MINIMUM_RETAINED_SAMPLES_PER_TARGET = 8;
+constexpr double MEDIAN_DEVIATION_TO_STANDARD_DEVIATION = 1.4826;
+constexpr double MEAN_DEVIATION_TO_STANDARD_DEVIATION = 1.2533;
+constexpr double MAXIMUM_SAMPLE_DEVIATION = 3.0;
 constexpr std::size_t SPATIAL_GRID_BAND_COUNT = 3;
 constexpr double RIDGE_PENALTY = 0.08;
 constexpr double INTERCEPT_PENALTY = 1.0e-8;
 constexpr double MAXIMUM_MEAN_CALIBRATION_ERROR = 0.4;
 constexpr double MAXIMUM_TARGET_CALIBRATION_ERROR = 0.60;
 constexpr std::string_view PROFILE_SIGNATURE = "UFEEL_GAZE_PROFILE";
-constexpr std::uint32_t PROFILE_VERSION = 3;
+
+constexpr std::uint32_t PROFILE_VERSION = 6;
 
 template <typename Values>
 [[nodiscard]] auto median(
@@ -85,7 +90,7 @@ template <typename Values>
     }
 
     std::array<double, GAZE_FEATURE_COUNT> centers{};
-    std::array<double, GAZE_FEATURE_COUNT> thresholds{};
+    std::array<double, GAZE_FEATURE_COUNT> spreads{};
 
     for (std::size_t feature = 0; feature < GAZE_FEATURE_COUNT; ++feature)
     {
@@ -107,25 +112,34 @@ template <typename Values>
             deviations.push_back(std::abs(value - centers.at(feature)));
         }
 
-        thresholds.at(feature) = std::max(0.02, 4.5 * 1.4826 * median(deviations));
+        double const medianDeviation = median(deviations);
+        spreads.at(feature) = medianDeviation > 0.0
+                                  ? MEDIAN_DEVIATION_TO_STANDARD_DEVIATION * medianDeviation
+                                  : MEAN_DEVIATION_TO_STANDARD_DEVIATION *
+                                        std::accumulate(deviations.begin(), deviations.end(), 0.0) /
+                                        static_cast<double>(deviations.size());
     }
 
     retained.reserve(finiteSamples.size());
 
     for (auto const& sample : finiteSamples)
     {
-        bool inlier = true;
+        double squaredDeviation = 0.0;
+        std::size_t varyingFeatures = 0;
 
         for (std::size_t feature = 0; feature < GAZE_FEATURE_COUNT; ++feature)
         {
-            if (std::abs(sample.at(feature) - centers.at(feature)) > thresholds.at(feature))
+            if (spreads.at(feature) > 0.0)
             {
-                inlier = false;
-                break;
+                double const deviation =
+                    (sample.at(feature) - centers.at(feature)) / spreads.at(feature);
+                squaredDeviation += deviation * deviation;
+                ++varyingFeatures;
             }
         }
 
-        if (inlier)
+        if (squaredDeviation <= MAXIMUM_SAMPLE_DEVIATION * MAXIMUM_SAMPLE_DEVIATION *
+                                    static_cast<double>(varyingFeatures))
         {
             retained.push_back(sample);
         }
@@ -632,6 +646,18 @@ auto EyeTrackingCalibrationModel::confidence() const -> float
     return static_cast<float>(std::exp(-2.5 * crossValidationError_));
 }
 
+auto EyeTrackingCalibrationModel::gazeRange() const -> const std::optional<EyeGazeRange>&
+{
+    return gazeRange_;
+}
+
+void EyeTrackingCalibrationModel::setGazeRange(
+    const std::optional<EyeGazeRange>& range
+)
+{
+    gazeRange_ = range;
+}
+
 auto EyeTrackingCalibrationModel::save(
     const std::string& path
 ) const -> bool
@@ -714,6 +740,16 @@ auto EyeTrackingCalibrationModel::save(
                 output << value << ' ';
             }
             output << '\n';
+        }
+
+        if (gazeRange_)
+        {
+            output << "1 " << gazeRange_->neutralX << ' ' << gazeRange_->neutralY << ' '
+                   << gazeRange_->rangeX << ' ' << gazeRange_->rangeY << '\n';
+        }
+        else
+        {
+            output << "0\n";
         }
 
         output.flush();
@@ -838,6 +874,24 @@ auto EyeTrackingCalibrationModel::load(
                     return false;
                 }
             }
+        }
+
+        int hasGazeRange = 0;
+        if (!(input >> hasGazeRange) || (hasGazeRange != 0 && hasGazeRange != 1))
+        {
+            return false;
+        }
+        if (hasGazeRange == 1)
+        {
+            EyeGazeRange range;
+            if (!(input >> range.neutralX >> range.neutralY >> range.rangeX >> range.rangeY) ||
+                !std::isfinite(range.neutralX) || !std::isfinite(range.neutralY) ||
+                !std::isfinite(range.rangeX) || !std::isfinite(range.rangeY) ||
+                range.rangeX <= 0.0 || range.rangeY <= 0.0)
+            {
+                return false;
+            }
+            loadedModel.gazeRange_ = range;
         }
 
         std::string extraData;
