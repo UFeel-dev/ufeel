@@ -131,13 +131,13 @@ public:
 
         switch (index)
         {
-        case 446:
+        case 362:
             return {100, 100};
-        case 464:
+        case 263:
             return {120, 100};
-        case 244:
+        case 33:
             return {200, 100};
-        case 226:
+        case 133:
             return {220, 100};
         default:
             return {};

@@ -90,6 +90,9 @@ namespace UFeel.Interop
         internal static extern int ufeel_cancel_eye_tracking_calibration(IntPtr processor);
 
         [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+        internal static extern int ufeel_set_eye_tracking_head_weight(IntPtr processor, float weight);
+
+        [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
         internal static extern int ufeel_get_eye_tracking_result(IntPtr processor, IntPtr result);
 
         [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]

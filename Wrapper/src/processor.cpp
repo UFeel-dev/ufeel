@@ -196,6 +196,13 @@ public:
         processor_.cancelEyeTrackingCalibration();
     }
 
+    void setEyeTrackingHeadWeight(
+        float weight
+    ) override
+    {
+        processor_.setEyeTrackingHeadWeight(weight);
+    }
+
     [[nodiscard]] auto getEyeTrackingCalibrationProgress() const -> CalibrationProgress override
     {
         return processor_.getEyeTrackingCalibrationProgress();

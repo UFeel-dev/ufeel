@@ -1,5 +1,6 @@
 #include "EyeTracking/EyeTrackingCalibrationModel.hpp"
 
+#include "EyeTracking/EyeGazeDirection.hpp"
 #include "opencv2/core.hpp"
 #include "opencv2/core/base.hpp"
 #include "opencv2/core/hal/interface.h"
@@ -36,7 +37,8 @@ constexpr double INTERCEPT_PENALTY = 1.0e-8;
 constexpr double MAXIMUM_MEAN_CALIBRATION_ERROR = 0.4;
 constexpr double MAXIMUM_TARGET_CALIBRATION_ERROR = 0.60;
 constexpr std::string_view PROFILE_SIGNATURE = "UFEEL_GAZE_PROFILE";
-constexpr std::uint32_t PROFILE_VERSION = 4;
+
+constexpr std::uint32_t PROFILE_VERSION = 6;
 
 template <typename Values>
 [[nodiscard]] auto median(
@@ -644,6 +646,18 @@ auto EyeTrackingCalibrationModel::confidence() const -> float
     return static_cast<float>(std::exp(-2.5 * crossValidationError_));
 }
 
+auto EyeTrackingCalibrationModel::gazeRange() const -> const std::optional<EyeGazeRange>&
+{
+    return gazeRange_;
+}
+
+void EyeTrackingCalibrationModel::setGazeRange(
+    const std::optional<EyeGazeRange>& range
+)
+{
+    gazeRange_ = range;
+}
+
 auto EyeTrackingCalibrationModel::save(
     const std::string& path
 ) const -> bool
@@ -726,6 +740,16 @@ auto EyeTrackingCalibrationModel::save(
                 output << value << ' ';
             }
             output << '\n';
+        }
+
+        if (gazeRange_)
+        {
+            output << "1 " << gazeRange_->neutralX << ' ' << gazeRange_->neutralY << ' '
+                   << gazeRange_->rangeX << ' ' << gazeRange_->rangeY << '\n';
+        }
+        else
+        {
+            output << "0\n";
         }
 
         output.flush();
@@ -850,6 +874,24 @@ auto EyeTrackingCalibrationModel::load(
                     return false;
                 }
             }
+        }
+
+        int hasGazeRange = 0;
+        if (!(input >> hasGazeRange) || (hasGazeRange != 0 && hasGazeRange != 1))
+        {
+            return false;
+        }
+        if (hasGazeRange == 1)
+        {
+            EyeGazeRange range;
+            if (!(input >> range.neutralX >> range.neutralY >> range.rangeX >> range.rangeY) ||
+                !std::isfinite(range.neutralX) || !std::isfinite(range.neutralY) ||
+                !std::isfinite(range.rangeX) || !std::isfinite(range.rangeY) ||
+                range.rangeX <= 0.0 || range.rangeY <= 0.0)
+            {
+                return false;
+            }
+            loadedModel.gazeRange_ = range;
         }
 
         std::string extraData;

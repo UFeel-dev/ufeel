@@ -541,6 +541,17 @@ void DataProcessor::cancelEyeTrackingCalibration()
 #endif
 }
 
+void DataProcessor::setEyeTrackingHeadWeight(
+    float weight
+)
+{
+#if UFEEL_ENABLE_EYE_TRACKING
+    eyeTrackingDetector_->setHeadWeight(weight);
+#else
+    static_cast<void>(weight);
+#endif
+}
+
 auto DataProcessor::getEyeTrackingCalibrationProgress() const -> CalibrationProgress
 {
 #if !UFEEL_ENABLE_EYE_TRACKING

@@ -59,20 +59,19 @@ namespace UFeel
 
         public static string Directions(EyeTrackingResult result)
         {
-            if (!result.IsValid)
+            if (!result.IsTracked)
             {
                 return result.Status switch
                 {
-                    EyeTrackingStatus.NotCalibrated => "Not calibrated",
                     EyeTrackingStatus.FaceUnavailable => "Face not detected",
-                    EyeTrackingStatus.Blinking => "Blink detected",
                     EyeTrackingStatus.LowQuality => "Eye landmarks are low quality",
-                    EyeTrackingStatus.Calibrating => "Calibration in progress",
                     EyeTrackingStatus.Disabled => "Eye tracking is disabled",
                     EyeTrackingStatus.FrameUnavailable => "Camera frame unavailable",
                     _ => "Eye tracking unavailable",
                 };
             }
+            if (result.AreEyesClosed)
+                return "Eyes closed";
 
             var directions = new List<string>(2);
             if (result.Directions.HasDirection(EyeTrackingDirection.Left))
@@ -87,6 +86,22 @@ namespace UFeel
                 directions.Add("center");
 
             return directions.Count == 0 ? "No direction" : string.Join(", ", directions);
+        }
+
+        public static string Eyes(EyeTrackingResult result)
+        {
+            if (!result.IsTracked)
+                return string.Empty;
+
+            return string.Format(
+                CultureInfo.InvariantCulture,
+                "Gaze: ({0:+0.00;-0.00}, {1:+0.00;-0.00}){5}Openness: L {2:F2} R {3:F2}{5}Blinks: {4}",
+                result.GazeX,
+                result.GazeY,
+                result.LeftOpenness,
+                result.RightOpenness,
+                result.BlinkCount,
+                Environment.NewLine);
         }
 
         public static string EyeTracking(EyeTrackingResult result)

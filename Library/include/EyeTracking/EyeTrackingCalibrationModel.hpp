@@ -1,6 +1,7 @@
 #ifndef EYETRACKING_EYETRACKINGCALIBRATIONMODEL_HPP
 #define EYETRACKING_EYETRACKINGCALIBRATIONMODEL_HPP
 
+#include "EyeTracking/EyeGazeDirection.hpp"
 #include "opencv2/core/types.hpp"
 
 #include <array>
@@ -87,6 +88,8 @@ public:
     [[nodiscard]] auto confidence() const -> float;
     [[nodiscard]] auto save(const std::string& path) const -> bool;
     [[nodiscard]] auto load(const std::string& path) -> bool;
+    [[nodiscard]] auto gazeRange() const -> const std::optional<EyeGazeRange>&;
+    void setGazeRange(const std::optional<EyeGazeRange>& range);
 
 private:
 
@@ -103,6 +106,7 @@ private:
     EyeTrackingFeatureVector scales_{};
     Coefficients coefficients_{};
     double crossValidationError_ = 0.0;
+    std::optional<EyeGazeRange> gazeRange_;
     bool valid_ = false;
 };
 

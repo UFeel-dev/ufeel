@@ -21,7 +21,9 @@ public partial class MainWindow
             : UFeelText.Emotions(snapshot.Emotions);
 
         lastEyeTracking = snapshot.EyeTracking;
-        DirectionsText.Text = UFeelText.Directions(lastEyeTracking);
+        DirectionsText.Text = lastEyeTracking.IsTracked
+            ? $"{UFeelText.Directions(lastEyeTracking)}{Environment.NewLine}{UFeelText.Eyes(lastEyeTracking)}"
+            : UFeelText.Directions(lastEyeTracking);
         EyeTrackingText.Text = UFeelText.EyeTracking(lastEyeTracking);
         UpdateEyeTrackingMarker();
 

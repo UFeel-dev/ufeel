@@ -88,7 +88,6 @@ typedef enum
 {
     UFEEL_GAZE_STATUS_NOT_CALIBRATED = 0,
     UFEEL_GAZE_STATUS_FACE_UNAVAILABLE = 1,
-    UFEEL_GAZE_STATUS_BLINKING = 2,
     UFEEL_GAZE_STATUS_LOW_QUALITY = 3,
     UFEEL_GAZE_STATUS_CALIBRATING = 4,
     UFEEL_GAZE_STATUS_VALID = 5,
@@ -109,8 +108,17 @@ typedef enum
     UFEEL_GAZE_DIRECTION_CENTER = 1 << 4
 } UFeelEyeTrackingDirection;
 
+typedef enum
+{
+    UFEEL_EYE_STATE_NONE = 0,
+    UFEEL_EYE_STATE_TRACKED = 1 << 0,
+    UFEEL_EYE_STATE_LEFT_CLOSED = 1 << 1,
+    UFEEL_EYE_STATE_RIGHT_CLOSED = 1 << 2
+} UFeelEyeState;
+
 /** Estimated eye-tracking coordinates and diagnostics for the current video frame. `status` is a
- * UFeelEyeTrackingStatus value. */
+ * UFeelEyeTrackingStatus value for `x`/`y` (0..1). `gazeX`/`gazeY` are -1..1 (1 = right/bottom
+ * screen edge), openness is 0..1. */
 typedef struct
 {
     int32_t status;
@@ -120,6 +128,13 @@ typedef struct
     float recordedY;
     float confidence;
     int32_t directions;
+    float gazeX;
+    float gazeY;
+    float leftOpenness;
+    float rightOpenness;
+    int32_t eyeState;
+    uint32_t blinkCount;
+    float eyesClosedSeconds;
 } UFeelEyeTrackingResult;
 
 /** Progress of the active eye tracking calibration session. */
@@ -296,6 +311,10 @@ UFEEL_API int32_t ufeel_finish_eye_tracking_calibration(UFeelProcessor* processo
 
 /** Aborts eye tracking calibration without activating the unfinished model. */
 UFEEL_API int32_t ufeel_cancel_eye_tracking_calibration(UFeelProcessor* processor);
+
+/** Sets how much head rotation adds to the gaze direction: 0 = eyes only (default), 1 = eyes and
+ * head. */
+UFEEL_API int32_t ufeel_set_eye_tracking_head_weight(UFeelProcessor* processor, float weight);
 
 /** Retrieves the latest eye_tracking estimate and its validity status. */
 UFEEL_API int32_t
