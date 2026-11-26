@@ -27,7 +27,7 @@ target_link_libraries(ufeel_wrapper
 if(UFEEL_ENABLE_EYE_TRACKING)
     target_link_libraries(ufeel_wrapper
         PRIVATE
-            "$<LINK_GROUP:RESCAN,ufeel_feature_eye_tracking,${TFLITE_STATIC_LIBRARIES}>"
+            "${EYE_TRACKING_LINK_LIBRARIES}"
     )
 endif()
 
@@ -36,24 +36,30 @@ target_compile_options(ufeel_wrapper
         ${TORCH_CXX_FLAGS}
 )
 
-target_link_options(ufeel_wrapper
-    PRIVATE
-        "-Wl,--no-undefined"
-)
-
 set_target_properties(ufeel_wrapper PROPERTIES
     CXX_VISIBILITY_PRESET hidden
     VISIBILITY_INLINES_HIDDEN YES
     BUILD_RPATH
-        "${OPENCV_DIR}/lib;${LIBTORCH_DIR}/lib;${PORTAUDIO_DIR}/lib"
-    INSTALL_RPATH
-        "$ORIGIN/dependencies"
+        "${OPENCV_DIR}/lib;${LIBTORCH_DIR}/lib;${PORTAUDIO_DIR}/lib;${VOSK_DIR}/lib"
     INSTALL_RPATH_USE_LINK_PATH FALSE
 )
 
-if(UNIX AND NOT APPLE)
+if(APPLE)
+    set_target_properties(ufeel_wrapper PROPERTIES
+        INSTALL_RPATH "@loader_path/dependencies"
+        LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/ufeel.exp"
+    )
     target_link_options(ufeel_wrapper
         PRIVATE
+            "-Wl,-exported_symbols_list,${CMAKE_CURRENT_SOURCE_DIR}/ufeel.exp"
+    )
+elseif(UNIX)
+    set_target_properties(ufeel_wrapper PROPERTIES
+        INSTALL_RPATH "$ORIGIN/dependencies"
+    )
+    target_link_options(ufeel_wrapper
+        PRIVATE
+            "-Wl,--no-undefined"
             "-Wl,--exclude-libs,ALL"
             "-Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/ufeel.map"
     )

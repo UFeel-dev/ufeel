@@ -1,0 +1,79 @@
+set(INSTALL_NAME_TOOL_EXECUTABLE "@INSTALL_NAME_TOOL_EXECUTABLE@")
+set(OTOOL_EXECUTABLE "@OTOOL_EXECUTABLE@")
+set(CODESIGN_EXECUTABLE "@CODESIGN_EXECUTABLE@")
+set(PACKAGE_DIR "${CMAKE_INSTALL_PREFIX}")
+set(DEPENDENCIES_DIR "${PACKAGE_DIR}/dependencies")
+set(WRAPPER "${PACKAGE_DIR}/@WRAPPER_FILE_NAME@")
+
+if(NOT EXISTS "${WRAPPER}")
+    message(FATAL_ERROR "Installed wrapper not found")
+endif()
+
+if(NOT IS_DIRECTORY "${DEPENDENCIES_DIR}")
+    message(FATAL_ERROR "Dependencies directory not found")
+endif()
+
+function(run_tool)
+    execute_process(
+        COMMAND ${ARGN}
+        RESULT_VARIABLE RESULT
+        OUTPUT_VARIABLE OUTPUT
+        ERROR_VARIABLE ERROR
+    )
+    if(NOT RESULT EQUAL 0)
+        message(FATAL_ERROR "${ARGN} failed: ${ERROR}")
+    endif()
+    set(TOOL_OUTPUT "${OUTPUT}" PARENT_SCOPE)
+endfunction()
+
+# Equivalent of patchelf --set-rpath: replaces every LC_RPATH of LIBRARY with RPATH, then signs it
+# again, since install_name_tool invalidates the signature that arm64 binaries must have.
+function(set_rpath LIBRARY RPATH)
+    run_tool("${OTOOL_EXECUTABLE}" -l "${LIBRARY}")
+    string(REGEX MATCHALL "cmd LC_RPATH\n[^\n]*\n *path [^\n]* \\(offset" COMMANDS "${TOOL_OUTPUT}")
+    set(DELETE_OPTIONS)
+    foreach(COMMAND IN LISTS COMMANDS)
+        string(REGEX REPLACE ".*\n *path (.*) \\(offset" "\\1" EXISTING "${COMMAND}")
+        list(APPEND DELETE_OPTIONS -delete_rpath "${EXISTING}")
+    endforeach()
+    if(DELETE_OPTIONS)
+        run_tool("${INSTALL_NAME_TOOL_EXECUTABLE}" ${DELETE_OPTIONS} "${LIBRARY}")
+    endif()
+    run_tool("${INSTALL_NAME_TOOL_EXECUTABLE}" -add_rpath "${RPATH}" "${LIBRARY}")
+    run_tool("${CODESIGN_EXECUTABLE}" --force --sign - "${LIBRARY}")
+endfunction()
+
+# Fails when LIBRARY loads an @rpath library that is not bundled in dependencies/, or a library
+# from an absolute path outside macOS itself (such as a Homebrew one).
+function(check_bundled LIBRARY)
+    run_tool("${OTOOL_EXECUTABLE}" -D "${LIBRARY}")
+    string(REGEX MATCHALL "@rpath/[^ \n]+" OWN_NAME "${TOOL_OUTPUT}")
+    run_tool("${OTOOL_EXECUTABLE}" -L "${LIBRARY}")
+    string(REGEX MATCHALL "@rpath/[^ \n]+" REFERENCES "${TOOL_OUTPUT}")
+    list(REMOVE_ITEM REFERENCES ${OWN_NAME})
+    foreach(REFERENCE IN LISTS REFERENCES)
+        string(REPLACE "@rpath/" "" NAME "${REFERENCE}")
+        if(NOT EXISTS "${DEPENDENCIES_DIR}/${NAME}")
+            message(FATAL_ERROR "${LIBRARY} loads ${NAME}, which is not bundled in ${DEPENDENCIES_DIR}")
+        endif()
+    endforeach()
+    string(REGEX MATCHALL "\t/[^ \n]+" PATHS "${TOOL_OUTPUT}")
+    foreach(LOADED_PATH IN LISTS PATHS)
+        string(STRIP "${LOADED_PATH}" LOADED_PATH)
+        if(NOT LOADED_PATH MATCHES "^/(usr/lib|System/Library)/")
+            message(FATAL_ERROR "${LIBRARY} loads ${LOADED_PATH}, which is neither bundled nor part of macOS")
+        endif()
+    endforeach()
+endfunction()
+
+set_rpath("${WRAPPER}" "@loader_path/dependencies")
+check_bundled("${WRAPPER}")
+
+file(GLOB BUNDLED_LIBS "${DEPENDENCIES_DIR}/*.dylib")
+
+foreach(LIB IN LISTS BUNDLED_LIBS)
+    if(NOT IS_SYMLINK "${LIB}")
+        set_rpath("${LIB}" "@loader_path")
+        check_bundled("${LIB}")
+    endif()
+endforeach()

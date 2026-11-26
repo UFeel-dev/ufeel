@@ -2,6 +2,12 @@
 
 set -euo pipefail
 
+if ((BASH_VERSINFO[0] * 100 + BASH_VERSINFO[1] < 404)); then
+    printf 'error: bash 4.4 or newer is required, found %s (on macOS: brew install bash)\n' \
+        "$BASH_VERSION" >&2
+    exit 1
+fi
+
 readonly ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly BUILD_ROOT="${ROOT_DIR}/build"
 readonly PACKAGE_ROOT="${ROOT_DIR}/package"
@@ -9,8 +15,18 @@ readonly CACHE_ROOT="${ROOT_DIR}/.cache"
 readonly DEPS_SCRIPT="${ROOT_DIR}/build-deps.sh"
 readonly TEST_HARNESS_PROJECT="${ROOT_DIR}/tests/test-harnesses/csharp/UFeel.TestHarness"
 readonly GENERATOR="Ninja"
-readonly C_COMPILER="clang-22"
-readonly CXX_COMPILER="clang++-22"
+readonly PLATFORM="$(uname -s)"
+readonly MACOS_DEPLOYMENT_TARGET="${UFEEL_MACOS_DEPLOYMENT_TARGET:-14.0}"
+
+if [[ "$PLATFORM" == Darwin ]]; then
+    readonly C_COMPILER="clang"
+    readonly CXX_COMPILER="clang++"
+    readonly WRAPPER_LIBRARY="libufeel_wrapper.dylib"
+else
+    readonly C_COMPILER="clang-22"
+    readonly CXX_COMPILER="clang++-22"
+    readonly WRAPPER_LIBRARY="libufeel_wrapper.so"
+fi
 readonly FEATURES=(emotions eye-tracking speech-to-text heart-rate)
 
 configuration="Release"
@@ -251,14 +267,14 @@ require_built()
 {
     local directory="$1"
     require_configured "$directory"
-    [[ -f "$directory/Wrapper/libufeel_wrapper.so" ]] ||
+    [[ -f "$directory/Wrapper/$WRAPPER_LIBRARY" ]] ||
         error "$directory is not built, run './build.sh build --config ${2:-$configuration}'"
 }
 
 require_package()
 {
     local directory="$1"
-    [[ -f "$directory/libufeel_wrapper.so" ]] ||
+    [[ -f "$directory/$WRAPPER_LIBRARY" ]] ||
         error "$directory is not packaged, run './build.sh all --config ${2:-$configuration}'"
 }
 
@@ -323,6 +339,7 @@ deps_script()
     UFEEL_GENERATOR="$GENERATOR" \
         UFEEL_C_COMPILER="$C_COMPILER" \
         UFEEL_CXX_COMPILER="$CXX_COMPILER" \
+        UFEEL_MACOS_DEPLOYMENT_TARGET="$MACOS_DEPLOYMENT_TARGET" \
         "$DEPS_SCRIPT" "$@"
 }
 
@@ -339,12 +356,19 @@ configure_project()
     prefix="$(deps_script)"
     local -a launcher=()
     mapfile -t launcher < <(compiler_launcher_options)
+    local -a platform=()
+    if [[ "$PLATFORM" == Darwin ]]; then
+        platform=(
+            "-DCMAKE_OSX_DEPLOYMENT_TARGET=$MACOS_DEPLOYMENT_TARGET"
+            "-DCMAKE_IGNORE_PREFIX_PATH=/opt/homebrew;/usr/local"
+        )
+    fi
     run cmake -S "$ROOT_DIR" -B "$directory" -G "$GENERATOR" \
         "-DCMAKE_C_COMPILER=$C_COMPILER" \
         "-DCMAKE_CXX_COMPILER=$CXX_COMPILER" \
         -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
         "-DUFEEL_DEPS_PREFIX=$prefix" \
-        "${launcher[@]}" "$@"
+        "${platform[@]}" "${launcher[@]}" "$@"
 }
 
 configure()
@@ -386,7 +410,7 @@ test_harness()
 
     require_commands dotnet
 
-    if [[ ! -f "$package_directory/libufeel_wrapper.so" ]]; then
+    if [[ ! -f "$package_directory/$WRAPPER_LIBRARY" ]]; then
         configure
         build
         package
@@ -395,7 +419,7 @@ test_harness()
     run dotnet build "$TEST_HARNESS_PROJECT" \
         --configuration "$configuration"
 
-    run_with_environment UFEEL_PACKAGE_PATH "$package_directory/libufeel_wrapper.so" \
+    run_with_environment UFEEL_PACKAGE_PATH "$package_directory/$WRAPPER_LIBRARY" \
         env LD_LIBRARY_PATH="$(runtime_path "$build_directory" "$package_directory")" \
         dotnet run \
             --project "$TEST_HARNESS_PROJECT" \
@@ -482,7 +506,7 @@ run_native_tests_with_coverage()
         -object="$directory/tests/integration/cpp/run_wrapper_integration_tests" \
         -object="$directory/tests/e2e/cpp/run_wrapper_e2e_tests" \
         -object="$directory/libufeel_detection_library.a" \
-        -object="$directory/Wrapper/libufeel_wrapper.so" \
+        -object="$directory/Wrapper/$WRAPPER_LIBRARY" \
         -instr-profile="$directory/coverage.profdata" \
         -ignore-filename-regex='(/tests/|googletest|/usr/|3rdparty/|_deps/|/\.cache/)'
     configuration="$old_configuration"

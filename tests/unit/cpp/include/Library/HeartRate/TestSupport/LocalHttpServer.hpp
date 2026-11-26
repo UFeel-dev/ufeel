@@ -3,7 +3,6 @@
 
 #include <arpa/inet.h>
 #include <array>
-#include <asm-generic/socket.h>
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
@@ -16,6 +15,16 @@
 #include <thread>
 #include <unistd.h>
 #include <utility>
+
+#ifdef __linux__
+#include <asm-generic/socket.h>
+#endif
+
+#ifdef MSG_NOSIGNAL
+constexpr int kLocalHttpServerSendFlags = MSG_NOSIGNAL;
+#else
+constexpr int kLocalHttpServerSendFlags = 0; // macOS sets SO_NOSIGPIPE on the socket instead
+#endif
 
 class LocalHttpServer
 {
@@ -113,6 +122,13 @@ private:
                 continue;
             }
 
+#ifdef SO_NOSIGPIPE
+            int noSigPipe = 1;
+            static_cast<void>(
+                ::setsockopt(client, SOL_SOCKET, SO_NOSIGPIPE, &noSigPipe, sizeof(noSigPipe))
+            );
+#endif
+
             std::array<char, 4096> request{};
             static_cast<void>(::recv(client, request.data(), request.size(), 0));
 
@@ -128,8 +144,12 @@ private:
             std::size_t sent = 0;
             while (sent < response.size())
             {
-                const ssize_t count =
-                    ::send(client, response.data() + sent, response.size() - sent, MSG_NOSIGNAL);
+                const ssize_t count = ::send(
+                    client,
+                    response.data() + sent,
+                    response.size() - sent,
+                    kLocalHttpServerSendFlags
+                );
                 if (count <= 0)
                 {
                     break;

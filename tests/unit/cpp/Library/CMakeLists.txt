@@ -78,7 +78,7 @@ if(UFEEL_ENABLE_EYE_TRACKING)
     target_link_libraries(
         run_library_unit_tests
         PRIVATE
-            "$<LINK_GROUP:RESCAN,ufeel_feature_eye_tracking,${TFLITE_STATIC_LIBRARIES}>"
+            "${EYE_TRACKING_LINK_LIBRARIES}"
     )
 endif()
 

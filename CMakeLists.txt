@@ -2,7 +2,9 @@ cmake_minimum_required(VERSION 3.24)
 
 project(ufeel_detection_library LANGUAGES CXX)
 
-add_link_options("-Wl,--disable-new-dtags")
+if(NOT APPLE)
+    add_link_options("-Wl,--disable-new-dtags")
+endif()
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -48,18 +50,33 @@ set(LIBRARY_DIR "${CMAKE_SOURCE_DIR}/Library")
 set(WRAPPER_DIR "${CMAKE_SOURCE_DIR}/Wrapper")
 set(MODELS_DIR "${CMAKE_SOURCE_DIR}/models")
 
-set(OPENCV_DIR "${THIRDPARTY_DIR}/opencv")
-set(LIBTORCH_DIR "${THIRDPARTY_DIR}/libtorch")
-set(TFLITE_DIR "${THIRDPARTY_DIR}/tensorflowlite")
-set(VOSK_DIR "${THIRDPARTY_DIR}/vosk")
+set(UFEEL_DEPS_PREFIX "" CACHE PATH "Install prefix of the dependencies built from the 3rdparty submodules by ./build.sh deps")
+
+# The prebuilt libraries in 3rdparty/ are Linux x86-64 only. On macOS, ./build.sh deps downloads or
+# builds them and links them into the dependencies prefix under the same directory names.
+if(APPLE)
+    set(PREBUILT_DIR "${UFEEL_DEPS_PREFIX}")
+else()
+    set(PREBUILT_DIR "${THIRDPARTY_DIR}")
+endif()
+
+set(OPENCV_DIR "${PREBUILT_DIR}/opencv")
+set(LIBTORCH_DIR "${PREBUILT_DIR}/libtorch")
+set(TFLITE_DIR "${PREBUILT_DIR}/tensorflowlite")
+set(VOSK_DIR "${PREBUILT_DIR}/vosk")
 set(JSON_DIR "${THIRDPARTY_DIR}/json")
 
-set(UFEEL_DEPS_PREFIX "" CACHE PATH "Install prefix of the dependencies built from the 3rdparty submodules by ./build.sh deps")
 set(PORTAUDIO_DIR "${UFEEL_DEPS_PREFIX}")
 set(UFEEL_NEEDS_DEPS_PREFIX OFF)
-if(UFEEL_ENABLE_EMOTIONS OR UFEEL_ENABLE_SPEECH_TO_TEXT OR UFEEL_ENABLE_HEART_RATE)
+if(APPLE OR UFEEL_ENABLE_EMOTIONS OR UFEEL_ENABLE_SPEECH_TO_TEXT OR UFEEL_ENABLE_HEART_RATE)
     set(UFEEL_NEEDS_DEPS_PREFIX ON)
 endif()
+
+if(UFEEL_NEEDS_DEPS_PREFIX AND NOT EXISTS "${UFEEL_DEPS_PREFIX}/.complete")
+    message(FATAL_ERROR "UFEEL_DEPS_PREFIX ('${UFEEL_DEPS_PREFIX}') does not point to built dependencies. Run ./build.sh deps, or configure through ./build.sh")
+endif()
+
+set(SHARED_SUFFIX "${CMAKE_SHARED_LIBRARY_SUFFIX}")
 
 set(CMAKE_BUILD_RPATH "${OPENCV_DIR}/lib")
 if(UFEEL_ENABLE_EMOTIONS)
@@ -69,7 +86,7 @@ if(UFEEL_ENABLE_EMOTIONS)
     )
 endif()
 if(UFEEL_ENABLE_SPEECH_TO_TEXT)
-    list(APPEND CMAKE_BUILD_RPATH "${PORTAUDIO_DIR}/lib")
+    list(APPEND CMAKE_BUILD_RPATH "${PORTAUDIO_DIR}/lib" "${VOSK_DIR}/lib")
 endif()
 
 set(UFEEL_REQUIRED_DIRS "${MODELS_DIR}")
@@ -93,10 +110,6 @@ foreach(DIR IN LISTS UFEEL_REQUIRED_DIRS)
     endif()
 endforeach()
 
-if(UFEEL_NEEDS_DEPS_PREFIX AND NOT EXISTS "${UFEEL_DEPS_PREFIX}/.complete")
-    message(FATAL_ERROR "UFEEL_DEPS_PREFIX ('${UFEEL_DEPS_PREFIX}') does not point to built dependencies. Run ./build.sh deps, or configure through ./build.sh")
-endif()
-
 if(UFEEL_ENABLE_EMOTIONS)
     set(Torch_DIR "${LIBTORCH_DIR}/share/cmake/Torch")
     find_package(Torch REQUIRED)
@@ -108,25 +121,36 @@ if(UFEEL_ENABLE_HEART_RATE)
     include("${UFEEL_DEPS_PREFIX}/lib/cmake/cpr/cprTargets.cmake")
 endif()
 
-find_program(PATCHELF_EXECUTABLE NAMES patchelf REQUIRED)
+if(APPLE)
+    find_program(INSTALL_NAME_TOOL_EXECUTABLE NAMES install_name_tool REQUIRED)
+    find_program(OTOOL_EXECUTABLE NAMES otool REQUIRED)
+    find_program(CODESIGN_EXECUTABLE NAMES codesign REQUIRED)
+else()
+    find_program(PATCHELF_EXECUTABLE NAMES patchelf REQUIRED)
+endif()
 
 if(UFEEL_ENABLE_EMOTIONS)
     find_package(yaml-cpp 0.9 CONFIG REQUIRED PATHS "${UFEEL_DEPS_PREFIX}" NO_DEFAULT_PATH)
 endif()
 
 if(UFEEL_ENABLE_SPEECH_TO_TEXT)
-    find_path(PULSEAUDIO_INCLUDE_DIR pulse/pulseaudio.h REQUIRED)
-    find_library(PULSEAUDIO_LIBRARY pulse REQUIRED)
-    file(REAL_PATH "${PORTAUDIO_DIR}/lib/libportaudio.so.2" PORTAUDIO_LIBRARY_FILE)
+    if(APPLE)
+        set(PORTAUDIO_SONAME "libportaudio.2.dylib")
+    else()
+        find_path(PULSEAUDIO_INCLUDE_DIR pulse/pulseaudio.h REQUIRED)
+        find_library(PULSEAUDIO_LIBRARY pulse REQUIRED)
+        set(PORTAUDIO_SONAME "libportaudio.so.2")
+    endif()
+    file(REAL_PATH "${PORTAUDIO_DIR}/lib/${PORTAUDIO_SONAME}" PORTAUDIO_LIBRARY_FILE)
 endif()
 
 set(OPENCV_LIBRARIES
-    "${OPENCV_DIR}/lib/libopencv_core.so"
-    "${OPENCV_DIR}/lib/libopencv_imgproc.so"
-    "${OPENCV_DIR}/lib/libopencv_imgcodecs.so"
-    "${OPENCV_DIR}/lib/libopencv_dnn.so"
-    "${OPENCV_DIR}/lib/libopencv_objdetect.so"
-    "${OPENCV_DIR}/lib/libopencv_videoio.so"
+    "${OPENCV_DIR}/lib/libopencv_core${SHARED_SUFFIX}"
+    "${OPENCV_DIR}/lib/libopencv_imgproc${SHARED_SUFFIX}"
+    "${OPENCV_DIR}/lib/libopencv_imgcodecs${SHARED_SUFFIX}"
+    "${OPENCV_DIR}/lib/libopencv_dnn${SHARED_SUFFIX}"
+    "${OPENCV_DIR}/lib/libopencv_objdetect${SHARED_SUFFIX}"
+    "${OPENCV_DIR}/lib/libopencv_videoio${SHARED_SUFFIX}"
 )
 
 file(GLOB_RECURSE TFLITE_DEPENDENCY_LIBRARIES
@@ -141,6 +165,15 @@ set(TFLITE_STATIC_LIBRARIES
     # ! required by tflite, provided by libtorch
     # TODO: find a better way to handle this dependency, maybe by building tflite with pthreadpool support disabled
 )
+
+# ld64 searches static libraries repeatedly, so only the other linkers need a link group.
+if(APPLE)
+    set(EYE_TRACKING_LINK_LIBRARIES ufeel_feature_eye_tracking ${TFLITE_STATIC_LIBRARIES})
+else()
+    set(EYE_TRACKING_LINK_LIBRARIES
+        "$<LINK_GROUP:RESCAN,ufeel_feature_eye_tracking,${TFLITE_STATIC_LIBRARIES}>"
+    )
+endif()
 
 set(VOSK_KALDI_LIBRARIES
     "${VOSK_DIR}/lib/kaldi/online2/kaldi-online2.a"
@@ -275,9 +308,9 @@ target_include_directories(ufeel_detection_library
 
 target_link_libraries(ufeel_detection_library
     PUBLIC
-        "${OPENCV_DIR}/lib/libopencv_core.so"
-        "${OPENCV_DIR}/lib/libopencv_videoio.so"
-        "${OPENCV_DIR}/lib/libopencv_imgproc.so"
+        "${OPENCV_DIR}/lib/libopencv_core${SHARED_SUFFIX}"
+        "${OPENCV_DIR}/lib/libopencv_videoio${SHARED_SUFFIX}"
+        "${OPENCV_DIR}/lib/libopencv_imgproc${SHARED_SUFFIX}"
         $<$<BOOL:${UFEEL_ENABLE_EMOTIONS}>:ufeel_feature_emotions>
         $<$<BOOL:${UFEEL_ENABLE_EYE_TRACKING}>:ufeel_feature_eye_tracking>
         $<$<BOOL:${UFEEL_ENABLE_SPEECH_TO_TEXT}>:ufeel_feature_speech_to_text>
@@ -311,17 +344,25 @@ if(UFEEL_ENABLE_EYE_TRACKING)
 endif()
 
 if(UFEEL_ENABLE_SPEECH_TO_TEXT)
-    target_link_libraries(ufeel_feature_speech_to_text
-        PUBLIC
-            "-Wl,--start-group"
-            "${VOSK_DIR}/lib/libvosk.a"
-            ${VOSK_KALDI_LIBRARIES}
-            "-Wl,--end-group"
-            "${PORTAUDIO_DIR}/lib/libportaudio.so"
-        PRIVATE
-            "${PULSEAUDIO_LIBRARY}"
-    )
-    target_include_directories(ufeel_feature_speech_to_text SYSTEM PRIVATE "${PULSEAUDIO_INCLUDE_DIR}")
+    if(APPLE)
+        target_link_libraries(ufeel_feature_speech_to_text
+            PUBLIC
+                "${VOSK_DIR}/lib/libvosk.dylib"
+                "${PORTAUDIO_DIR}/lib/libportaudio.dylib"
+        )
+    else()
+        target_link_libraries(ufeel_feature_speech_to_text
+            PUBLIC
+                "-Wl,--start-group"
+                "${VOSK_DIR}/lib/libvosk.a"
+                ${VOSK_KALDI_LIBRARIES}
+                "-Wl,--end-group"
+                "${PORTAUDIO_DIR}/lib/libportaudio.so"
+            PRIVATE
+                "${PULSEAUDIO_LIBRARY}"
+        )
+        target_include_directories(ufeel_feature_speech_to_text SYSTEM PRIVATE "${PULSEAUDIO_INCLUDE_DIR}")
+    endif()
 endif()
 
 if(UFEEL_ENABLE_HEART_RATE)
@@ -374,96 +415,89 @@ if(CLANG_TIDY_COMMAND)
     )
 endif()
 
-install(
-    FILES
-        "${OPENCV_DIR}/lib/libopencv_core.so.4.8.1"
-    RENAME libopencv_core.so.408
-    DESTINATION dependencies
-)
-install(
-    FILES
-        "${OPENCV_DIR}/lib/libopencv_videoio.so.4.8.1"
-    RENAME libopencv_videoio.so.408
-    DESTINATION dependencies
-)
-install(
-    FILES
-        "${OPENCV_DIR}/lib/libopencv_imgproc.so.4.8.1"
-    RENAME libopencv_imgproc.so.408
-    DESTINATION dependencies
-)
-install(
-    FILES
-        "${OPENCV_DIR}/lib/libopencv_imgcodecs.so.4.8.1"
-    RENAME libopencv_imgcodecs.so.408
-    DESTINATION dependencies
-)
+function(ufeel_install_opencv_library MODULE)
+    if(APPLE)
+        install(
+            FILES "${OPENCV_DIR}/lib/libopencv_${MODULE}.4.8.1.dylib"
+            RENAME "libopencv_${MODULE}.408.dylib"
+            DESTINATION dependencies
+        )
+    else()
+        install(
+            FILES "${OPENCV_DIR}/lib/libopencv_${MODULE}.so.4.8.1"
+            RENAME "libopencv_${MODULE}.so.408"
+            DESTINATION dependencies
+        )
+    endif()
+endfunction()
+
+foreach(MODULE IN ITEMS core videoio imgproc imgcodecs)
+    ufeel_install_opencv_library(${MODULE})
+endforeach()
 
 if(UFEEL_ENABLE_EMOTIONS OR UFEEL_ENABLE_EYE_TRACKING)
-    install(
-        FILES
-            "${OPENCV_DIR}/lib/libopencv_dnn.so.4.8.1"
-        RENAME libopencv_dnn.so.408
-        DESTINATION dependencies
-    )
-    install(
-        FILES
-            "${OPENCV_DIR}/lib/libopencv_objdetect.so.4.8.1"
-        RENAME libopencv_objdetect.so.408
-        DESTINATION dependencies
-    )
-    install(
-        FILES
-            "${OPENCV_DIR}/lib/libopencv_calib3d.so.4.8.1"
-        RENAME libopencv_calib3d.so.408
-        DESTINATION dependencies
-    )
-    install(
-        FILES
-            "${OPENCV_DIR}/lib/libopencv_features2d.so.4.8.1"
-        RENAME libopencv_features2d.so.408
-        DESTINATION dependencies
-    )
-    install(
-        FILES
-            "${OPENCV_DIR}/lib/libopencv_flann.so.4.8.1"
-        RENAME libopencv_flann.so.408
-        DESTINATION dependencies
-    )
+    foreach(MODULE IN ITEMS dnn objdetect calib3d features2d flann)
+        ufeel_install_opencv_library(${MODULE})
+    endforeach()
 endif()
 
 if(UFEEL_ENABLE_EMOTIONS)
     install(
         FILES
-            "${LIBTORCH_DIR}/lib/libtorch.so"
-            "${LIBTORCH_DIR}/lib/libtorch_cpu.so"
-            "${LIBTORCH_DIR}/lib/libc10.so"
+            "${LIBTORCH_DIR}/lib/libtorch${SHARED_SUFFIX}"
+            "${LIBTORCH_DIR}/lib/libtorch_cpu${SHARED_SUFFIX}"
+            "${LIBTORCH_DIR}/lib/libc10${SHARED_SUFFIX}"
         DESTINATION dependencies
     )
-    install(
-        FILES "${LIBTORCH_DIR}/lib/libgomp-98b21ff3.so.1"
-        DESTINATION dependencies
-    )
+    if(APPLE)
+        install(
+            FILES "${LIBTORCH_DIR}/lib/libomp.dylib"
+            DESTINATION dependencies
+        )
+    else()
+        install(
+            FILES "${LIBTORCH_DIR}/lib/libgomp-98b21ff3.so.1"
+            DESTINATION dependencies
+        )
+    endif()
 endif()
 
 if(UFEEL_ENABLE_SPEECH_TO_TEXT)
     install(
         FILES "${PORTAUDIO_LIBRARY_FILE}"
-        RENAME libportaudio.so.2
+        RENAME ${PORTAUDIO_SONAME}
         DESTINATION dependencies
     )
+    if(APPLE)
+        install(
+            FILES "${VOSK_DIR}/lib/libvosk.dylib"
+            DESTINATION dependencies
+        )
+    endif()
 endif()
 
 if(UFEEL_ENABLE_EMOTIONS)
-    file(GLOB YAML_CPP_SHARED_LIBRARIES "${UFEEL_DEPS_PREFIX}/lib/libyaml-cpp.so*")
+    if(APPLE)
+        file(GLOB YAML_CPP_SHARED_LIBRARIES "${UFEEL_DEPS_PREFIX}/lib/libyaml-cpp*.dylib")
+    else()
+        file(GLOB YAML_CPP_SHARED_LIBRARIES "${UFEEL_DEPS_PREFIX}/lib/libyaml-cpp.so*")
+    endif()
     install(
         FILES ${YAML_CPP_SHARED_LIBRARIES}
         DESTINATION dependencies
     )
 endif()
 
+set(WRAPPER_FILE_NAME "${CMAKE_SHARED_LIBRARY_PREFIX}ufeel_wrapper${SHARED_SUFFIX}")
+
+if(APPLE)
+    set(CONFIGURE_DEPENDENCIES_TEMPLATE "ConfigureDependenciesMacOS.cmake.in")
+else()
+    set(CONFIGURE_DEPENDENCIES_TEMPLATE "ConfigureDependencies.cmake.in")
+endif()
+
 configure_file(
-    "${CMAKE_SOURCE_DIR}/cmake/ConfigureDependencies.cmake.in"
+    "${CMAKE_SOURCE_DIR}/cmake/${CONFIGURE_DEPENDENCIES_TEMPLATE}"
     "${CMAKE_CURRENT_BINARY_DIR}/ConfigureDependencies.cmake"
     @ONLY
 )
