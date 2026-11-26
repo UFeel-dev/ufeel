@@ -25,8 +25,15 @@ public:
     static constexpr std::size_t bufferCount = 32;
     static constexpr std::size_t maxChannelCount = 2;
 
+    /** Names the sound server sources: PulseAudio on Linux, none on macOS (CoreAudio names them).
+     */
+    [[nodiscard]] static auto defaultSourceReader() -> SourceReader;
+    /** Watches the sound server for device changes: PulseAudio on Linux, CoreAudio on macOS. */
+    [[nodiscard]] static auto defaultChangeWatcher() -> ChangeWatcher;
+
     explicit AudioCapture(
-        SourceReader readSources = readPulseSources, ChangeWatcher watchChanges = watchPulseSources
+        SourceReader readSources = defaultSourceReader(),
+        ChangeWatcher watchChanges = defaultChangeWatcher()
     );
     ~AudioCapture() override;
 

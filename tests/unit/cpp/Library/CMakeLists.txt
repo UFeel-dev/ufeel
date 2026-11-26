@@ -49,6 +49,13 @@ if(UFEEL_ENABLE_SPEECH_TO_TEXT)
         SpeechToText/TestSpeechRecognizer.cpp
         SpeechToText/TestSpeechToTextDetector.cpp
     )
+    if(APPLE)
+        target_sources(run_library_unit_tests PRIVATE SpeechToText/TestCoreAudioDevices.cpp)
+        target_link_libraries(run_library_unit_tests PRIVATE
+            "-framework CoreAudio"
+            "-framework CoreFoundation"
+        )
+    endif()
 endif()
 
 if(UFEEL_ENABLE_HEART_RATE)

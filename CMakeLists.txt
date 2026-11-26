@@ -199,10 +199,19 @@ endif()
 if(UFEEL_ENABLE_SPEECH_TO_TEXT)
     add_library(ufeel_feature_speech_to_text STATIC
         ${LIBRARY_DIR}/src/SpeechToText/AudioCapture.cpp
-        ${LIBRARY_DIR}/src/SpeechToText/PulseSources.cpp
         ${LIBRARY_DIR}/src/SpeechToText/SpeechRecognizer.cpp
         ${LIBRARY_DIR}/src/SpeechToText/SpeechToTextDetector.cpp
     )
+    if(APPLE)
+        target_sources(ufeel_feature_speech_to_text PRIVATE
+            ${LIBRARY_DIR}/src/SpeechToText/CoreAudioDevices.cpp
+        )
+        target_link_libraries(ufeel_feature_speech_to_text PRIVATE "-framework CoreAudio")
+    else()
+        target_sources(ufeel_feature_speech_to_text PRIVATE
+            ${LIBRARY_DIR}/src/SpeechToText/PulseSources.cpp
+        )
+    endif()
 endif()
 
 if(UFEEL_ENABLE_HEART_RATE)
