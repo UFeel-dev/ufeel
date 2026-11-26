@@ -8,8 +8,8 @@ runs:
       id: key
       shell: bash
       run: |
-        hash="$(git submodule status | sha256sum | cut -c1-16)"
-        echo "key=deps-$hash-${{ hashFiles('build-deps.sh', 'docker/Dockerfile') }}" >> "$GITHUB_OUTPUT"
+        hash="$(git submodule status | shasum -a 256 | cut -c1-16)"
+        echo "key=deps-${{ runner.os }}-$hash-${{ hashFiles('build-deps.sh', 'docker/Dockerfile') }}" >> "$GITHUB_OUTPUT"
 
     - name: Restore dependencies cache
       uses: actions/cache@v6
