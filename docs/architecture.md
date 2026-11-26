@@ -52,8 +52,9 @@ Each domain (emotions, eye tracking, speech to text, heart rate) is toggled by a
 
 ## Adding an adapter
 
-1. Create `Adapters/<name>/` with the sources and a `CMakeLists.txt` that installs them to `adapters/<name>`.
+1. Create `Adapters/<name>/` with the sources and a `CMakeLists.txt` that installs them to `adapters/<name>`. It may also build them, so a broken adapter fails the build.
 2. It is packaged only on request: `./build.sh all --adapter <name>` (`-DUFEEL_ADAPTERS=<name>;...`). Unknown names fail at configure time.
+3. Add an interactive harness in `tests/test-harnesses/<name>`, run by `./build.sh test-harness --adapter <name>`.
 
 ## Output
 

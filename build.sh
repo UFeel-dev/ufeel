@@ -7,7 +7,8 @@ readonly BUILD_ROOT="${ROOT_DIR}/build"
 readonly PACKAGE_ROOT="${ROOT_DIR}/package"
 readonly CACHE_ROOT="${ROOT_DIR}/.cache"
 readonly DEPS_SCRIPT="${ROOT_DIR}/build-deps.sh"
-readonly TEST_HARNESS_PROJECT="${ROOT_DIR}/tests/test-harnesses/csharp/UFeel.TestHarness"
+readonly CSHARP_TEST_HARNESS_PROJECT="${ROOT_DIR}/tests/test-harnesses/csharp/UFeel.TestHarness"
+readonly CPP_TEST_HARNESS_PROJECT="${ROOT_DIR}/tests/test-harnesses/cpp"
 readonly GENERATOR="Ninja"
 readonly C_COMPILER="clang-22"
 readonly CXX_COMPILER="clang++-22"
@@ -45,7 +46,7 @@ Commands:
   test-unit               Run C++ unit tests
   test-integration        Run C++ integration tests
   test-e2e                Run C++ end-to-end tests (hardware: camera, microphone, ports)
-  test-harness            Build the interactive C# test harness
+  test-harness            Build and run the interactive test harness (C#, or --adapter cpp)
   test-feature-matrix     Build, package and test every feature configuration
   coverage                Run all native tests and generate coverage
   format                  Format C++ files
@@ -388,13 +389,17 @@ package()
 
 test_harness()
 {
+    ((${#adapters[@]} <= 1)) || error "test-harness runs the harness of one --adapter"
+    local adapter="${adapters[0]:-csharp}"
     local package_directory
-    local build_directory
 
     package_directory="$(package_dir "$configuration")"
-    build_directory="$(build_dir "$configuration")"
 
-    require_commands dotnet
+    case "$adapter" in
+        csharp) require_commands dotnet ;;
+        cpp) ;;
+        *) error "adapter '$adapter' has no test harness (choose: csharp cpp)" ;;
+    esac
 
     if [[ ! -f "$package_directory/libufeel_wrapper.so" ]]; then
         configure
@@ -402,15 +407,42 @@ test_harness()
         package
     fi
 
-    run dotnet build "$TEST_HARNESS_PROJECT" \
+    case "$adapter" in
+        csharp) csharp_test_harness "$package_directory" ;;
+        cpp) cpp_test_harness "$package_directory" ;;
+    esac
+}
+
+csharp_test_harness()
+{
+    local package_directory="$1"
+
+    run dotnet build "$CSHARP_TEST_HARNESS_PROJECT" \
         --configuration "$configuration"
 
     run_with_environment UFEEL_PACKAGE_PATH "$package_directory/libufeel_wrapper.so" \
-        env LD_LIBRARY_PATH="$(runtime_path "$build_directory" "$package_directory")" \
+        env LD_LIBRARY_PATH="$(runtime_path "$(build_dir "$configuration")" "$package_directory")" \
         dotnet run \
-            --project "$TEST_HARNESS_PROJECT" \
+            --project "$CSHARP_TEST_HARNESS_PROJECT" \
             --configuration "$configuration" \
             --no-build
+}
+
+cpp_test_harness()
+{
+    local package_directory="$1"
+    local directory="$BUILD_ROOT/test-harness/cpp/${configuration,,}"
+    local -a launcher=()
+    mapfile -t launcher < <(compiler_launcher_options)
+
+    run cmake -S "$CPP_TEST_HARNESS_PROJECT" -B "$directory" -G "$GENERATOR" \
+        "-DCMAKE_C_COMPILER=$C_COMPILER" \
+        "-DCMAKE_CXX_COMPILER=$CXX_COMPILER" \
+        "-DCMAKE_BUILD_TYPE=$configuration" \
+        "-DUFEEL_PACKAGE_DIR=$package_directory" \
+        "${launcher[@]}"
+    run cmake --build "$directory" --parallel
+    run "$directory/ufeel_test_harness"
 }
 
 configure_test_build()
@@ -674,7 +706,7 @@ case "$command" in
     include-fix) require_commands cmake iwyu_tool.py fix_includes.py ;;
     test-unit|test-integration|test-e2e|coverage) require_commands cmake ctest ;;
     test) require_commands cmake ctest ;;
-    test-harness) require_commands cmake dotnet ;;
+    test-harness) require_commands cmake ;;
     test-feature-matrix) require_commands cmake ctest ;;
     *) require_commands cmake ;;
 esac

@@ -71,6 +71,7 @@ Manual builds are supported but require compatible versions of all third-party d
 - libstdc++ providing GLIBCXX_3.4.30
 - ALSA and PulseAudio development libraries (`libasound2-dev`, `libpulse-dev`)
 - .NET SDK 10.0
+- X11 and OpenGL development libraries (C++ test harness)
 - Clang >= 22.0
 - CMake >= 3.20
 - Ninja >= 1.13.2
@@ -115,14 +116,15 @@ git lfs pull
 ## Build and Test
 
 ```bash
-./build.sh all                   # Configure, build, and package (Release)
-./build.sh test                  # Run all automated tests
-./build.sh test-unit             # Run C++ unit tests
-./build.sh test-integration      # Run C++ integration tests
-./build.sh test-e2e              # Run C++ end-to-end tests
-./build.sh test-harness          # Build the interactive C# test harness
-./build.sh test-feature-matrix   # Test every feature configuration
-./build.sh coverage              # Run native tests and generate coverage
+./build.sh all                         # Configure, build, and package (Release)
+./build.sh test                        # Run all automated tests
+./build.sh test-unit                   # Run C++ unit tests
+./build.sh test-integration            # Run C++ integration tests
+./build.sh test-e2e                    # Run C++ end-to-end tests
+./build.sh test-harness                # Build the interactive C# test harness
+./build.sh test-harness --adapter cpp  # Build the interactive C++ test harness
+./build.sh test-feature-matrix         # Test every feature configuration
+./build.sh coverage                    # Run native tests and generate coverage
 ```
 
 The complete command list is available with:
