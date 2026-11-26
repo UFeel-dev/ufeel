@@ -132,10 +132,20 @@ available_adapters()
     done
 }
 
+valid_adapter()
+{
+    local adapter="$1"
+    local candidate
+    while IFS= read -r candidate; do
+        [[ "$candidate" == "$adapter" ]] && return 0
+    done < <(available_adapters)
+    return 1
+}
+
 add_adapter()
 {
     local adapter="$1"
-    available_adapters | grep -qxF -- "$adapter" ||
+    valid_adapter "$adapter" ||
         error "unknown adapter '$adapter' (choose: $(available_adapters | paste -sd ' '))"
     adapters+=("$adapter")
 }
