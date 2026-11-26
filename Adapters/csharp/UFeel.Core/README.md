@@ -6,7 +6,7 @@ Engine-agnostic C# binding for `libufeel_wrapper`. Limited to C# 9 / netstandard
 
 - **Unity:** copy this folder into a package. `UFeel.Core.asmdef` defines the assembly.
 - **Other .NET hosts:** compile the folder, or reference `UFeel.Core.csproj` from the ufeel repo.
-- `libufeel_wrapper` must be loadable (engine plugin, `NativeLibrary.SetDllImportResolver` or `LD_LIBRARY_PATH`), with `dependencies/` next to it.
+- `libufeel_wrapper` must be loadable (engine plugin, `NativeLibrary.SetDllImportResolver`, `LD_LIBRARY_PATH` or `DYLD_LIBRARY_PATH` on macOS), with `dependencies/` next to it.
 
 ## Use
 

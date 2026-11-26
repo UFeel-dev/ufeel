@@ -4,7 +4,7 @@ using UFeel;
 
 namespace UFeelTest;
 
-/// <summary>Package locations, from UFEEL_PACKAGE_PATH (path to libufeel_wrapper.so, set by build.sh).</summary>
+/// <summary>Package locations, from UFEEL_PACKAGE_PATH (path to libufeel_wrapper.so or .dylib, set by build.sh).</summary>
 internal sealed record HarnessPaths(string LibraryPath, UFeelPackageLayout Layout)
 {
     public static HarnessPaths FromEnvironment()
