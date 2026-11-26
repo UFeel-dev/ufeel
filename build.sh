@@ -415,6 +415,13 @@ configure_test_build()
         "${options[@]}"
 }
 
+test_parallel_level()
+{
+    local cpus
+    cpus="$(getconf _NPROCESSORS_ONLN)"
+    printf '%s' "$((cpus > 1 ? cpus - 1 : 1))"
+}
+
 run_native_tests()
 {
     local directory="$BUILD_ROOT/tests"
@@ -422,7 +429,7 @@ run_native_tests()
     build "$directory"
     run_with_environment LD_LIBRARY_PATH "$(runtime_path "$directory")" \
         ctest --test-dir "$directory" --output-on-failure "$@" \
-        --parallel "$(nproc - 1)"
+        --parallel "$(test_parallel_level)"
 }
 
 test_all()
@@ -459,7 +466,7 @@ run_native_tests_with_coverage()
     run_with_environment LLVM_PROFILE_FILE "$directory/coverage-%p.profraw" \
         env LD_LIBRARY_PATH="$(runtime_path "$directory")" \
         ctest --test-dir "$directory" --output-on-failure \
-        --parallel "$(nproc - 1)"
+        --parallel "$(test_parallel_level)"
     local profdata
     local cov
     profdata="$(command -v llvm-profdata-22 || command -v llvm-profdata)" ||
@@ -503,7 +510,7 @@ test_feature_matrix()
         run cmake --install "$directory" --prefix "$destination"
         run_with_environment LD_LIBRARY_PATH "$(runtime_path "$directory" "$destination")" \
             ctest --test-dir "$directory" --label-exclude '^hardware$' --output-on-failure \
-            --parallel "$(nproc - 1)"
+            --parallel "$(test_parallel_level)"
     done
 }
 
