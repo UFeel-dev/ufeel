@@ -432,9 +432,10 @@ run_native_tests()
         --parallel "$(test_parallel_level)"
 }
 
+# Unanchored: CMake 4 keeps the e2e tests' labels as the single label "e2e;hardware".
 test_all()
 {
-    run_native_tests --label-exclude '^hardware$'
+    run_native_tests --label-exclude 'hardware'
 }
 
 test_unit()
@@ -449,7 +450,7 @@ test_integration()
 
 test_e2e()
 {
-    run_native_tests --label-regex '^e2e$'
+    run_native_tests --label-regex 'e2e'
 }
 
 run_native_tests_with_coverage()
@@ -509,7 +510,7 @@ test_feature_matrix()
         run cmake --build "$directory" --parallel
         run cmake --install "$directory" --prefix "$destination"
         run_with_environment LD_LIBRARY_PATH "$(runtime_path "$directory" "$destination")" \
-            ctest --test-dir "$directory" --label-exclude '^hardware$' --output-on-failure \
+            ctest --test-dir "$directory" --label-exclude 'hardware' --output-on-failure \
             --parallel "$(test_parallel_level)"
     done
 }
