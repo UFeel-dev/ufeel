@@ -6,7 +6,7 @@ Automated tests use GoogleTest. Run them inside the [Docker environment](../dock
 
 | Level | Command | Location | Scope |
 | --- | --- | --- | --- |
-| Unit | `./build.sh test-unit` | [tests/unit/cpp](../tests/unit/cpp) | Library and Wrapper classes in isolation. |
+| Unit | `./build.sh test-unit` | [tests/unit/cpp](../tests/unit/cpp) | Library, Wrapper and C++ adapter classes in isolation. |
 | Integration | `./build.sh test-integration` | [tests/integration](../tests/integration) | `DataProcessor` with real models on [fixtures](../tests/resources), wrapper tests, and a check that the built library exports every `ufeel_*` symbol and reports exactly the disabled features as unsupported. |
 | E2E | `./build.sh test-e2e` | [tests/e2e](../tests/e2e) | Full C API flow with the real camera, microphone and heart-rate ports. |
 | Feature matrix | `./build.sh test-feature-matrix` | `package/matrix` | Builds, packages and runs the hardware-free tests for every feature combination. |
@@ -28,7 +28,7 @@ Every other test must pass without devices or network. Build `DataProcessor` wit
 
 ## Rules
 
-- Unit tests mirror the source tree: `Library/src/X/Y.cpp` is tested in `tests/unit/cpp/Library/X/TestY.cpp`, and `Wrapper/src/X.cpp` in `tests/unit/cpp/Wrapper/src/TestX.cpp`.
+- Unit tests mirror the source tree: `Library/src/X/Y.cpp` is tested in `tests/unit/cpp/Library/X/TestY.cpp`, `Wrapper/src/X.cpp` in `tests/unit/cpp/Wrapper/src/TestX.cpp`, and `Adapters/cpp/UFeel/src/X/Y.cpp` in `tests/unit/cpp/Adapters/cpp/X/TestY.cpp`. C++ adapter tests inject [ProcessorBackendFake](../tests/unit/cpp/include/Wrapper/support/ProcessorBackendFake.hpp) with `ufeel::Processor::adopt`.
 - Integration and e2e C++ tests only build when all four features are enabled.
 - Assert on the known answer of a fixture instead of skipping: a face, a blank frame, a grayscale frame, a small face, a spoken sentence, silence.
 - Test resources and their licenses: [tests/resources/README.md](../tests/resources/README.md).

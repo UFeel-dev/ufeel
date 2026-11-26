@@ -66,4 +66,4 @@ jobs:
             -e CTCACHE_KEEP_COMMENTS=1 \
             -w /mnt \
             ufeeldocker:ci \
-            bash -lc './build.sh configure && ./build.sh lint'
+            bash -lc './build.sh configure --adapter cpp && ./build.sh lint'

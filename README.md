@@ -104,6 +104,7 @@ git lfs pull
 ├── Tools/            # Development tools
 ├── Library/          # Native sources
 ├── Wrapper/          # C++ wrapper
+├── Adapters/         # Language adapters (C#, C++)
 ├── tests/            # Tests
 ├── 3rdparty/         # External dependencies
 ├── build/            # Configuration-specific generated build files
@@ -148,7 +149,10 @@ The available options are `UFEEL_ENABLE_EMOTIONS`, `UFEEL_ENABLE_EYE_TRACKING`, 
 
 ### Adapters
 
-Language adapters are packaged only on request: `./build.sh all --adapter csharp` adds `package/release/adapters/csharp/UFeel.Core` ([C# adapter](Adapters/csharp/UFeel.Core/README.md)).
+Language adapters are packaged only on request:
+
+- `./build.sh all --adapter csharp` adds `package/release/adapters/csharp/UFeel.Core` ([C# adapter](Adapters/csharp/UFeel.Core/README.md)).
+- `./build.sh all --adapter cpp` adds `package/release/adapters/cpp/UFeel` ([C++ adapter](Adapters/cpp/UFeel/README.md)).
 
 ## Documentation
 

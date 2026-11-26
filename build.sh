@@ -483,6 +483,7 @@ run_native_tests_with_coverage()
         -object="$directory/tests/integration/cpp/run_library_integration_tests" \
         -object="$directory/tests/integration/cpp/run_wrapper_integration_tests" \
         -object="$directory/tests/e2e/cpp/run_wrapper_e2e_tests" \
+        -object="$directory/tests/unit/cpp/Adapters/cpp/run_cpp_adapter_unit_tests" \
         -object="$directory/libufeel_detection_library.a" \
         -object="$directory/Wrapper/libufeel_wrapper.so" \
         -instr-profile="$directory/coverage.profdata" \
@@ -527,7 +528,7 @@ collect_format_sources()
     fi
     local file
     while IFS= read -r -d '' file; do collected+=("$file"); done < <(
-        find "$ROOT_DIR/Library" "$ROOT_DIR/Wrapper" "$ROOT_DIR/tests" -type f \
+        find "$ROOT_DIR/Library" "$ROOT_DIR/Wrapper" "$ROOT_DIR/Adapters" "$ROOT_DIR/tests" -type f \
             \( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \) -print0
     )
 }
@@ -580,14 +581,14 @@ static_analysis()
     require_configured "$directory"
 
     if ((${#targets[@]} == 0)); then
-        targets=(Library/.* Wrapper/.*)
+        targets=(Library/.* Wrapper/.* Adapters/.*)
         "$include_tests" && targets+=( 'tests/(unit|integration|e2e)/.*' )
     fi
 
     local -a options=(
         run-clang-tidy -quiet
         -p "$directory"
-        -header-filter='.*(Library|Wrapper|tests/(unit|integration|e2e))/.*'
+        -header-filter='.*(Library|Wrapper|Adapters|tests/(unit|integration|e2e))/.*'
     )
     "$apply_fixes" && options+=(-fix '-warnings-as-errors=-*')
     [[ -t 1 ]] && options+=(-use-color=1)
@@ -628,7 +629,7 @@ include_fix()
 {
     local directory="$(build_dir Release)"
     require_configured "$directory"
-    local -a targets=("$ROOT_DIR/Library" "$ROOT_DIR/Wrapper")
+    local -a targets=("$ROOT_DIR/Library" "$ROOT_DIR/Wrapper" "$ROOT_DIR/Adapters/cpp")
     (("$#" == 0)) || targets=("$@")
     printf '+'
     printf ' %q' iwyu_tool.py -p "$directory" "${targets[@]}"
