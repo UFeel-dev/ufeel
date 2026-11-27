@@ -3,8 +3,8 @@
 
 #include <arpa/inet.h>
 #include <array>
-#include <asm-generic/socket.h>
 #include <atomic>
+#include <csignal>
 #include <cstddef>
 #include <cstdint>
 #include <netinet/in.h>
@@ -29,6 +29,8 @@ public:
         : statusCode_(statusCode)
         , body_(std::move(body))
     {
+        static_cast<void>(std::signal(SIGPIPE, SIG_IGN));
+
         socket_ = ::socket(AF_INET, SOCK_STREAM, 0);
         if (socket_ < 0)
         {
@@ -129,7 +131,7 @@ private:
             while (sent < response.size())
             {
                 const ssize_t count =
-                    ::send(client, response.data() + sent, response.size() - sent, MSG_NOSIGNAL);
+                    ::send(client, response.data() + sent, response.size() - sent, 0);
                 if (count <= 0)
                 {
                     break;

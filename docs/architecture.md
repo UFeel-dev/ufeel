@@ -12,7 +12,7 @@ flowchart TD
     Library["Library/ · ufeel_detection_library<br/>(static library)"]
     Emotions["ufeel_feature_emotions<br/>(LibTorch, OpenCV)"]
     EyeTracking["ufeel_feature_eye_tracking<br/>(TFLite)"]
-    SpeechToText["ufeel_feature_speech_to_text<br/>(Vosk, PortAudio, PulseAudio)"]
+    SpeechToText["ufeel_feature_speech_to_text<br/>(Vosk, PortAudio, PulseAudio / CoreAudio)"]
     HeartRate["ufeel_feature_heart_rate<br/>(libcurl, UDP/HTTP sources)"]
 
     Host -->|"ufeel.h (C ABI)"| Wrapper
@@ -30,10 +30,10 @@ flowchart TD
 | Layer | Path | Role |
 | --- | --- | --- |
 | Library | [Library/](../Library) | C++ detectors, orchestrated by [DataProcessor](../Library/include/DataProcessor.hpp). One folder per domain under `include/` and `src/`. |
-| Wrapper | [Wrapper/](../Wrapper) | C ABI over `DataProcessor`. Public header: [ufeel.h](../Wrapper/include/ufeel.h). Exports are restricted by [ufeel.map](../Wrapper/ufeel.map). Internals in `Wrapper/src/include/internal`. |
+| Wrapper | [Wrapper/](../Wrapper) | C ABI over `DataProcessor`. Public header: [ufeel.h](../Wrapper/include/ufeel.h). Exports are restricted by [ufeel.map](../Wrapper/ufeel.map) ([ufeel.exp](../Wrapper/ufeel.exp) on macOS). Internals in `Wrapper/src/include/internal`. |
 | Adapters | [Adapters/](../Adapters) | Language adapters over the C ABI (e.g. [C#](../Adapters/csharp/UFeel.Core/README.md)). |
 | Models | [models/](../models) | Model files per domain, each with its license. Installed into the package. |
-| 3rdparty | [3rdparty/](../3rdparty) | Prebuilt dependencies and submodules. See [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md). |
+| 3rdparty | [3rdparty/](../3rdparty) | Prebuilt dependencies (Linux x86-64) and submodules. On macOS, [build-deps.sh](../build-deps.sh) downloads or builds the prebuilt ones into `.cache/deps`. See [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md). |
 
 ## Feature flags
 
@@ -57,4 +57,4 @@ Each domain (emotions, eye tracking, speech to text, heart rate) is toggled by a
 
 ## Output
 
-`./build.sh all` builds in `build/` and installs the package to `package/release` (or `package/debug`). The package holds `libufeel_wrapper.so`, `include/ufeel.h`, `models/`, `dependencies/` and, when requested, `adapters/<name>/`.
+`./build.sh all` builds in `build/` and installs the package to `package/release` (or `package/debug`). The package holds `libufeel_wrapper.so` (`libufeel_wrapper.dylib` on macOS), `include/ufeel.h`, `models/`, `dependencies/` and, when requested, `adapters/<name>/`.

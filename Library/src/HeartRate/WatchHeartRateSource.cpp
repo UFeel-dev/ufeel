@@ -4,7 +4,6 @@
 #include "HeartRate/UFeelHeartRateStatus.hpp"
 
 #include <array>
-#include <asm-generic/socket.h>
 #include <charconv>
 #include <cstdint>
 #include <iostream>

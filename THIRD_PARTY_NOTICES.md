@@ -24,6 +24,8 @@ This file lists the third-party components distributed with or linked by the lib
 | FlatBuffers (in TFLite) | 23.5.26 (TFLite headers) | Apache-2.0 | `3rdparty/opencv/share/licenses/opencv4/flatbuffers-LICENSE.txt` and TFLite headers |
 | PortAudio | 19.8 dev, unreleased (master `e813847`) | MIT-style | `3rdparty/portaudio/LICENSE.txt` |
 
+On macOS, the prebuilt libraries above are not used: [build-deps.sh](build-deps.sh) downloads the official LibTorch 2.10.0 `libtorch-macos-arm64` build and the official Vosk 0.3.42 `vosk-osx` build (the latest Vosk release for macOS), and builds OpenCV 4.8.1 and TensorFlow Lite 2.15.0 from source, with the same licenses. OpenCV uses the zlib of the macOS SDK instead of its bundled copy.
+
 ## Models
 
 | Model | Path | License |

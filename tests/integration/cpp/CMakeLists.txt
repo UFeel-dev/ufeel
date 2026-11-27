@@ -57,7 +57,7 @@ target_link_libraries(
     PRIVATE
         GTest::gtest_main
         ufeel_detection_library
-        "$<LINK_GROUP:RESCAN,ufeel_feature_eye_tracking,${TFLITE_STATIC_LIBRARIES}>"
+        "${EYE_TRACKING_LINK_LIBRARIES}"
 )
 
 add_executable(
@@ -83,7 +83,7 @@ target_link_libraries(
     PRIVATE
         GTest::gtest_main
         ufeel_wrapper
-        "${OPENCV_DIR}/lib/libopencv_core.so"
+        "${OPENCV_DIR}/lib/libopencv_core${SHARED_SUFFIX}"
 )
 
 include(GoogleTest)

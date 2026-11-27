@@ -42,6 +42,23 @@ Docker is the recommended build environment. It provides a reproducible toolchai
 
 Note: `./build.sh test` needs no devices. You need a camera and a microphone for the hardware tests (`./build.sh test-e2e`) and to try features live.
 
+### macOS (Apple silicon)
+
+Docker cannot reach the camera or the microphone on macOS, so build natively instead:
+
+```bash
+brew install bash cmake ninja
+
+GIT_LFS_SKIP_SMUDGE=1 git clone https://github.com/UFeel-dev/ufeel
+cd ufeel
+git submodule update --init --recursive
+
+./build.sh all
+./build.sh test
+```
+
+The Git LFS files are not needed: the prebuilt libraries in `3rdparty/` are Linux x86-64 only. Instead, the first build downloads LibTorch and Vosk and builds OpenCV and TensorFlow Lite from source into `.cache/deps` (see [Third-Party Libraries](#third-party-libraries)). macOS asks for camera and microphone access for your terminal the first time they are used: allow it, or grant it later in System Settings > Privacy & Security.
+
 To use clang-related tools (e.g. linting, formatting, or IDE features), set up the compilation database:
 
 - Install `bear`.
@@ -61,6 +78,15 @@ The generated compilation database from CMake is not always directly usable by a
 - Docker >= 20.0
 - Git
 - Git LFS >= 3.4.1
+
+### macOS build
+
+- macOS >= 14 on Apple silicon (arm64)
+- Xcode Command Line Tools (Apple Clang, `install_name_tool`, `codesign`)
+- Bash >= 4.4 (macOS ships 3.2)
+- CMake >= 3.24
+- Ninja >= 1.13.2
+- .NET SDK 10.0, for the test harness
 
 ### Manual build
 
@@ -88,6 +114,8 @@ If some dependencies are missing for your system, please open an issue. The [Doc
 ## Third-Party Libraries
 
 This project uses Git LFS to store large third-party libraries in `3rdparty/`, including prebuilt `.so` and `.a` files. yaml-cpp, cpr and PortAudio are Git submodules built from source.
+
+On macOS, [build-deps.sh](build-deps.sh) replaces the prebuilt libraries: it downloads LibTorch and Vosk and builds OpenCV and TensorFlow Lite once into `.cache/deps`, each pinned to a SHA-256, and PortAudio uses CoreAudio.
 After cloning, initialize all submodules and download the Git LFS files:
 
 ```bash

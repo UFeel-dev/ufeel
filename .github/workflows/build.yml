@@ -61,3 +61,26 @@ jobs:
             -w /mnt \
             ufeeldocker:ci \
             bash -lc "./build.sh test"
+
+  build-macos:
+    name: Build (macOS)
+    runs-on: macos-26
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          lfs: false
+          submodules: recursive
+
+      - name: Install build tools
+        run: brew install bash ninja
+
+      - name: Restore dependencies
+        uses: ./.github/actions/deps-cache
+
+      - name: Build project
+        run: ./build.sh configure && ./build.sh build
+
+      - name: Run unit tests
+        run: ./build.sh test

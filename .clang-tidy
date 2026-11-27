@@ -83,3 +83,5 @@ CheckOptions:
   readability-identifier-naming.IgnoreMainLikeFunctions: '1'
 
   cppcoreguidelines-pro-bounds-avoid-unchecked-container-access.FixMode: at
+
+  misc-include-cleaner.IgnoreHeaders: 'asm-generic/.*'
