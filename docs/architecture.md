@@ -7,7 +7,7 @@ UFeel is a native library with a C ABI, consumed from C++, C# and game engines.
 ```mermaid
 flowchart TD
     Host["Host app (C++ / C# / Unity)"]
-    Adapters["Adapters/ · language adapters<br/>(e.g. C# UFeel.Core)"]
+    Adapters["Adapters/ · language adapters<br/>(C# UFeel.Core, C++ UFeel)"]
     Wrapper["Wrapper/ · ufeel_wrapper<br/>(shared library)"]
     Library["Library/ · ufeel_detection_library<br/>(static library)"]
     Emotions["ufeel_feature_emotions<br/>(LibTorch, OpenCV)"]
@@ -31,7 +31,7 @@ flowchart TD
 | --- | --- | --- |
 | Library | [Library/](../Library) | C++ detectors, orchestrated by [DataProcessor](../Library/include/DataProcessor.hpp). One folder per domain under `include/` and `src/`. |
 | Wrapper | [Wrapper/](../Wrapper) | C ABI over `DataProcessor`. Public header: [ufeel.h](../Wrapper/include/ufeel.h). Exports are restricted by [ufeel.map](../Wrapper/ufeel.map). Internals in `Wrapper/src/include/internal`. |
-| Adapters | [Adapters/](../Adapters) | Language adapters over the C ABI (e.g. [C#](../Adapters/csharp/UFeel.Core/README.md)). |
+| Adapters | [Adapters/](../Adapters) | Language adapters over the C ABI: [C#](../Adapters/csharp/UFeel.Core/README.md), [C++](../Adapters/cpp/UFeel/README.md). |
 | Models | [models/](../models) | Model files per domain, each with its license. Installed into the package. |
 | 3rdparty | [3rdparty/](../3rdparty) | Prebuilt dependencies and submodules. See [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md). |
 
@@ -52,8 +52,9 @@ Each domain (emotions, eye tracking, speech to text, heart rate) is toggled by a
 
 ## Adding an adapter
 
-1. Create `Adapters/<name>/` with the sources and a `CMakeLists.txt` that installs them to `adapters/<name>`.
+1. Create `Adapters/<name>/` with the sources and a `CMakeLists.txt` that installs them to `adapters/<name>`. It may also build them, so a broken adapter fails the build.
 2. It is packaged only on request: `./build.sh all --adapter <name>` (`-DUFEEL_ADAPTERS=<name>;...`). Unknown names fail at configure time.
+3. Add an interactive harness in `tests/test-harnesses/<name>`, run by `./build.sh test-harness --adapter <name>`.
 
 ## Output
 

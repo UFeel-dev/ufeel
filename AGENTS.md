@@ -14,7 +14,7 @@ UFeel: native C++ library (emotion recognition, eye tracking, speech to text, he
 
 - Layers, layout, adding a feature: [Architecture](docs/architecture.md)
 - Public C API: [Wrapper/include/ufeel.h](Wrapper/include/ufeel.h)
-- Language adapters (e.g. C#): [Adapters/](Adapters), [architecture](docs/architecture.md#adding-an-adapter)
+- Language adapters (C#, C++): [Adapters/](Adapters), [architecture](docs/architecture.md#adding-an-adapter)
 - Heart rate sources: [docs/heart-rate.md](docs/heart-rate.md)
 - Dev tools: [Tools/TOOLS.md](Tools/TOOLS.md)
 

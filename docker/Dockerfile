@@ -91,6 +91,14 @@ RUN apt-get update && \
         libwayland-cursor0 \
         libwayland-egl1 \
         libxkbcommon0 \
+        libgl-dev \
+        libgl1-mesa-dri \
+        libglx-mesa0 \
+        libx11-dev \
+        libxcursor-dev \
+        libxi-dev \
+        libxinerama-dev \
+        libxrandr-dev \
         && \
     rm -rf /var/lib/apt/lists/*
 
