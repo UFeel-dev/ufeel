@@ -237,9 +237,8 @@ if(UFEEL_ENABLE_SPEECH_TO_TEXT)
     )
     if(APPLE)
         target_sources(ufeel_feature_speech_to_text PRIVATE
-            ${LIBRARY_DIR}/src/SpeechToText/CoreAudioDevices.cpp
+            ${LIBRARY_DIR}/src/SpeechToText/PulseSourcesUnavailable.cpp
         )
-        target_link_libraries(ufeel_feature_speech_to_text PRIVATE "-framework CoreAudio")
     else()
         target_sources(ufeel_feature_speech_to_text PRIVATE
             ${LIBRARY_DIR}/src/SpeechToText/PulseSources.cpp

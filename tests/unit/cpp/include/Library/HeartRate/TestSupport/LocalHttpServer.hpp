@@ -4,6 +4,7 @@
 #include <arpa/inet.h>
 #include <array>
 #include <atomic>
+#include <csignal>
 #include <cstddef>
 #include <cstdint>
 #include <netinet/in.h>
@@ -15,16 +16,6 @@
 #include <thread>
 #include <unistd.h>
 #include <utility>
-
-#ifdef __linux__
-#include <asm-generic/socket.h>
-#endif
-
-#ifdef MSG_NOSIGNAL
-constexpr int kLocalHttpServerSendFlags = MSG_NOSIGNAL;
-#else
-constexpr int kLocalHttpServerSendFlags = 0; // macOS sets SO_NOSIGPIPE on the socket instead
-#endif
 
 class LocalHttpServer
 {
@@ -38,6 +29,8 @@ public:
         : statusCode_(statusCode)
         , body_(std::move(body))
     {
+        static_cast<void>(std::signal(SIGPIPE, SIG_IGN));
+
         socket_ = ::socket(AF_INET, SOCK_STREAM, 0);
         if (socket_ < 0)
         {
@@ -122,13 +115,6 @@ private:
                 continue;
             }
 
-#ifdef SO_NOSIGPIPE
-            int noSigPipe = 1;
-            static_cast<void>(
-                ::setsockopt(client, SOL_SOCKET, SO_NOSIGPIPE, &noSigPipe, sizeof(noSigPipe))
-            );
-#endif
-
             std::array<char, 4096> request{};
             static_cast<void>(::recv(client, request.data(), request.size(), 0));
 
@@ -144,12 +130,8 @@ private:
             std::size_t sent = 0;
             while (sent < response.size())
             {
-                const ssize_t count = ::send(
-                    client,
-                    response.data() + sent,
-                    response.size() - sent,
-                    kLocalHttpServerSendFlags
-                );
+                const ssize_t count =
+                    ::send(client, response.data() + sent, response.size() - sent, 0);
                 if (count <= 0)
                 {
                     break;

@@ -363,50 +363,6 @@ TEST_F(
 }
 
 TEST_F(
-    AudioCaptureTest, ListsCoreAudioDevicesAndWatchesTheirChanges
-)
-{
-    using speech_to_text_test::PortAudioFake;
-
-    PortAudioFake::setHostApiType(paCoreAudio);
-    PortAudioFake::setDevices({{.name = "MacBook Pro Microphone"}, {.name = "USB Microphone"}});
-    PortAudioFake::setDefaultInputDevice(1);
-    int queries = 0;
-    int watchers = 0;
-    bool changed = false;
-    AudioCapture capture(
-        [&queries] -> std::optional<PulseSources> {
-            ++queries;
-            return std::nullopt;
-        },
-        [&watchers, &changed] -> std::function<bool()> {
-            ++watchers;
-            return [&changed] -> bool { return std::exchange(changed, false); };
-        }
-    );
-
-    changed = true;
-    EXPECT_FALSE(capture.microphonesChanged());
-
-    const auto microphones = capture.microphones();
-    static_cast<void>(capture.microphones());
-
-    ASSERT_EQ(microphones.size(), 2U);
-    EXPECT_EQ(microphones[0].id, "MacBook Pro Microphone");
-    EXPECT_EQ(microphones[0].name, "MacBook Pro Microphone");
-    EXPECT_FALSE(microphones[0].isDefault);
-    EXPECT_EQ(microphones[1].id, "USB Microphone");
-    EXPECT_TRUE(microphones[1].isDefault);
-    EXPECT_EQ(queries, 0);
-    EXPECT_EQ(watchers, 1);
-    EXPECT_TRUE(capture.microphonesChanged());
-    EXPECT_FALSE(capture.microphonesChanged());
-
-    ASSERT_TRUE(capture.start());
-    EXPECT_EQ(PortAudioFake::openedDevice(), 1);
-}
-
-TEST_F(
     AudioCaptureTest, ListsDeviceNamesWithoutSoundServer
 )
 {

@@ -17,10 +17,6 @@
 #include <thread>
 #include <unistd.h>
 
-#ifdef __linux__
-#include <asm-generic/socket.h>
-#endif
-
 namespace
 {
 

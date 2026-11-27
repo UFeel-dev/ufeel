@@ -3,10 +3,6 @@
 #include "SpeechToText/AudioSource.hpp"
 #include "SpeechToText/PulseSources.hpp"
 
-#ifdef __APPLE__
-#include "SpeechToText/CoreAudioDevices.hpp"
-#endif
-
 #include <algorithm>
 #include <array>
 #include <atomic>
@@ -40,24 +36,6 @@ auto isFormatSupported(
 }
 
 } // namespace
-
-auto AudioCapture::defaultSourceReader() -> SourceReader
-{
-#ifdef __APPLE__
-    return {};
-#else
-    return readPulseSources;
-#endif
-}
-
-auto AudioCapture::defaultChangeWatcher() -> ChangeWatcher
-{
-#ifdef __APPLE__
-    return watchCoreAudioDevices;
-#else
-    return watchPulseSources;
-#endif
-}
 
 AudioCapture::AudioCapture(
     SourceReader readSources, ChangeWatcher watchChanges
@@ -168,16 +146,6 @@ auto AudioCapture::scanDevices() const -> Devices
         {
             return pulseDevices(pulse, *sources);
         }
-    }
-
-    const PaHostApiIndex coreAudio = Pa_HostApiTypeIdToHostApiIndex(paCoreAudio);
-
-    if (coreAudio >= 0)
-    {
-        Devices devices = hostApiDevices(coreAudio);
-        devices.fromSoundServer = true;
-
-        return devices;
     }
 
     const PaHostApiIndex alsa = Pa_HostApiTypeIdToHostApiIndex(paALSA);
